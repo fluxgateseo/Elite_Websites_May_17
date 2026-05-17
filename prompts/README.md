@@ -1,5 +1,19 @@
 # Prompts
 
+This directory holds two distinct things:
+
+- **Render-job templates** (this file's subject) — `<name>.prompt.md`
+  files consumed by the Drive render pipeline (`content/queue.json` →
+  `manifest.json`).
+- **`design-skills/`** — the 4 visual-language bundles selectable in
+  wizard Step 7 (`minimalist`, `brutalist`, `soft-premium`, `emil-eng`).
+  These are pipeline contracts, **not** render-job templates and do **not**
+  use `{{var}}` substitution. See `design-skills/README.md`.
+
+The conventions below apply to render-job templates only.
+
+## Render-job templates
+
 Reusable prompt templates for render jobs.
 
 ## Conventions

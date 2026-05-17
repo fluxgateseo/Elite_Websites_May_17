@@ -65,6 +65,7 @@ artifact, it belongs in Drive.
 - `manifest.json` is validated against `manifest.schema.json`.
 - `content/queue.json` is validated against `content/queue.schema.json`,
   with `schemas/job.schema.json` registered by `$id`.
+- `docs/sites.json` is validated against `docs/sites.schema.json`.
 
 JSON Schema **draft 2020-12** via `ajv-cli` + `ajv-formats`.
 
@@ -81,7 +82,11 @@ steps via `GOOGLE_APPLICATION_CREDENTIALS`.
 
 These are intentionally **not** automated and must be done by the repo owner:
 
-- [ ] Create the Drive root folder `Claude/Elite_Websites_May_17/` in the
-      `fluxgate` Google account.
-- [ ] Add the `GDRIVE_SA_KEY` repository secret (service-account JSON, with
-      write access to that Drive folder).
+- [x] Create the Drive root folder `Claude/Elite_Websites_May_17/` in the
+      `fluxgate` Google account — done
+      (folder id `1cc_3ie2Id1iP-ceeVCqQ2V6OzKm7j7Hb`, empty).
+- [ ] Add the `GDRIVE_SA_KEY` repository secret (service-account JSON).
+      Until set, `render.yml` self-skips and CI stays green.
+- [ ] Grant that service account **Content manager** access to the Drive
+      folder above — the folder is owned by `fluxgateseo@gmail.com` and the
+      SA is a separate identity; without explicit access, uploads fail.

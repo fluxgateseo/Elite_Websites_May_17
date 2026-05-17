@@ -33,3 +33,11 @@ jobs:
           -s content/queue.schema.json
           -r schemas/job.schema.json
           -d content/queue.json
+
+      - name: Validate docs/sites.json
+        run: >-
+          npx ajv validate
+          --spec=draft2020
+          -c ajv-formats
+          -s docs/sites.schema.json
+          -d docs/sites.json

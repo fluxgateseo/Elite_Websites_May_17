@@ -1,0 +1,35 @@
+name: validate
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install ajv-cli
+        run: npm install --no-save ajv-cli@5 ajv-formats@3
+
+      - name: Validate manifest.json
+        run: >-
+          npx ajv validate
+          --spec=draft2020
+          -c ajv-formats
+          -s manifest.schema.json
+          -d manifest.json
+
+      - name: Validate content/queue.json
+        run: >-
+          npx ajv validate
+          --spec=draft2020
+          -c ajv-formats
+          -s content/queue.schema.json
+          -r schemas/job.schema.json
+          -d content/queue.json

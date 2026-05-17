@@ -1,0 +1,41 @@
+name: render
+
+on:
+  workflow_dispatch:
+    inputs:
+      batch:
+        description: "Batch to render (queue jobs are grouped by batch)."
+        required: true
+        type: string
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    # Skip when the Drive service-account key is not configured, so the
+    # workflow stays green on forks and before credentials are provisioned.
+    if: ${{ secrets.GDRIVE_SA_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Provision Google service-account credentials
+        env:
+          GDRIVE_SA_KEY: ${{ secrets.GDRIVE_SA_KEY }}
+        run: |
+          install -m 600 /dev/null "${RUNNER_TEMP}/gdrive-sa.json"
+          printf '%s' "$GDRIVE_SA_KEY" > "${RUNNER_TEMP}/gdrive-sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${RUNNER_TEMP}/gdrive-sa.json" >> "$GITHUB_ENV"
+
+      # TODO: render queued jobs for inputs.batch using prompts/ + config/.
+      - name: Render batch
+        run: echo "TODO render batch '${{ inputs.batch }}'"
+
+      # TODO: upload each rendered binary to
+      # Claude/Elite_Websites_May_17/${{ inputs.batch }}/<file> and capture
+      # the Drive file ID.
+      - name: Upload artifacts to Drive
+        run: echo "TODO upload to Drive"
+
+      # TODO: append manifest entries + update queue, then commit & push.
+      # Drive write and manifest commit must land together (see scripts/README.md).
+      - name: Update manifest and queue
+        run: echo "TODO append manifest, update queue, commit"

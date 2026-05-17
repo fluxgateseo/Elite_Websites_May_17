@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/fluxgateseo/Elite_Websites_May_17/main/content/queue.schema.json",
+  "title": "Content render queue",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["project", "jobs"],
+  "properties": {
+    "project": {
+      "type": "string",
+      "const": "Elite_Websites_May_17"
+    },
+    "jobs": {
+      "type": "array",
+      "items": {
+        "$ref": "https://raw.githubusercontent.com/fluxgateseo/Elite_Websites_May_17/main/schemas/job.schema.json"
+      }
+    }
+  }
+}

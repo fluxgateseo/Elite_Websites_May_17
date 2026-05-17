@@ -1,0 +1,15 @@
+{
+  "project": "Elite_Websites_May_17",
+  "video": {
+    "model": "",
+    "aspectRatio": "16:9",
+    "durationSeconds": 8
+  },
+  "image": {
+    "model": "",
+    "aspectRatio": "16:9"
+  },
+  "drive": {
+    "root": "Claude/Elite_Websites_May_17/"
+  }
+}

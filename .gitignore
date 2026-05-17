@@ -1,0 +1,46 @@
+# Binaries live in Google Drive, never in git.
+
+# Video
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.webm
+*.m4v
+*.gif
+
+# Audio
+*.wav
+*.mp3
+*.aac
+*.flac
+
+# Image / source assets
+*.psd
+*.tiff
+
+# Secrets / credentials
+.env
+.env.*
+*.key
+credentials.json
+token.json
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*

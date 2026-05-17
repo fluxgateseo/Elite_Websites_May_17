@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/fluxgateseo/Elite_Websites_May_17/main/manifest.schema.json",
+  "title": "Artifact manifest",
+  "description": "Index of binary artifacts stored in Google Drive. Source of truth for which Drive file backs which produced asset.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["project", "driveRoot", "artifacts"],
+  "properties": {
+    "project": {
+      "type": "string",
+      "const": "Elite_Websites_May_17"
+    },
+    "driveRoot": {
+      "type": "string",
+      "const": "Claude/Elite_Websites_May_17/"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/artifact" }
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["driveFileId", "drivePath", "kind", "batch", "producedBy"],
+      "properties": {
+        "driveFileId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable Google Drive file ID. The canonical reference; never reference by path."
+        },
+        "drivePath": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable Drive path for orientation only. Not an identifier."
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["video", "image", "audio", "source-asset"]
+        },
+        "batch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "producedBy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["commit", "config"],
+          "properties": {
+            "commit": {
+              "type": "string",
+              "minLength": 7,
+              "description": "Git commit SHA whose state produced this artifact."
+            },
+            "config": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Config identifier/hash used for the render."
+            },
+            "jobId": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Optional originating queue job id."
+            }
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "checksum": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional content checksum (e.g. sha256:...)."
+        }
+      }
+    }
+  }
+}

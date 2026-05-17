@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/fluxgateseo/Elite_Websites_May_17/main/schemas/job.schema.json",
+  "title": "Render job",
+  "description": "A single content render job in the queue.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "kind", "status", "batch", "prompt", "result"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Kebab-case job identifier, unique within the queue."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["video", "image"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "in-progress", "rendered", "failed", "archived"]
+    },
+    "batch": {
+      "type": "string",
+      "minLength": 1
+    },
+    "prompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template", "vars"],
+      "properties": {
+        "template": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Prompt template name under prompts/ (without the .prompt.md suffix)."
+        },
+        "vars": {
+          "type": "object",
+          "description": "Values substituted into {{var}} placeholders.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "config": {
+      "type": "object",
+      "description": "Optional per-job overrides of config/defaults.json.",
+      "additionalProperties": true
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["driveFileId"],
+      "properties": {
+        "driveFileId": {
+          "type": "string",
+          "description": "Drive file ID of the rendered artifact. Empty until rendered; must match the manifest entry once status is 'rendered'."
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

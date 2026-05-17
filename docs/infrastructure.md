@@ -61,7 +61,7 @@ CLOUDFLARE_API_TOKEN=$CF_TOKEN_EN CLOUDFLARE_ACCOUNT_ID=$CF_ACCOUNT_ID_EN \
 |--------|-----------|-------|
 | `elite-saas`              | `https://app.innotofuture.com` (EN), `https://app.chefconnect.it` (IT backup) | Next.js / OpenNext dashboard |
 | `elite-pipeline-workflow` | `https://elite-pipeline-workflow.scissorssister.workers.dev` | Pipeline + `/custom-prompt` endpoint |
-| `elite-leads-worker`      | — | Lead capture, separate workstream (Plan E) |
+| `elite-leads-worker`      | — | Lead capture, separate workstream (Plan E) — see `docs/leads-worker.md` |
 
 Deploy commands (from each worker's repo):
 ```bash

@@ -18,6 +18,7 @@ sibling code repos (dashboard, pipeline worker, Astro template) — see
 | Trace what each pipeline stage does | `docs/pipeline-stages.md` |
 | See the live sites and their repos | `docs/sites.json` |
 | Send a free-text edit to an existing site | `docs/custom-prompt.md` |
+| Understand the leads worker (Plan E, separate workstream) | `docs/leads-worker.md` |
 | Understand the 4 design-skill variants in the wizard | `prompts/design-skills/` |
 | Read the frontend-architect persona / 7-level workflow | `Master Documents/` |
 

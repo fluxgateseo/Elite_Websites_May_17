@@ -21,7 +21,8 @@
       "account": "IT",
       "status": "live",
       "cloudflare_pages_project": "site-paginemarxiste",
-      "github_repo": "andreabbo/site-paginemarxiste"
+      "github_repo": "andreabbo/site-paginemarxiste",
+      "scope": "external"
     },
     {
       "domain": "ristoranteangels.it",

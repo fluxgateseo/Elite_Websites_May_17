@@ -19,7 +19,11 @@
           "account": { "enum": ["IT", "EN"] },
           "status": { "enum": ["draft", "building", "live", "error", "paused"] },
           "cloudflare_pages_project": { "type": ["string", "null"] },
-          "github_repo": { "type": ["string", "null"], "pattern": "^[^/]+/[^/]+$" }
+          "github_repo": { "type": ["string", "null"], "pattern": "^[^/]+/[^/]+$" },
+          "scope": {
+            "enum": ["managed", "external"],
+            "description": "Optional. Absent or \"managed\" = our generated/operated site. \"external\" = collaborator-owned, out of scope, DO NOT EDIT (see docs/infrastructure.md)."
+          }
         }
       }
     }

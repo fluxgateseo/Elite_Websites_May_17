@@ -22,6 +22,18 @@ Operating rules that follow from this:
 - `config/defaults.json` holds the default video/image models, aspect ratios, and the Drive root. Per-job overrides go in a job's `config`.
 - Every commit touching JSON is validated in CI (`.github/workflows/validate.yml`, JSON Schema draft 2020-12).
 
+## Operational reality (read before acting on infra)
+
+This repo is the META — actual code lives elsewhere. Before touching
+anything operational, read the relevant doc:
+
+- `docs/architecture.md` — system map: dashboard ↔ pipeline worker ↔ site repos ↔ CF Pages.
+- `docs/infrastructure.md` — CF account IDs, D1 UUIDs, worker URLs, secret names, repo locations.
+- `docs/pipeline-stages.md` — Stage 1-7 + sub-steps (5a/5b, 6a-e) the worker runs to generate a site.
+- `docs/sites.json` — current live sites, validated against `docs/sites.schema.json`.
+- `docs/custom-prompt.md` — the `/custom-prompt` endpoint that lets the dashboard send free-text edits to live sites.
+- `prompts/design-skills/` — the 4 visual languages selectable in wizard Step 7 (minimalist, brutalist, soft-premium, emil-eng).
+
 ## Mission
 Build elite, customisable, modern AI-driven UX websites that rival Awwwards / Godly.website winners. **Eliminate AI slop** at all costs.
 

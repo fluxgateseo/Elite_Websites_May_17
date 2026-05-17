@@ -1,0 +1,62 @@
+{
+  "project": "Elite_Websites_May_17",
+  "generatedAt": "2026-05-17",
+  "sites": [
+    {
+      "domain": "agilescienceapp.it",
+      "account": "IT",
+      "status": "live",
+      "cloudflare_pages_project": "site-agilescienceapp",
+      "github_repo": "fluxgateseo/site-agilescienceapp"
+    },
+    {
+      "domain": "modoristorante.it",
+      "account": "IT",
+      "status": "live",
+      "cloudflare_pages_project": "site-modoristorante",
+      "github_repo": "fluxgateseo/site-modoristorante"
+    },
+    {
+      "domain": "paginemarxiste.it",
+      "account": "IT",
+      "status": "live",
+      "cloudflare_pages_project": "site-paginemarxiste",
+      "github_repo": "andreabbo/site-paginemarxiste"
+    },
+    {
+      "domain": "ristoranteangels.it",
+      "account": "IT",
+      "status": "live",
+      "cloudflare_pages_project": "site-ristoranteangels",
+      "github_repo": "fluxgateseo/site-ristoranteangels"
+    },
+    {
+      "domain": "ristorantenapolimia.it",
+      "account": "IT",
+      "status": "live",
+      "cloudflare_pages_project": "site-ristorantenapolimia",
+      "github_repo": "fluxgateseo/site-ristorantenapolimia"
+    },
+    {
+      "domain": "bellezzalnaturale.it",
+      "account": "IT",
+      "status": "draft",
+      "cloudflare_pages_project": null,
+      "github_repo": null
+    },
+    {
+      "domain": "elgusto.it",
+      "account": "IT",
+      "status": "draft",
+      "cloudflare_pages_project": null,
+      "github_repo": null
+    },
+    {
+      "domain": "montagnedilombardia.it",
+      "account": "IT",
+      "status": "draft",
+      "cloudflare_pages_project": null,
+      "github_repo": null
+    }
+  ]
+}

@@ -1,5 +1,28 @@
 # Elite_Websites_May_17
 
+Meta-repo for the **Elite Websites** project — a generation pipeline that
+turns an 11-step wizard brief into a live, Cloudflare-hosted website with
+auto-redeploy on commit.
+
+This repo holds **instructions, prompts, schemas, operational docs, and a
+manifest of binary assets in Drive**. The product itself lives in three
+sibling code repos (dashboard, pipeline worker, Astro template) — see
+`docs/architecture.md` for the system map.
+
+## Where to look first
+
+| If you want to… | Read |
+|------------------|------|
+| Understand the full system (dashboard ↔ worker ↔ sites) | `docs/architecture.md` |
+| Find a CF account / D1 / worker ID, or know which secret is set where | `docs/infrastructure.md` |
+| Trace what each pipeline stage does | `docs/pipeline-stages.md` |
+| See the live sites and their repos | `docs/sites.json` |
+| Send a free-text edit to an existing site | `docs/custom-prompt.md` |
+| Understand the 4 design-skill variants in the wizard | `prompts/design-skills/` |
+| Read the frontend-architect persona / 7-level workflow | `Master Documents/` |
+
+## Binary asset split (this section is unchanged)
+
 A content production project that splits responsibilities between two stores:
 
 - **GitHub (`fluxgateseo/Elite_Websites_May_17`)** — source of truth for **all

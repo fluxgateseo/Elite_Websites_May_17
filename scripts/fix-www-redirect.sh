@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Create an idempotent www -> apex 301 Single Redirect Rule for sites
-# whose www hostname returns Cloudflare 522 (www not bound to the Pages
-# project). Apex stays canonical; www just 301s to it, path preserved.
+# Create an idempotent 301 Single Redirect Rule that canonicalises a
+# domain to https://<apex>/. Redirects: http://apex, https://www,
+# http://www  ->  https://apex (path + query preserved). Fixes the
+# Cloudflare 522 on www (www not bound to the Pages project), because
+# the rule runs at the edge before any origin lookup.
 #
 # Why a script and not an MCP/dashboard action: the redirect lives at the
 # zone level (http_request_dynamic_redirect ruleset). Run this where the
@@ -39,9 +41,11 @@ for DOMAIN in "$@"; do
               --data '{"rules":[]}' | jq -r '.result.id')"
   fi
 
+  # Canonical = https://apex/. Match: www (any scheme) OR apex over http.
+  # Apex over https does not match -> served normally (no redirect loop).
   RULE_JSON=$(jq -n --arg d "${DOMAIN}" --arg desc "${RULE_DESC}" '{
     description: $desc,
-    expression: ("(http.host eq \"www." + $d + "\")"),
+    expression: ("(http.host eq \"www." + $d + "\") or (http.host eq \"" + $d + "\" and not ssl)"),
     action: "redirect",
     action_parameters: {
       from_value: {

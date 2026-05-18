@@ -1,0 +1,950 @@
+From 4dd1dc1aa118f059aedc40f3deead8123327bc4e Mon Sep 17 00:00:00 2001
+From: c <c@l>
+Date: Mon, 18 May 2026 15:40:54 +0000
+Subject: [PATCH 1/3] Fix palette + hero contrast: warm scale, dark hero
+ fallback
+
+Replace banned SaaS-blue #3b82f6: primary #1E1A17, accent #B23A1F
+(terracotta, AA on white), bg #FBF8F3 (warm paper). Add solid dark
+fallback (#1E1A17) when no hero image so text passes WCAG AA.
+---
+ src/components/hero/Fullbleed.astro | 3 ++-
+ src/site.config.ts                  | 6 +++---
+ 2 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/src/components/hero/Fullbleed.astro b/src/components/hero/Fullbleed.astro
+index 30b6014..25675fc 100644
+--- a/src/components/hero/Fullbleed.astro
++++ b/src/components/hero/Fullbleed.astro
+@@ -23,7 +23,8 @@ const heroImg = config.layout?.heroAssets?.image ?? config.seo?.defaultOgImage ?
+       fetchpriority="high"
+     />
+   )}
+-  <div class="absolute inset-0" style="background:linear-gradient(180deg,rgba(0,0,0,0.35) 0%,rgba(0,0,0,0.75) 100%)"></div>
++  {!heroImg && <div class="absolute inset-0" style="background:#1E1A17"></div>}
++  <div class="absolute inset-0" style="background:linear-gradient(180deg,rgba(0,0,0,0.45) 0%,rgba(0,0,0,0.78) 100%)"></div>
+   <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-32 text-white">
+     {subtitle && (
+       <p class="text-xs font-medium uppercase tracking-[0.3em] mb-8 opacity-90">{subtitle}</p>
+diff --git a/src/site.config.ts b/src/site.config.ts
+index db36b86..f44288a 100644
+--- a/src/site.config.ts
++++ b/src/site.config.ts
+@@ -20,9 +20,9 @@ export default defineSiteConfig({
+   "design": {
+     "style": "bold",
+     "palette": {
+-      "primary": "#000000",
+-      "accent": "#3b82f6",
+-      "background": "#ffffff"
++      "primary": "#1E1A17",
++      "accent": "#B23A1F",
++      "background": "#FBF8F3"
+     },
+     "fontPairing": {
+       "display": "Playfair Display",
+-- 
+2.43.0
+
+
+From be391c647723e0e86331d109903930481aeb738c Mon Sep 17 00:00:00 2001
+From: c <c@l>
+Date: Mon, 18 May 2026 15:40:54 +0000
+Subject: [PATCH 2/3] Publish 15 evergreen articles (Roman/Italian cuisine)
+
+Backlink-justification content for local IT food/events/press
+referrers. Frontmatter per content.config.ts; no hero.
+---
+ src/content/articoli/amatriciana-storia.md    | 35 +++++++++++++++++
+ src/content/articoli/cacio-e-pepe.md          | 33 ++++++++++++++++
+ src/content/articoli/caffe-italiano-rito.md   | 33 ++++++++++++++++
+ src/content/articoli/carbonara-autentica.md   | 33 ++++++++++++++++
+ src/content/articoli/carciofo-romanesco.md    | 35 +++++++++++++++++
+ src/content/articoli/cena-aziendale.md        | 35 +++++++++++++++++
+ src/content/articoli/cucina-km-zero.md        | 35 +++++++++++++++++
+ .../articoli/cucina-romana-tradizione.md      | 38 +++++++++++++++++++
+ src/content/articoli/domenica-in-famiglia.md  | 32 ++++++++++++++++
+ .../articoli/eventi-enogastronomici-roma.md   | 35 +++++++++++++++++
+ .../articoli/eventi-privati-ristorante.md     | 33 ++++++++++++++++
+ src/content/articoli/guida-quartiere.md       | 32 ++++++++++++++++
+ src/content/articoli/menu-stagionale.md       | 34 +++++++++++++++++
+ src/content/articoli/quinto-quarto.md         | 34 +++++++++++++++++
+ .../articoli/vini-laziali-abbinamenti.md      | 34 +++++++++++++++++
+ 15 files changed, 511 insertions(+)
+ create mode 100644 src/content/articoli/amatriciana-storia.md
+ create mode 100644 src/content/articoli/cacio-e-pepe.md
+ create mode 100644 src/content/articoli/caffe-italiano-rito.md
+ create mode 100644 src/content/articoli/carbonara-autentica.md
+ create mode 100644 src/content/articoli/carciofo-romanesco.md
+ create mode 100644 src/content/articoli/cena-aziendale.md
+ create mode 100644 src/content/articoli/cucina-km-zero.md
+ create mode 100644 src/content/articoli/cucina-romana-tradizione.md
+ create mode 100644 src/content/articoli/domenica-in-famiglia.md
+ create mode 100644 src/content/articoli/eventi-enogastronomici-roma.md
+ create mode 100644 src/content/articoli/eventi-privati-ristorante.md
+ create mode 100644 src/content/articoli/guida-quartiere.md
+ create mode 100644 src/content/articoli/menu-stagionale.md
+ create mode 100644 src/content/articoli/quinto-quarto.md
+ create mode 100644 src/content/articoli/vini-laziali-abbinamenti.md
+
+diff --git a/src/content/articoli/amatriciana-storia.md b/src/content/articoli/amatriciana-storia.md
+new file mode 100644
+index 0000000..d2420bd
+--- /dev/null
++++ b/src/content/articoli/amatriciana-storia.md
+@@ -0,0 +1,35 @@
++---
++title: "Amatriciana: storia di un piatto conteso"
++slug: "amatriciana-storia"
++date: "2026-05-12"
++category: "Ricette"
++excerpt: "Da Amatrice a Roma, con o senza cipolla: la storia dell'amatriciana e come la prepariamo noi."
++author: "Redazione"
++readingTime: 4
++tags: ["amatriciana", "storia", "guanciale", "ricetta"]
++---
++
++## Dalle montagne alla città
++
++L'amatriciana nasce come evoluzione "rossa" della gricia, legata al
++territorio di Amatrice e poi adottata e diffusa da Roma. È un piatto di
++pastori diventato simbolo cittadino.
++
++## Gli ingredienti del disciplinare
++
++Guanciale, pecorino, pomodoro, un tocco di pepe o peperoncino. Sulla
++cipolla il dibattito è eterno: la ricetta tradizionale di Amatrice non
++la prevede, molte versioni romane sì. Noi rispettiamo la versione
++essenziale, lasciando parlare il guanciale.
++
++## La tecnica
++
++Guanciale croccante, sfumatura, pomodoro cotto il giusto per restare
++vivo, mantecatura con pecorino. La pasta tipica è il bucatino o il
++rigatone, che reggono il sugo.
++
++## Memoria e rispetto
++
++L'amatriciana è anche un piatto di solidarietà, legato alla rinascita di
++un territorio colpito dal terremoto. Cucinarla bene è anche un modo di
++rispettarne la storia.
+diff --git a/src/content/articoli/cacio-e-pepe.md b/src/content/articoli/cacio-e-pepe.md
+new file mode 100644
+index 0000000..ee352ed
+--- /dev/null
++++ b/src/content/articoli/cacio-e-pepe.md
+@@ -0,0 +1,33 @@
++---
++title: "Cacio e pepe: tecnica e segreti"
++slug: "cacio-e-pepe"
++date: "2026-05-17"
++category: "Piatti"
++excerpt: "Tre ingredienti, una sola difficoltà: la crema. Come nasce una cacio e pepe fatta come si deve."
++author: "Redazione"
++readingTime: 4
++tags: ["cacio e pepe", "pasta", "ricetta", "Roma"]
++---
++
++## Tre ingredienti, zero scorciatoie
++
++Pasta, pecorino romano, pepe nero. La cacio e pepe è il manifesto della
++cucina romana: nessun ingrediente dove nascondersi, solo tecnica.
++
++## Il segreto è l'amido
++
++La crema non si fa con la panna: si fa con l'**acqua di cottura ricca di
++amido** e il pecorino, mantecati a fuoco spento alla giusta temperatura.
++Troppo caldo e il formaggio "impazzisce" formando grumi; troppo freddo e
++non lega. È un equilibrio di pochi gradi.
++
++## Il pepe
++
++Il pepe nero va tostato in padella per liberarne gli oli aromatici: è
++quello che dà profondità e una leggera piccantezza calda al piatto.
++
++## Da noi
++
++La prepariamo all'ordine, con pecorino selezionato e pasta trafilata al
++bronzo che trattiene meglio la crema. È un piatto che non ammette
++fretta — ed è esattamente per questo che lo amiamo.
+diff --git a/src/content/articoli/caffe-italiano-rito.md b/src/content/articoli/caffe-italiano-rito.md
+new file mode 100644
+index 0000000..fbacb81
+--- /dev/null
++++ b/src/content/articoli/caffe-italiano-rito.md
+@@ -0,0 +1,33 @@
++---
++title: "Il rito del caffè italiano"
++slug: "caffe-italiano-rito"
++date: "2026-05-06"
++category: "Tradizione"
++excerpt: "Chiudere il pasto con un buon caffè non è un dettaglio: è parte dell'esperienza. Come lo intendiamo."
++author: "Redazione"
++readingTime: 3
++tags: ["caffè", "rito", "tradizione", "fine pasto"]
++---
++
++## L'ultima impressione conta
++
++Il caffè è l'ultima cosa che resta in bocca dopo un pasto. Un espresso
++fatto male può rovinare il ricordo di una buona cena: per questo non lo
++trattiamo come un'aggiunta marginale.
++
++## Cosa fa la differenza
++
++- Una **miscela** scelta e conservata bene;
++- una **macchina** pulita e regolata;
++- l'**estrazione** giusta: tempi e temperatura, non improvvisazione.
++
++## Il momento, non solo la bevanda
++
++Il caffè italiano è anche pausa e conversazione: un rito breve che
++chiude il pasto e prolunga la convivialità ancora qualche minuto.
++
++## Da noi
++
++Curiamo l'espresso come curiamo i piatti. Se preferisci un'alternativa —
++deca, ristretto, macchiato — chiedila pure: il rito è personale, e va
++rispettato.
+diff --git a/src/content/articoli/carbonara-autentica.md b/src/content/articoli/carbonara-autentica.md
+new file mode 100644
+index 0000000..70f1b18
+--- /dev/null
++++ b/src/content/articoli/carbonara-autentica.md
+@@ -0,0 +1,33 @@
++---
++title: "La vera carbonara romana"
++slug: "carbonara-autentica"
++date: "2026-05-16"
++category: "Piatti"
++excerpt: "Guanciale, uova, pecorino, pepe. Niente panna, niente pancetta: anatomia di un classico spesso tradito."
++author: "Redazione"
++readingTime: 4
++tags: ["carbonara", "guanciale", "ricetta", "Roma"]
++---
++
++## Cosa c'è (e cosa non c'è)
++
++La carbonara romana è fatta di **guanciale**, tuorli, **pecorino romano**
++e pepe. Non c'è panna, non c'è pancetta, non c'è aglio. La cremosità
++nasce solo dalle uova e dal grasso del guanciale.
++
++## Il guanciale
++
++Reso croccante a fuoco medio nel suo grasso: è la base aromatica del
++piatto. Il grasso sciolto non si butta, lega la crema.
++
++## La crema d'uovo
++
++I tuorli con il pecorino si mantecano **fuori dal fuoco**, usando il
++calore della pasta e poca acqua di cottura. L'obiettivo è una crema
++lucida che vela la pasta, mai una frittata.
++
++## La nostra versione
++
++Usiamo guanciale stagionato e uova fresche, dosando il pepe per dare
++carattere senza coprire. È un piatto semplice solo in apparenza: la
++differenza è tutta nell'esecuzione.
+diff --git a/src/content/articoli/carciofo-romanesco.md b/src/content/articoli/carciofo-romanesco.md
+new file mode 100644
+index 0000000..eab5f8c
+--- /dev/null
++++ b/src/content/articoli/carciofo-romanesco.md
+@@ -0,0 +1,35 @@
++---
++title: "Il carciofo romanesco: alla giudia e alla romana"
++slug: "carciofo-romanesco"
++date: "2026-05-09"
++category: "Piatti"
++excerpt: "Due preparazioni iconiche per un ortaggio simbolo: differenze, stagione e come scegliere il carciofo giusto."
++author: "Redazione"
++readingTime: 4
++tags: ["carciofo", "romanesco", "stagione", "Roma"]
++---
++
++## Un ortaggio identitario
++
++Il carciofo romanesco, tondo e tenero, è protagonista della tavola
++romana tra fine inverno e primavera. Due preparazioni lo hanno reso
++celebre, molto diverse tra loro.
++
++## Alla giudia vs alla romana
++
++- **Alla giudia**: fritto intero, aperto a fiore, croccante fuori e
++  morbido dentro. Eredità della cucina ebraico-romana.
++- **Alla romana**: stufato con menta romana, aglio e olio, tenero e
++  profumato.
++
++## Stagione e scelta
++
++Il carciofo è buono quando è di stagione: sodo, pesante per la sua
++dimensione, senza foglie esterne secche. Fuori stagione si rinuncia,
++semplicemente.
++
++## In cucina da noi
++
++Lo proponiamo nel periodo giusto, in entrambe le versioni, pulito a mano
++ogni giorno. È uno di quei piatti in cui la stagionalità non è uno
++slogan ma una condizione.
+diff --git a/src/content/articoli/cena-aziendale.md b/src/content/articoli/cena-aziendale.md
+new file mode 100644
+index 0000000..0ab8594
+--- /dev/null
++++ b/src/content/articoli/cena-aziendale.md
+@@ -0,0 +1,35 @@
++---
++title: "Organizzare una cena aziendale al ristorante"
++slug: "cena-aziendale"
++date: "2026-05-11"
++category: "Servizi"
++excerpt: "Menu concordati, tempi giusti, spazi riservati: come trasformare una cena di lavoro in un evento riuscito."
++author: "Redazione"
++readingTime: 4
++tags: ["cena aziendale", "eventi", "gruppi", "servizi"]
++---
++
++## Una cena di lavoro è un evento
++
++Una cena aziendale ben organizzata rafforza un team più di molte
++riunioni. Ma richiede pianificazione: numeri, esigenze alimentari,
++budget e tempi vanno definiti prima, non improvvisati.
++
++## Cosa prepariamo per i gruppi
++
++- **Menu concordati** a prezzo definito, con alternative per
++  intolleranze e scelte vegetariane;
++- **spazi riservati** per parlare senza alzare la voce;
++- **tempistiche** calibrate per non lasciare gli ospiti in attesa.
++
++## I dettagli che contano
++
++Comunicaci in anticipo allergie e preferenze: una cucina che sa cosa
++aspettarsi serve meglio e più in fretta. Per i brindisi proponiamo
++abbinamenti con vini del territorio.
++
++## Come prenotare
++
++Contattaci con data, numero di persone e budget orientativo: ti
++proponiamo soluzioni su misura. Più informazioni ci dai, migliore sarà
++l'esperienza per i tuoi ospiti.
+diff --git a/src/content/articoli/cucina-km-zero.md b/src/content/articoli/cucina-km-zero.md
+new file mode 100644
+index 0000000..64a27f0
+--- /dev/null
++++ b/src/content/articoli/cucina-km-zero.md
+@@ -0,0 +1,35 @@
++---
++title: "Sostenibilità e cucina a km zero"
++slug: "cucina-km-zero"
++date: "2026-05-05"
++category: "Filosofia"
++excerpt: "Filiera corta, meno sprechi, stagionalità: cosa significa davvero 'km zero' oltre lo slogan."
++author: "Redazione"
++readingTime: 4
++tags: ["sostenibilità", "km zero", "filiera corta", "territorio"]
++---
++
++## Oltre lo slogan
++
++"Km zero" è una formula abusata. Per noi significa scelte concrete:
++filiera corta dove ha senso, riduzione degli sprechi e rispetto della
++stagione — non un'etichetta sul menu.
++
++## Cosa facciamo
++
++- Acquisti da **produttori del territorio** quando la qualità lo
++  giustifica;
++- **menu stagionale** che riduce conservazione e trasporti;
++- **recupero in cucina**: la tradizione romana del quinto quarto è già
++  una lezione di anti-spreco.
++
++## Onestà sui limiti
++
++Non tutto può essere locale: alcuni prodotti vengono da dove si fanno
++meglio. Preferiamo dirlo, piuttosto che vendere un'illusione.
++
++## Perché ti riguarda
++
++Una cucina più sostenibile è anche più buona: ingredienti freschi al
++momento giusto hanno semplicemente più sapore. La sostenibilità, fatta
++bene, si sente nel piatto.
+diff --git a/src/content/articoli/cucina-romana-tradizione.md b/src/content/articoli/cucina-romana-tradizione.md
+new file mode 100644
+index 0000000..ef504f1
+--- /dev/null
++++ b/src/content/articoli/cucina-romana-tradizione.md
+@@ -0,0 +1,38 @@
++---
++title: "La cucina romana: tradizione e identità"
++slug: "cucina-romana-tradizione"
++date: "2026-05-18"
++category: "Tradizione"
++excerpt: "Dai primi piatti del quinto quarto alla pasta cacio e pepe: cosa rende la cucina romana un patrimonio vivo, e come la interpretiamo."
++author: "Redazione"
++readingTime: 5
++tags: ["cucina romana", "tradizione", "Roma"]
++---
++
++## Una cucina di popolo
++
++La cucina romana nasce dalla città reale: trattorie, mercati, mestieri.
++È fatta di ingredienti essenziali — pecorino, guanciale, pasta, verdure
++di stagione, le parti "povere" della carne — trasformati con tecnica e
++misura. Semplice all'origine, ricchissima nel gusto.
++
++## I pilastri
++
++Pochi piatti raccontano l'identità della città:
++
++- **Cacio e pepe**, **carbonara**, **amatriciana** e **gricia**: la
++  quadrilogia della pasta romana;
++- il **quinto quarto**, cucina di recupero diventata arte;
++- il **carciofo alla romana** e **alla giudia**.
++
++## Come li interpretiamo
++
++Rispettare la tradizione non significa congelarla. Partiamo dalle ricette
++classiche e da materie prime selezionate per proporre piatti
++riconoscibili, curati nella tecnica e nell'impiattamento.
++
++## Stagionalità
++
++Lavoriamo con un menu che cambia con le stagioni: è il modo più onesto di
++garantire sapore e di sostenere i produttori del territorio. Ne parliamo
++negli articoli dedicati. Vieni a scoprirlo a tavola.
+diff --git a/src/content/articoli/domenica-in-famiglia.md b/src/content/articoli/domenica-in-famiglia.md
+new file mode 100644
+index 0000000..318f42b
+--- /dev/null
++++ b/src/content/articoli/domenica-in-famiglia.md
+@@ -0,0 +1,32 @@
++---
++title: "La domenica a tavola: un rito di famiglia"
++slug: "domenica-in-famiglia"
++date: "2026-05-07"
++category: "Tradizione"
++excerpt: "Il pranzo della domenica come momento che resiste al tempo: perché lo difendiamo, anche al ristorante."
++author: "Redazione"
++readingTime: 3
++tags: ["domenica", "famiglia", "tradizione", "convivialità"]
++---
++
++## Un tempo che non torna spesso
++
++Il pranzo della domenica è uno degli ultimi riti condivisi: tempo lungo,
++piatti che richiedono cura, persone attorno allo stesso tavolo senza
++fretta. È un valore, non un dettaglio.
++
++## Cosa significa per noi
++
++Costruiamo la domenica attorno a piatti che vogliono tempo — un ragù,
++un brasato, una pasta della tradizione — e a un servizio che non mette
++fretta a nessuno.
++
++## Bambini benvenuti
++
++Una famiglia a tavola include i più piccoli: porzioni adatte e un po' di
++flessibilità fanno parte dell'accoglienza, non sono un favore.
++
++## Un invito
++
++Se la domenica per te è ancora un rito, qui trovi un posto che la pensa
++allo stesso modo. Prenota con calma: la domenica si riempie presto.
+diff --git a/src/content/articoli/eventi-enogastronomici-roma.md b/src/content/articoli/eventi-enogastronomici-roma.md
+new file mode 100644
+index 0000000..9a30109
+--- /dev/null
++++ b/src/content/articoli/eventi-enogastronomici-roma.md
+@@ -0,0 +1,35 @@
++---
++title: "Eventi enogastronomici a Roma da non perdere"
++slug: "eventi-enogastronomici-roma"
++date: "2026-05-14"
++category: "Eventi"
++excerpt: "Sagre, mercati e rassegne: una guida agli appuntamenti del gusto a Roma e nel Lazio durante l'anno."
++author: "Redazione"
++readingTime: 4
++tags: ["eventi", "Roma", "Lazio", "enogastronomia"]
++---
++
++## Roma a tavola, tutto l'anno
++
++La scena enogastronomica romana non vive solo nei ristoranti: mercati
++rionali, sagre del Lazio e rassegne dedicate al vino scandiscono
++l'anno e raccontano il territorio meglio di qualsiasi guida.
++
++## Cosa cercare
++
++- **Mercati storici**: prodotti freschi e produttori da incontrare di
++  persona;
++- **Sagre del Lazio**: piatti identitari, dal carciofo alle castagne;
++- **Rassegne del vino**: per scoprire le denominazioni laziali.
++
++## Come orientarsi
++
++Segui i calendari dei comuni e delle pro loco: gli eventi migliori sono
++spesso quelli meno turistici. La stagione guida tutto, come in cucina.
++
++## Il nostro ruolo
++
++Molti di questi appuntamenti ispirano i nostri piatti stagionali: quando
++trovi un ingrediente di sagra nel nostro menu, è perché lo abbiamo
++incontrato lì. Chiedi al personale: ti raccontiamo volentieri la
++provenienza.
+diff --git a/src/content/articoli/eventi-privati-ristorante.md b/src/content/articoli/eventi-privati-ristorante.md
+new file mode 100644
+index 0000000..0ad3336
+--- /dev/null
++++ b/src/content/articoli/eventi-privati-ristorante.md
+@@ -0,0 +1,33 @@
++---
++title: "Eventi privati e cerimonie: i nostri spazi"
++slug: "eventi-privati-ristorante"
++date: "2026-05-08"
++category: "Servizi"
++excerpt: "Compleanni, anniversari, piccole cerimonie: come organizziamo un evento privato curato nei dettagli."
++author: "Redazione"
++readingTime: 3
++tags: ["eventi privati", "cerimonie", "servizi"]
++---
++
++## L'occasione merita cura
++
++Un evento privato riuscito si nota nei dettagli: l'accoglienza, i tempi
++del servizio, un menu pensato per l'occasione e non improvvisato.
++
++## Cosa offriamo
++
++- Spazi dedicati per gruppi, con allestimento sobrio;
++- menu personalizzati su gusti, budget ed esigenze alimentari;
++- coordinamento con te su tempi e momenti chiave (torta, brindisi).
++
++## Come lavoriamo
++
++Partiamo da un colloquio: numero di ospiti, tipo di evento, atmosfera
++desiderata. Da lì costruiamo una proposta chiara, senza sorprese sul
++conto.
++
++## Prenotazioni
++
++Contattaci con anticipo, soprattutto nei weekend e in alta stagione. Più
++tempo abbiamo, più l'evento sarà su misura. Saremo felici di
++raccontarti le possibilità di persona.
+diff --git a/src/content/articoli/guida-quartiere.md b/src/content/articoli/guida-quartiere.md
+new file mode 100644
+index 0000000..0258c0c
+--- /dev/null
++++ b/src/content/articoli/guida-quartiere.md
+@@ -0,0 +1,32 @@
++---
++title: "Mangiare bene nel quartiere: la nostra zona"
++slug: "guida-quartiere"
++date: "2026-05-04"
++category: "Territorio"
++excerpt: "Un ristorante è anche il suo quartiere: cosa lo rende un punto di riferimento per chi ci vive e chi è di passaggio."
++author: "Redazione"
++readingTime: 3
++tags: ["quartiere", "Roma", "territorio", "comunità"]
++---
++
++## Il ristorante è un luogo
++
++Un buon ristorante non è un'isola: è parte di una zona, dei suoi ritmi e
++delle sue persone. Conoscere il quartiere fa parte del servizio.
++
++## Per chi ci vive
++
++Per i clienti abituali contano costanza e accoglienza: ritrovare la
++qualità di sempre, sentirsi riconosciuti, avere un posto su cui contare
++anche all'ultimo momento.
++
++## Per chi è di passaggio
++
++Per chi visita Roma siamo un assaggio autentico della cucina locale,
++lontano dalle trappole turistiche: piatti veri, prezzi onesti,
++spiegazioni se le chiedi.
++
++## Vieni a trovarci
++
++Che tu sia del quartiere o di passaggio, qui trovi la stessa cucina e la
++stessa cura. Prenota o passa: ti accogliamo allo stesso modo.
+diff --git a/src/content/articoli/menu-stagionale.md b/src/content/articoli/menu-stagionale.md
+new file mode 100644
+index 0000000..e898cb3
+--- /dev/null
++++ b/src/content/articoli/menu-stagionale.md
+@@ -0,0 +1,34 @@
++---
++title: "Perché scegliamo un menu stagionale"
++slug: "menu-stagionale"
++date: "2026-05-15"
++category: "Filosofia"
++excerpt: "Cambiare il menu con le stagioni non è una moda: è una scelta di gusto, qualità e rispetto per chi produce."
++author: "Redazione"
++readingTime: 4
++tags: ["stagionalità", "menu", "qualità", "territorio"]
++---
++
++## La stagione decide
++
++Un ingrediente al suo momento giusto ha più sapore, costa meno energia
++per arrivare in tavola e non ha bisogno di artifici. Per questo il nostro
++menu cambia: seguiamo ciò che il territorio offre, non il contrario.
++
++## Cosa significa in pratica
++
++- Materie prime al picco di maturazione;
++- piatti che ruotano durante l'anno, con alcuni grandi classici fissi;
++- collaborazione diretta con produttori e mercati locali.
++
++## Il vantaggio per chi mangia
++
++Un menu stagionale è un menu più onesto: meno conservazione, più
++freschezza, una proposta che racconta il momento dell'anno in cui ti
++trovi a tavola.
++
++## Un impegno, non un vincolo
++
++Cambiare spesso richiede più lavoro in cucina, ma è il modo in cui
++intendiamo la qualità. Torna in stagioni diverse: troverai un ristorante
++coerente ma mai identico a sé stesso.
+diff --git a/src/content/articoli/quinto-quarto.md b/src/content/articoli/quinto-quarto.md
+new file mode 100644
+index 0000000..50ae11c
+--- /dev/null
++++ b/src/content/articoli/quinto-quarto.md
+@@ -0,0 +1,34 @@
++---
++title: "Il quinto quarto nella cucina romana"
++slug: "quinto-quarto"
++date: "2026-05-10"
++category: "Tradizione"
++excerpt: "Coda alla vaccinara, rigatoni con la pajata: come la cucina del recupero è diventata identità gastronomica."
++author: "Redazione"
++readingTime: 4
++tags: ["quinto quarto", "tradizione", "Roma", "Testaccio"]
++---
++
++## Cosa è il quinto quarto
++
++Nel mattatoio romano di Testaccio i tagli pregiati andavano ai nobili;
++agli operai restava il "quinto quarto": frattaglie e parti meno nobili.
++Da quella necessità nacque una cucina di grande sapore e tecnica.
++
++## I piatti simbolo
++
++- **Coda alla vaccinara**, brasata a lungo con sedano e cacao;
++- **Rigatoni con la pajata**, intenso e identitario;
++- **Trippa alla romana**, con pomodoro, menta e pecorino.
++
++## Cucina di recupero, etica moderna
++
++Quella che era povertà oggi è anche un principio attuale: usare tutto,
++sprecare poco. Il quinto quarto anticipa di un secolo il discorso sulla
++sostenibilità in cucina.
++
++## Da noi
++
++Proponiamo questi piatti per chi vuole la Roma autentica, eseguiti con
++cotture lunghe e materie prime controllate. Non è cucina per tutti i
++gusti — ma è cucina vera.
+diff --git a/src/content/articoli/vini-laziali-abbinamenti.md b/src/content/articoli/vini-laziali-abbinamenti.md
+new file mode 100644
+index 0000000..b28e6e1
+--- /dev/null
++++ b/src/content/articoli/vini-laziali-abbinamenti.md
+@@ -0,0 +1,34 @@
++---
++title: "Vini del Lazio: abbinamenti con i nostri piatti"
++slug: "vini-laziali-abbinamenti"
++date: "2026-05-13"
++category: "Vini"
++excerpt: "Dal Cesanese ai bianchi dei Castelli: come scegliere il vino laziale giusto per la cucina romana."
++author: "Redazione"
++readingTime: 4
++tags: ["vini", "Lazio", "abbinamenti", "Cesanese"]
++---
++
++## Un territorio vinicolo sottovalutato
++
++Il Lazio non è solo Frascati: è un territorio con bianchi freschi e
++rossi di carattere, spesso da vitigni autoctoni. Sono i compagni
++naturali della cucina romana, nati sullo stesso terreno.
++
++## Qualche regola d'oro
++
++- **Piatti grassi e saporiti** (carbonara, gricia): un bianco strutturato
++  o un rosso medio che pulisce il palato.
++- **Quinto quarto e brasati**: il **Cesanese**, rosso laziale di
++  carattere.
++- **Carciofi e verdure**: bianchi sapidi, attenzione agli amari.
++
++## Non esiste l'abbinamento "perfetto"
++
++Esiste quello che ti piace. Le regole sono un punto di partenza, non una
++gabbia: il vino giusto è quello che rende il pasto più piacevole per te.
++
++## In sala
++
++La nostra carta privilegia produttori laziali. Dicci cosa ordini e ti
++proponiamo un calice coerente, senza sovrapprezzi inutili.
+-- 
+2.43.0
+
+
+From 04e69bcad70f6b31e181ecb797b1e217a9fc3923 Mon Sep 17 00:00:00 2001
+From: c <c@l>
+Date: Mon, 18 May 2026 15:47:37 +0000
+Subject: [PATCH 3/3] Add live-music/jazz articles + 301s for legacy event URLs
+
+5 music articles (Marina Rei, Dave Douglas/Uri Caine, programmazione,
+jazz Ostiense) matching the real backlink profile. _redirects maps
+/evento/*, /web/*, /club/*, /iphone/* to relevant new pages.
+---
+ public/_redirects                             | 12 ++++++
+ .../dave-douglas-uri-caine-al-modo.md         | 35 +++++++++++++++++
+ src/content/articoli/jazz-a-roma-ostiense.md  | 36 ++++++++++++++++++
+ src/content/articoli/marina-rei-al-modo.md    | 36 ++++++++++++++++++
+ .../articoli/musica-dal-vivo-al-modo.md       | 38 +++++++++++++++++++
+ .../articoli/programmazione-concerti-modo.md  | 37 ++++++++++++++++++
+ 6 files changed, 194 insertions(+)
+ create mode 100644 public/_redirects
+ create mode 100644 src/content/articoli/dave-douglas-uri-caine-al-modo.md
+ create mode 100644 src/content/articoli/jazz-a-roma-ostiense.md
+ create mode 100644 src/content/articoli/marina-rei-al-modo.md
+ create mode 100644 src/content/articoli/musica-dal-vivo-al-modo.md
+ create mode 100644 src/content/articoli/programmazione-concerti-modo.md
+
+diff --git a/public/_redirects b/public/_redirects
+new file mode 100644
+index 0000000..bcc2bcb
+--- /dev/null
++++ b/public/_redirects
+@@ -0,0 +1,12 @@
++# Legacy URLs that carry legitimate backlinks (Ahrefs) — mostly
++# live-music / jazz event pages. 301 -> relevant new content so link
++# equity is preserved instead of 404. Cloudflare Pages; first match wins.
++
++/evento/marina-rei/*                                            /blog/marina-rei-al-modo/                301
++/evento/dave-douglas-uri-caine-present-joys-5-marzo-al-modo/*   /blog/dave-douglas-uri-caine-al-modo/    301
++/evento/*                                                       /blog/musica-dal-vivo-al-modo/           301
++
++# Old "jazz calendar / news" site (/web/, /web/index.cfm?...)
++/web/*                                                          /blog/programmazione-concerti-modo/      301
++/club/*                                                         /blog/musica-dal-vivo-al-modo/           301
++/iphone/*                                                       /                                        301
+diff --git a/src/content/articoli/dave-douglas-uri-caine-al-modo.md b/src/content/articoli/dave-douglas-uri-caine-al-modo.md
+new file mode 100644
+index 0000000..0777e95
+--- /dev/null
++++ b/src/content/articoli/dave-douglas-uri-caine-al-modo.md
+@@ -0,0 +1,35 @@
++---
++title: "Dave Douglas e Uri Caine al Modo: jazz internazionale"
++slug: "dave-douglas-uri-caine-al-modo"
++date: "2026-05-01"
++category: "Musica"
++excerpt: "Il progetto 'Present Joys' di Dave Douglas e Uri Caine è passato dal palco del Modo: un esempio del jazz internazionale ospitato dal locale."
++author: "Redazione"
++readingTime: 3
++tags: ["Dave Douglas", "Uri Caine", "jazz", "concerto", "Modo"]
++---
++
++## Jazz di livello internazionale
++
++Tra le serate che raccontano la vocazione musicale del Modo c'è il
++concerto del duo **Dave Douglas e Uri Caine** con il progetto *Present
++Joys*: due nomi di primo piano del jazz contemporaneo internazionale, su
++un palco intimo come il nostro.
++
++## Non un caso isolato
++
++Ospitare artisti di questo calibro non è un episodio: è la conferma di
++una linea di programmazione costruita negli anni, fatta di scelte
++musicali serie e di un pubblico che le sa apprezzare.
++
++## L'esperienza Modo
++
++Una cena della tradizione romana e, subito dopo, un concerto jazz di
++respiro internazionale nello stesso locale: è questa combinazione che ci
++ha reso riconoscibili, online e di persona.
++
++## Resta in contatto
++
++Per sapere chi salirà sul palco nelle prossime settimane contattaci o
++consulta la nostra programmazione. Negli articoli collegati trovi la
++storia musicale del locale e altre serate che l'hanno segnata.
+diff --git a/src/content/articoli/jazz-a-roma-ostiense.md b/src/content/articoli/jazz-a-roma-ostiense.md
+new file mode 100644
+index 0000000..56c0cd0
+--- /dev/null
++++ b/src/content/articoli/jazz-a-roma-ostiense.md
+@@ -0,0 +1,36 @@
++---
++title: "Jazz a Roma: il Modo nella scena di Ostiense"
++slug: "jazz-a-roma-ostiense"
++date: "2026-04-29"
++category: "Musica"
++excerpt: "Ostiense è uno dei quartieri più vivi di Roma per musica e cultura. Il ruolo del Modo nella scena jazz cittadina."
++author: "Redazione"
++readingTime: 3
++tags: ["jazz", "Roma", "Ostiense", "musica", "cultura"]
++---
++
++## Un quartiere che suona
++
++Ostiense, tra archeologia industriale e università, è da anni uno dei
++poli culturali di Roma. In questo contesto il Modo ha costruito una
++piccola ma riconoscibile **scena di musica dal vivo**, con il jazz come
++filo conduttore.
++
++## Perché il jazz
++
++Il jazz chiede ascolto e vive di intimità: si sposa con un locale dove
++si cena bene e si sta vicini al palco. È un genere che premia la qualità
++dell'ambiente, non il volume.
++
++## Parte della città
++
++Far parte della scena di un quartiere significa anche dialogare con il
++territorio: pubblico locale, artisti di passaggio a Roma, una rete
++musicale che si autoalimenta. Molti dei riferimenti online al Modo
++nascono proprio da queste serate.
++
++## Vieni a sentirla
++
++Il modo migliore per capire la scena è viverla: una cena romana e un
++concerto, nello stesso posto, la stessa sera. Contattaci per sapere chi
++suona prossimamente.
+diff --git a/src/content/articoli/marina-rei-al-modo.md b/src/content/articoli/marina-rei-al-modo.md
+new file mode 100644
+index 0000000..67b7a8f
+--- /dev/null
++++ b/src/content/articoli/marina-rei-al-modo.md
+@@ -0,0 +1,36 @@
++---
++title: "Marina Rei al Modo: una serata da ricordare"
++slug: "marina-rei-al-modo"
++date: "2026-05-02"
++category: "Musica"
++excerpt: "Tra i concerti che hanno segnato la storia musicale del Modo c'è la serata con Marina Rei. Cosa rende speciali queste serate."
++author: "Redazione"
++readingTime: 3
++tags: ["Marina Rei", "concerto", "musica dal vivo", "Modo"]
++---
++
++## Una serata d'autore
++
++La serata con **Marina Rei** è una delle tante che hanno costruito
++l'identità musicale del Modo: artisti riconosciuti su un palco intimo,
++a pochi metri dal pubblico, in un locale dove la musica conta quanto la
++cucina.
++
++## Il formato che amiamo
++
++Concerti raccolti, sala curata, una cena che accompagna senza disturbare.
++È un formato che mette al centro l'artista e l'ascolto — l'opposto della
++musica come riempitivo.
++
++## Perché lo raccontiamo
++
++Molti ci hanno conosciuto proprio attraverso queste serate, e molti link
++e articoli online ancora le ricordano. Continuiamo a programmare musica
++dal vivo nello stesso spirito: qualità, intimità, rispetto per chi suona
++e per chi ascolta.
++
++## Vieni a una serata
++
++La programmazione cambia di stagione in stagione: contattaci per sapere
++chi suona prossimamente, o leggi l'articolo sulla nostra storia di
++musica dal vivo per capire cosa aspettarti.
+diff --git a/src/content/articoli/musica-dal-vivo-al-modo.md b/src/content/articoli/musica-dal-vivo-al-modo.md
+new file mode 100644
+index 0000000..9e5c712
+--- /dev/null
++++ b/src/content/articoli/musica-dal-vivo-al-modo.md
+@@ -0,0 +1,38 @@
++---
++title: "Musica dal vivo al Modo: una storia di palco e cucina"
++slug: "musica-dal-vivo-al-modo"
++date: "2026-05-03"
++category: "Musica"
++excerpt: "Il Modo non è solo cucina romana: è un locale con una lunga storia di concerti e jazz dal vivo. Ecco cosa significa per chi viene a trovarci."
++author: "Redazione"
++readingTime: 4
++tags: ["musica dal vivo", "jazz", "concerti", "Modo", "Ostiense"]
++---
++
++## Un locale a due anime
++
++Il Modo, in zona Ostiense, ha sempre avuto due anime: la cucina della
++tradizione romana e un **palco per la musica dal vivo**. Negli anni il
++locale ha ospitato concerti jazz, serate d'autore e progetti
++internazionali, diventando un punto di riferimento per chi cerca buona
++musica e buona tavola nella stessa sera.
++
++## Perché la musica conta
++
++Mangiare bene e ascoltare musica vera sono due piaceri che si
++amplificano a vicenda. La nostra programmazione non è un sottofondo: è
++parte dell'esperienza, con artisti scelti e un'attenzione reale
++all'acustica della sala.
++
++## Cosa aspettarsi
++
++- Serate **jazz** e concerti d'autore;
++- progetti italiani e ospiti internazionali;
++- una cena pensata per accompagnare l'ascolto, non per coprirlo.
++
++## Resta aggiornato
++
++Le serate cambiano: chiedi in sala o contattaci per la programmazione
++del periodo. Negli articoli collegati raccontiamo alcune delle serate
++che hanno segnato la storia del locale, da Marina Rei al jazz
++internazionale di Dave Douglas e Uri Caine.
+diff --git a/src/content/articoli/programmazione-concerti-modo.md b/src/content/articoli/programmazione-concerti-modo.md
+new file mode 100644
+index 0000000..5bf3780
+--- /dev/null
++++ b/src/content/articoli/programmazione-concerti-modo.md
+@@ -0,0 +1,37 @@
++---
++title: "La programmazione concerti del Modo: come funziona"
++slug: "programmazione-concerti-modo"
++date: "2026-04-30"
++category: "Musica"
++excerpt: "Calendario, generi, prenotazioni: come è organizzata la stagione di musica dal vivo del Modo e come non perdere le serate."
++author: "Redazione"
++readingTime: 3
++tags: ["programmazione", "concerti", "calendario", "jazz", "Modo"]
++---
++
++## Una stagione, non eventi sparsi
++
++La musica dal vivo al Modo segue una **programmazione** pensata: una
++stagione con una linea coerente, non concerti improvvisati. Jazz al
++centro, con aperture all'autorato italiano e a progetti internazionali.
++
++## Come restare aggiornati
++
++Il calendario cambia di mese in mese. I modi migliori per non perdere
++una serata:
++
++- chiedere direttamente in sala durante la cena;
++- contattarci ai recapiti del ristorante;
++- seguire le nostre comunicazioni sulle serate in arrivo.
++
++## Cena + concerto
++
++Consigliamo di prenotare la cena nelle serate con concerto: i posti
++sono limitati e la sala si riempie. La cucina è calibrata per
++accompagnare l'ascolto, non per sovrastarlo.
++
++## Una storia che continua
++
++Da anni il Modo unisce tavola e palco. Negli articoli collegati
++raccontiamo le serate che hanno fatto la storia del locale: è il modo
++migliore per capire cosa aspettarsi dalla prossima.
+-- 
+2.43.0
+

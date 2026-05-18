@@ -1,0 +1,184 @@
+From b5e68205f1b357e2eafb6e1a9f965148089e80cb Mon Sep 17 00:00:00 2001
+From: claude <claude@local>
+Date: Mon, 18 May 2026 14:11:12 +0000
+Subject: [PATCH] Add design-skill (visual language) selector to wizard Step 7
+
+Step7Data gains designSkill (11 variants: 4 original + 7 frontend-design
+menu). New selector in Step7Aesthetic (first/highest-level choice),
+required to proceed; surfaced in Step11Review. Brief is JSON.stringify
+so it flows into briefJson automatically. Picking per-site is a primary
+anti-footprint lever.
+
+TODO (out of this repo): elite-pipeline-workflow Stage 5 renderSiteConfig
+must read brief.step7.designSkill -> site.config.design.skill ->
+data-skill; add 7 new skills.css blocks + restaurant-templates presets.
+---
+ src/components/wizard/Step11Review.tsx   |  1 +
+ src/components/wizard/Step7Aesthetic.tsx | 50 +++++++++++++++++++++++-
+ src/lib/wizard-types.ts                  | 18 +++++++++
+ tests/wizard-types.test.ts               | 22 +++++++++++
+ 4 files changed, 89 insertions(+), 2 deletions(-)
+ create mode 100644 tests/wizard-types.test.ts
+
+diff --git a/src/components/wizard/Step11Review.tsx b/src/components/wizard/Step11Review.tsx
+index f1e89e8..047602b 100644
+--- a/src/components/wizard/Step11Review.tsx
++++ b/src/components/wizard/Step11Review.tsx
+@@ -174,6 +174,7 @@ export function Step11Review({ state, onBack, onGoToStep }: Props) {
+         </Section>
+ 
+         <Section title="Step 7 — Estetica" step={7} onEdit={onGoToStep}>
++          <Row label="Linguaggio" value={state.step7.designSkill} />
+           <Row label="Stile" value={state.step7.designStyle} />
+           <Row label="Palette" value={state.step7.palette} />
+           <Row label="Font" value={state.step7.fontPairing} />
+diff --git a/src/components/wizard/Step7Aesthetic.tsx b/src/components/wizard/Step7Aesthetic.tsx
+index 84555e8..5e44d76 100644
+--- a/src/components/wizard/Step7Aesthetic.tsx
++++ b/src/components/wizard/Step7Aesthetic.tsx
+@@ -1,8 +1,24 @@
+ "use client";
+ 
+-import { WizardState, DesignStyle, PalettePreset, FontPairing, HeroVariant, SectionId, CategoryLayout } from "@/lib/wizard-types";
++import { WizardState, DesignStyle, DesignSkill, PalettePreset, FontPairing, HeroVariant, SectionId, CategoryLayout } from "@/lib/wizard-types";
+ import { StepNav } from "./StepNav";
+ 
++// Visual language (data-skill). One per site — varying this is a primary
++// anti-footprint lever. Contracts: Elite_Websites_May_17/prompts/design-skills/.
++const DESIGN_SKILLS: { id: DesignSkill; label: string; description: string }[] = [
++  { id: "minimalist", label: "Minimalist", description: "Editorial workspace, monocromo caldo, ultra-flat, niente ombre." },
++  { id: "brutalist", label: "Brutalist", description: "Griglia svizzera + terminale tattico. Mono, H2 maiuscole, accento rosso." },
++  { id: "soft-premium", label: "Soft Premium", description: "OLED scuro, gradienti mesh, glass card, motion serrata." },
++  { id: "emil-eng", label: "Emil Eng", description: "Restraint da design-engineering. Tipo stretto, transizioni raffinate." },
++  { id: "maximalist", label: "Maximalist", description: "Denso, stratificato, sgargiante — caos intenzionale." },
++  { id: "retro-futuristic", label: "Retro-futuristic", description: "Scuro + neon, CRT/synth-grid, sci-fi ottimista." },
++  { id: "luxury", label: "Luxury", description: "Quiet wealth: serif display, whitespace estremo, un solo accento." },
++  { id: "organic", label: "Organic", description: "Terroso, forme morbide, texture tattile, motion calda." },
++  { id: "playful", label: "Playful", description: "Palette candy, tipo arrotondato chunky, motion springy." },
++  { id: "art-deco", label: "Art Deco", description: "Glamour anni '20: oro su scuro, simmetria, ornamento geometrico." },
++  { id: "industrial", label: "Industrial", description: "Utilitarian pulito, griglia ingegnerizzata, dati mono, zero ornamento." },
++];
++
+ const HERO_VARIANTS: { id: HeroVariant; label: string; description: string }[] = [
+   { id: "hero-fullbleed", label: "Full-bleed", description: "Foto a tutto schermo con overlay scuro e CTA centrali. Premium, cinematico." },
+   { id: "hero-mosaic", label: "Mosaic", description: "Titolo + griglia di 4 foto verticali. Editorial, food, beauty." },
+@@ -86,7 +102,7 @@ export function Step7Aesthetic({ state, onChange, onNext, onBack }: Props) {
+     onChange({ step7: { ...s, ...fields } });
+   }
+ 
+-  const canProceed = !!s.designStyle && !!s.palette && !!s.fontPairing;
++  const canProceed = !!s.designSkill && !!s.designStyle && !!s.palette && !!s.fontPairing;
+ 
+   return (
+     <div>
+@@ -95,6 +111,36 @@ export function Step7Aesthetic({ state, onChange, onNext, onBack }: Props) {
+         Scegli lo stile, poi affineremo i dettagli.
+       </p>
+ 
++      {/* Design Skill — visual language (data-skill) */}
++      <div className="mb-8">
++        <h2 className="text-sm font-semibold mb-1">Linguaggio visivo</h2>
++        <p className="text-xs text-zinc-400 mb-3">
++          La variante di design applicata al sito ({DESIGN_SKILLS.length} disponibili).
++          Sceglierne una diversa per ogni sito riduce il footprint di rete.
++        </p>
++        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
++          {DESIGN_SKILLS.map((sk) => {
++            const selected = s.designSkill === sk.id;
++            return (
++              <button
++                key={sk.id}
++                onClick={() => patch({ designSkill: sk.id })}
++                className={`text-left rounded-xl border-2 p-3 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 ${
++                  selected
++                    ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
++                    : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600"
++                }`}
++              >
++                <div className={`text-sm font-semibold mb-1 ${selected ? "text-blue-700 dark:text-blue-300" : ""}`}>
++                  {sk.label}
++                </div>
++                <div className="text-xs text-zinc-500">{sk.description}</div>
++              </button>
++            );
++          })}
++        </div>
++      </div>
++
+       {/* Design Style */}
+       <div className="mb-8">
+         <h2 className="text-sm font-semibold mb-3">Stile di design</h2>
+diff --git a/src/lib/wizard-types.ts b/src/lib/wizard-types.ts
+index 7ba2aa6..a84e95c 100644
+--- a/src/lib/wizard-types.ts
++++ b/src/lib/wizard-types.ts
+@@ -17,6 +17,22 @@ export type DesignStyle = "Elegant" | "Modern" | "Editorial" | "Bold";
+ export type PalettePreset = "Neutri caldi" | "Neutri freddi" | "Pastello" | "Saturo brillante" | "Mono dark" | "Custom";
+ export type FontPairing = "Playfair + Inter" | "DM Serif + DM Sans" | "IBM Plex Serif + IBM Plex Sans";
+ 
++// Visual language applied as data-skill on the rendered site. 4 original +
++// 7 from the frontend-design menu. Picked per site to reduce network
++// footprint (see Elite_Websites_May_17/prompts/design-skills/).
++export type DesignSkill =
++  | "minimalist"
++  | "brutalist"
++  | "soft-premium"
++  | "emil-eng"
++  | "maximalist"
++  | "retro-futuristic"
++  | "luxury"
++  | "organic"
++  | "playful"
++  | "art-deco"
++  | "industrial";
++
+ export type HeroVariant =
+   | "hero-fullbleed"
+   | "hero-mosaic"
+@@ -96,6 +112,7 @@ export interface Step6Data {
+ 
+ export interface Step7Data {
+   designStyle: DesignStyle | null;
++  designSkill: DesignSkill | null;
+   palette: PalettePreset | null;
+   customColors: { primary: string; accent: string; background: string };
+   fontPairing: FontPairing | null;
+@@ -188,6 +205,7 @@ export function defaultWizardState(): WizardState {
+     },
+     step7: {
+       designStyle: null,
++      designSkill: null,
+       palette: null,
+       customColors: { primary: "#000000", accent: "#3b82f6", background: "#ffffff" },
+       fontPairing: null,
+diff --git a/tests/wizard-types.test.ts b/tests/wizard-types.test.ts
+new file mode 100644
+index 0000000..f144567
+--- /dev/null
++++ b/tests/wizard-types.test.ts
+@@ -0,0 +1,22 @@
++import { describe, it, expect } from "vitest";
++import { defaultWizardState, type DesignSkill } from "../src/lib/wizard-types";
++
++describe("wizard step7 designSkill", () => {
++  it("defaults to null (operator must choose a visual language)", () => {
++    expect(defaultWizardState().step7.designSkill).toBeNull();
++  });
++
++  it("Step7Data carries designSkill in the typed shape", () => {
++    const s = defaultWizardState();
++    const picked: DesignSkill = "art-deco";
++    s.step7.designSkill = picked;
++    expect(s.step7.designSkill).toBe("art-deco");
++  });
++
++  it("submit serialization preserves designSkill (brief is JSON.stringify(state))", () => {
++    const s = defaultWizardState();
++    s.step7.designSkill = "luxury";
++    const roundtrip = JSON.parse(JSON.stringify(s));
++    expect(roundtrip.step7.designSkill).toBe("luxury");
++  });
++});
+-- 
+2.43.0
+

@@ -1,0 +1,96 @@
+From e6f51b206944dc25ca9ba8cae9e4eb71e41bf250 Mon Sep 17 00:00:00 2001
+From: c <c@l>
+Date: Mon, 18 May 2026 14:50:46 +0000
+Subject: [PATCH] Wire designSkill from brief into site.config (data-skill)
+
+Stage 5 renderSiteConfig now emits design.skill, which the template
+sets as data-skill on <html>. Honours the wizard pick when it is one
+of the 11 known skills; otherwise derives one from designStyle so
+pre-designSkill briefs still vary visual language (anti-footprint).
+Brief schema gains step7.designSkill.
+---
+ src/lib/brief.ts   |  1 +
+ src/stages/repo.ts | 16 ++++++++++++++++
+ tests/repo.test.ts | 21 +++++++++++++++++++++
+ 3 files changed, 38 insertions(+)
+
+diff --git a/src/lib/brief.ts b/src/lib/brief.ts
+index cff4447..c3b09be 100644
+--- a/src/lib/brief.ts
++++ b/src/lib/brief.ts
+@@ -32,6 +32,7 @@ const BriefStep6 = z.object({
+ 
+ const BriefStep7 = z.object({
+   designStyle: z.string().optional(),
++  designSkill: z.string().optional(),
+   palette: z.string().optional(),
+   customColors: z
+     .object({ primary: z.string(), accent: z.string(), background: z.string() })
+diff --git a/src/stages/repo.ts b/src/stages/repo.ts
+index d668512..e983fca 100644
+--- a/src/stages/repo.ts
++++ b/src/stages/repo.ts
+@@ -174,6 +174,21 @@ export function renderSiteConfig(args: { brief: Brief; account: "IT" | "EN"; rep
+   // Map design style values to template's lowercase enum.
+   const styleMap: Record<string, string> = { Editorial: "editorial", Modern: "modern", Elegant: "elegant", Bold: "bold" };
+   const style = styleMap[b.step7?.designStyle ?? "Editorial"] ?? "editorial";
++  // Visual language (data-skill). Honour the wizard pick if it is one of
++  // the 11 known skills; otherwise derive a sensible one from designStyle
++  // so pre-designSkill briefs still get a non-default language.
++  const VALID_SKILLS = new Set([
++    "minimalist", "brutalist", "soft-premium", "emil-eng", "maximalist",
++    "retro-futuristic", "luxury", "organic", "playful", "art-deco", "industrial",
++  ]);
++  const skillFromStyle: Record<string, string> = {
++    Editorial: "emil-eng", Modern: "soft-premium", Elegant: "luxury", Bold: "brutalist",
++  };
++  const requestedSkill = b.step7?.designSkill;
++  const skill =
++    requestedSkill && VALID_SKILLS.has(requestedSkill)
++      ? requestedSkill
++      : skillFromStyle[b.step7?.designStyle ?? "Editorial"] ?? "minimalist";
+   const industryMap: Record<string, string> = {
+     Ristorazione: "ristorazione", "Beauty/Wellness": "beauty", "Tech/SaaS": "tech",
+     "Servizi professionali": "servizi", "E-commerce": "ecommerce", Turismo: "turismo",
+@@ -198,6 +213,7 @@ export function renderSiteConfig(args: { brief: Brief; account: "IT" | "EN"; rep
+     email: business?.email ?? "",
+     design: {
+       style,
++      skill,
+       palette: { primary: colors.primary, accent: colors.accent, background: colors.background },
+       fontPairing: { display: "Playfair Display", body: "Inter" },
+       darkMode: "auto",
+diff --git a/tests/repo.test.ts b/tests/repo.test.ts
+index dceead6..605b684 100644
+--- a/tests/repo.test.ts
++++ b/tests/repo.test.ts
+@@ -36,5 +36,26 @@ describe("renderSiteConfig", () => {
+     // Default style is editorial (lowercase)
+     expect(out).toMatch(/"style": "editorial"/);
+     expect(out).toMatch(/"industry": "altro"/);
++    // No designStyle/designSkill → minimalist (skillFromStyle["Editorial"]=emil-eng,
++    // but designStyle is also missing so default branch → emil-eng).
++    expect(out).toMatch(/"skill": "emil-eng"/);
++  });
++
++  it("honours an explicit valid designSkill", () => {
++    const out = renderSiteConfig({
++      account: "IT",
++      repoFullName: "andreabbo/site-lux",
++      brief: { step1: { domain: "lux.it" }, step7: { designStyle: "Modern", designSkill: "art-deco" } },
++    });
++    expect(out).toMatch(/"skill": "art-deco"/);
++  });
++
++  it("ignores an unknown designSkill and derives from designStyle", () => {
++    const out = renderSiteConfig({
++      account: "IT",
++      repoFullName: "andreabbo/site-bad",
++      brief: { step1: { domain: "bad.it" }, step7: { designStyle: "Bold", designSkill: "not-a-skill" } },
++    });
++    expect(out).toMatch(/"skill": "brutalist"/);
+   });
+ });
+-- 
+2.43.0
+

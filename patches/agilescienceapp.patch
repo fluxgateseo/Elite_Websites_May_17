@@ -1,0 +1,673 @@
+From b47e7698cf7acc41e8137bc0c6a65213b6db713a Mon Sep 17 00:00:00 2001
+From: c <c@l>
+Date: Mon, 18 May 2026 15:40:54 +0000
+Subject: [PATCH 1/4] Fix palette + hero contrast: azure/grey scale, dark hero
+ fallback
+
+Replace banned SaaS-blue #3b82f6: primary #161A22, accent #246585
+(AA on white), bg #FFFFFF. Add solid dark fallback (#102B39) when no
+hero image so headline/body pass WCAG AA instead of washed grey.
+---
+ src/components/hero/Fullbleed.astro | 3 ++-
+ src/site.config.ts                  | 6 +++---
+ 2 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/src/components/hero/Fullbleed.astro b/src/components/hero/Fullbleed.astro
+index 30b6014..a983102 100644
+--- a/src/components/hero/Fullbleed.astro
++++ b/src/components/hero/Fullbleed.astro
+@@ -23,7 +23,8 @@ const heroImg = config.layout?.heroAssets?.image ?? config.seo?.defaultOgImage ?
+       fetchpriority="high"
+     />
+   )}
+-  <div class="absolute inset-0" style="background:linear-gradient(180deg,rgba(0,0,0,0.35) 0%,rgba(0,0,0,0.75) 100%)"></div>
++  {!heroImg && <div class="absolute inset-0" style="background:#102B39"></div>}
++  <div class="absolute inset-0" style="background:linear-gradient(180deg,rgba(0,0,0,0.45) 0%,rgba(0,0,0,0.78) 100%)"></div>
+   <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-32 text-white">
+     {subtitle && (
+       <p class="text-xs font-medium uppercase tracking-[0.3em] mb-8 opacity-90">{subtitle}</p>
+diff --git a/src/site.config.ts b/src/site.config.ts
+index fa8a442..96b8b2c 100644
+--- a/src/site.config.ts
++++ b/src/site.config.ts
+@@ -20,9 +20,9 @@ export default defineSiteConfig({
+   "design": {
+     "style": "modern",
+     "palette": {
+-      "primary": "#000000",
+-      "accent": "#3b82f6",
+-      "background": "#ffffff"
++      "primary": "#161A22",
++      "accent": "#246585",
++      "background": "#FFFFFF"
+     },
+     "fontPairing": {
+       "display": "Playfair Display",
+-- 
+2.43.0
+
+
+From 9c672e9e22a8c23a0514ec1eee853949904c4780 Mon Sep 17 00:00:00 2001
+From: c <c@l>
+Date: Mon, 18 May 2026 15:40:54 +0000
+Subject: [PATCH 2/4] Publish 12 evergreen articles (AGILE space-science)
+
+Backlink-justification content for nasa.gov/inaf.it/asi.it/wikipedia
+referrers. Frontmatter per content.config.ts; no hero (no broken img).
+---
+ src/content/articoli/agile-fermi-confronto.md | 37 ++++++++++++++++
+ .../articoli/astrofisica-alte-energie.md      | 36 ++++++++++++++++
+ .../articoli/astronomia-raggi-gamma.md        | 38 +++++++++++++++++
+ .../blazar-nuclei-galattici-attivi.md         | 37 ++++++++++++++++
+ .../divulgazione-astronomia-mobile.md         | 35 ++++++++++++++++
+ .../articoli/flare-nebulosa-granchio.md       | 36 ++++++++++++++++
+ src/content/articoli/gamma-ray-burst.md       | 38 +++++++++++++++++
+ .../articoli/guida-app-agilescience.md        | 37 ++++++++++++++++
+ src/content/articoli/inaf-asi-ruolo-agile.md  | 36 ++++++++++++++++
+ src/content/articoli/la-missione-agile.md     | 42 +++++++++++++++++++
+ src/content/articoli/rivelatore-grid.md       | 37 ++++++++++++++++
+ .../articoli/terrestrial-gamma-flashes.md     | 36 ++++++++++++++++
+ 12 files changed, 445 insertions(+)
+ create mode 100644 src/content/articoli/agile-fermi-confronto.md
+ create mode 100644 src/content/articoli/astrofisica-alte-energie.md
+ create mode 100644 src/content/articoli/astronomia-raggi-gamma.md
+ create mode 100644 src/content/articoli/blazar-nuclei-galattici-attivi.md
+ create mode 100644 src/content/articoli/divulgazione-astronomia-mobile.md
+ create mode 100644 src/content/articoli/flare-nebulosa-granchio.md
+ create mode 100644 src/content/articoli/gamma-ray-burst.md
+ create mode 100644 src/content/articoli/guida-app-agilescience.md
+ create mode 100644 src/content/articoli/inaf-asi-ruolo-agile.md
+ create mode 100644 src/content/articoli/la-missione-agile.md
+ create mode 100644 src/content/articoli/rivelatore-grid.md
+ create mode 100644 src/content/articoli/terrestrial-gamma-flashes.md
+
+diff --git a/src/content/articoli/agile-fermi-confronto.md b/src/content/articoli/agile-fermi-confronto.md
+new file mode 100644
+index 0000000..ca08b8b
+--- /dev/null
++++ b/src/content/articoli/agile-fermi-confronto.md
+@@ -0,0 +1,37 @@
++---
++title: "AGILE e Fermi: due osservatori gamma a confronto"
++slug: "agile-fermi-confronto"
++date: "2026-05-08"
++category: "Missione"
++excerpt: "Lanciati a pochi mesi di distanza, AGILE e Fermi condividono la scienza ma hanno scale e ruoli diversi. Un confronto."
++author: "Redazione"
++readingTime: 4
++tags: ["AGILE", "Fermi", "confronto", "missioni"]
++---
++
++## Due missioni, una scienza
++
++AGILE (2007) e il Fermi Gamma-ray Space Telescope della NASA (2008)
++osservano lo stesso cielo gamma con tecniche affini, basate sulla
++produzione di coppie. Spesso hanno studiato gli stessi eventi, da
++prospettive complementari.
++
++## Le differenze
++
++- **Scala**: Fermi è una grande missione internazionale; AGILE è una
++  missione compatta e a basso costo.
++- **Tempismo**: AGILE ha preceduto Fermi, fornendo risultati pionieristici.
++- **Ruolo**: la rapidità di AGILE lo rende efficace su transienti e
++  allerta.
++
++## Collaborazione, non competizione
++
++Avere più strumenti che osservano in parallelo aumenta la copertura
++temporale del cielo e la solidità delle scoperte. I flare del Granchio,
++per esempio, sono stati confermati grazie a osservazioni indipendenti.
++
++## La lezione
++
++AGILE dimostra che progetti agili e mirati hanno un posto accanto alle
++grandi missioni: è una storia di efficienza scientifica che vale la pena
++divulgare.
+diff --git a/src/content/articoli/astrofisica-alte-energie.md b/src/content/articoli/astrofisica-alte-energie.md
+new file mode 100644
+index 0000000..7e65726
+--- /dev/null
++++ b/src/content/articoli/astrofisica-alte-energie.md
+@@ -0,0 +1,36 @@
++---
++title: "Astrofisica delle alte energie: un'introduzione"
++slug: "astrofisica-alte-energie"
++date: "2026-05-09"
++category: "Scienza"
++excerpt: "Raggi X, raggi gamma, particelle accelerate: una mappa per orientarsi nella fisica degli oggetti più estremi del cosmo."
++author: "Redazione"
++readingTime: 5
++tags: ["alte energie", "astrofisica", "raggi X", "raggi gamma"]
++---
++
++## Di cosa si occupa
++
++L'astrofisica delle alte energie studia i fenomeni in cui la materia
++viene scaldata a milioni di gradi o le particelle accelerate a velocità
++prossime a quella della luce: buchi neri, stelle di neutroni, resti di
++supernova, getti relativistici.
++
++## Gli strumenti dell'osservazione
++
++Poiché l'atmosfera blocca raggi X e gamma, questa scienza si fa dallo
++spazio. Satelliti come AGILE rivelano i fotoni più energetici e ne
++ricostruiscono direzione ed energia, costruendo una mappa del cielo
++"violento".
++
++## Le domande aperte
++
++- Come e dove vengono accelerate le particelle cosmiche?
++- Cosa accade nelle immediate vicinanze di un buco nero?
++- Qual è il legame tra eventi gamma e onde gravitazionali?
++
++## Un campo in evoluzione
++
++Ogni missione aggiunge tasselli. AGILE ha mostrato che anche osservatori
++compatti possono dare contributi decisivi. L'app AGILEScience nasce per
++raccontare questo campo a un pubblico più ampio, senza banalizzarlo.
+diff --git a/src/content/articoli/astronomia-raggi-gamma.md b/src/content/articoli/astronomia-raggi-gamma.md
+new file mode 100644
+index 0000000..888e68e
+--- /dev/null
++++ b/src/content/articoli/astronomia-raggi-gamma.md
+@@ -0,0 +1,38 @@
++---
++title: "Astronomia dei raggi gamma, spiegata"
++slug: "astronomia-raggi-gamma"
++date: "2026-05-17"
++category: "Scienza"
++excerpt: "Cosa sono i raggi gamma, perché si osservano dallo spazio e cosa ci raccontano sugli oggetti più estremi dell'universo."
++author: "Redazione"
++readingTime: 5
++tags: ["raggi gamma", "astrofisica", "alte energie"]
++---
++
++## La radiazione più energetica
++
++I raggi gamma sono la forma di luce a più alta energia dello spettro
++elettromagnetico: miliardi di volte più energetici della luce visibile.
++Vengono prodotti dai processi più violenti del cosmo — esplosioni
++stellari, materia che cade verso buchi neri, particelle accelerate a
++velocità prossime a quella della luce.
++
++## Perché serve un satellite
++
++L'atmosfera terrestre assorbe i raggi gamma: è una fortuna per la vita,
++ma significa che non possono essere osservati da terra. Per studiarli
++occorre un rivelatore in orbita, come quello a bordo di AGILE.
++
++## Cosa osserviamo
++
++Il cielo gamma è dominato da sorgenti **transienti**: oggetti che si
++"accendono" per ore o giorni e poi svaniscono. Pulsar, blazar, resti di
++supernova e gamma-ray burst sono i protagonisti. Mappare questi eventi
++aiuta a capire come l'universo accelera le particelle e libera energia.
++
++## Dal dato alla divulgazione
++
++Ogni rivelazione è un punto su una mappa del cielo ad alte energie.
++L'app AGILEScience traduce questi dati in visualizzazioni comprensibili,
++avvicinando il pubblico a una branca dell'astrofisica spesso percepita
++come inaccessibile.
+diff --git a/src/content/articoli/blazar-nuclei-galattici-attivi.md b/src/content/articoli/blazar-nuclei-galattici-attivi.md
+new file mode 100644
+index 0000000..84763cb
+--- /dev/null
++++ b/src/content/articoli/blazar-nuclei-galattici-attivi.md
+@@ -0,0 +1,37 @@
++---
++title: "Blazar e nuclei galattici attivi osservati da AGILE"
++slug: "blazar-nuclei-galattici-attivi"
++date: "2026-05-12"
++category: "Scienza"
++excerpt: "Galassie con un buco nero supermassiccio al centro che lancia getti verso di noi: cosa sono i blazar e perché variano."
++author: "Redazione"
++readingTime: 5
++tags: ["blazar", "AGN", "buchi neri", "AGILE"]
++---
++
++## Motori al centro delle galassie
++
++Molte galassie ospitano al centro un buco nero supermassiccio. Quando
++questo accresce materia in modo intenso, la galassia diventa un **nucleo
++galattico attivo** (AGN), capace di emettere enormi quantità di energia
++su tutto lo spettro.
++
++## Cosa rende speciale un blazar
++
++Un **blazar** è un AGN che lancia un getto di particelle relativistiche
++puntato quasi esattamente verso la Terra. Questo allineamento amplifica
++l'emissione e la rende estremamente variabile: un blazar può cambiare
++luminosità nel giro di ore.
++
++## Il contributo di AGILE
++
++AGILE ha osservato numerosi blazar durante fasi di intensa attività
++gamma, contribuendo a studiare come e dove le particelle vengono
++accelerate nei getti. La rapidità di risposta dello strumento è decisiva
++per cogliere questi episodi transienti.
++
++## Una finestra sui processi estremi
++
++Studiare i blazar significa osservare la fisica vicino a un buco nero in
++condizioni impossibili da riprodurre in laboratorio: un laboratorio
++cosmico per l'astrofisica delle alte energie.
+diff --git a/src/content/articoli/divulgazione-astronomia-mobile.md b/src/content/articoli/divulgazione-astronomia-mobile.md
+new file mode 100644
+index 0000000..31bb6ea
+--- /dev/null
++++ b/src/content/articoli/divulgazione-astronomia-mobile.md
+@@ -0,0 +1,35 @@
++---
++title: "Divulgare l'astronomia con le app mobili"
++slug: "divulgazione-astronomia-mobile"
++date: "2026-05-07"
++category: "Divulgazione"
++excerpt: "Perché un'app può essere uno strumento serio di divulgazione scientifica, e come AGILEScience prova a farlo bene."
++author: "Redazione"
++readingTime: 4
++tags: ["divulgazione", "app", "didattica", "AGILEScience"]
++---
++
++## La scienza ha bisogno di racconto
++
++I risultati di una missione spaziale restano spesso confinati in articoli
++tecnici. La divulgazione serve a restituire alla collettività una ricerca
++che la collettività ha finanziato — e a ispirare nuove vocazioni
++scientifiche.
++
++## Perché un'app
++
++Lo smartphone è il dispositivo più diffuso e personale. Un'app permette
++contenuti aggiornabili, visualizzazioni interattive e un linguaggio
++adatto a chi non ha basi tecniche, senza rinunciare al rigore.
++
++## Il rischio da evitare
++
++La divulgazione scadente semplifica fino a falsare. L'approccio corretto
++è spiegare *cosa* osserviamo e *perché* è difficile, mantenendo
++l'onestà sui limiti e sulle incertezze.
++
++## L'obiettivo di AGILEScience
++
++Portare l'astrofisica delle alte energie nelle mani di studenti e
++curiosi, usando la missione AGILE come caso concreto: una storia italiana
++di scienza che merita di essere conosciuta.
+diff --git a/src/content/articoli/flare-nebulosa-granchio.md b/src/content/articoli/flare-nebulosa-granchio.md
+new file mode 100644
+index 0000000..cf3e506
+--- /dev/null
++++ b/src/content/articoli/flare-nebulosa-granchio.md
+@@ -0,0 +1,36 @@
++---
++title: "I flare della Nebulosa del Granchio"
++slug: "flare-nebulosa-granchio"
++date: "2026-05-11"
++category: "Scienza"
++excerpt: "La 'candela standard' del cielo gamma non era così stabile: la scoperta dei flare del Granchio e perché ha sorpreso tutti."
++author: "Redazione"
++readingTime: 4
++tags: ["Nebulosa del Granchio", "flare", "AGILE", "scoperte"]
++---
++
++## Una candela non così standard
++
++La Nebulosa del Granchio, resto della supernova osservata nel 1054, è
++stata a lungo usata come riferimento di luminosità stabile per gli
++strumenti gamma. L'idea: se il Granchio è costante, eventuali variazioni
++sono dello strumento, non del cielo.
++
++## La sorpresa
++
++AGILE, insieme ad altri osservatori, ha rilevato **flare**: improvvisi
++aumenti dell'emissione gamma della nebulosa, su scale di giorni. Un
++risultato inatteso che ha messo in discussione un'assunzione consolidata
++dell'astrofisica.
++
++## Cosa significa
++
++I flare indicano che nella nebulosa avvengono processi di accelerazione
++di particelle molto più rapidi e violenti del previsto, probabilmente
++legati al campo magnetico vicino alla pulsar centrale.
++
++## L'eredità
++
++La scoperta ha aperto un filone di ricerca tuttora attivo e dimostra il
++valore di una missione "leggera" capace di cogliere l'inatteso. È uno
++dei risultati di cui AGILE va più fiera.
+diff --git a/src/content/articoli/gamma-ray-burst.md b/src/content/articoli/gamma-ray-burst.md
+new file mode 100644
+index 0000000..c237671
+--- /dev/null
++++ b/src/content/articoli/gamma-ray-burst.md
+@@ -0,0 +1,38 @@
++---
++title: "Gamma-Ray Burst: i lampi più energetici dell'universo"
++slug: "gamma-ray-burst"
++date: "2026-05-16"
++category: "Scienza"
++excerpt: "I gamma-ray burst rilasciano in pochi secondi più energia del Sole in miliardi di anni. Cosa sono e come AGILE li studia."
++author: "Redazione"
++readingTime: 5
++tags: ["gamma-ray burst", "GRB", "AGILE"]
++---
++
++## Esplosioni ai confini del cosmo
++
++Un gamma-ray burst (GRB) è il lampo di raggi gamma più potente che
++conosciamo: in pochi secondi libera più energia di quanta il Sole ne
++produrrà in tutta la sua vita. La maggior parte arriva da galassie
++lontanissime, miliardi di anni luce da noi.
++
++## Due famiglie
++
++- I **GRB lunghi** (oltre ~2 secondi) sono legati al collasso di stelle
++  massicce in buchi neri.
++- I **GRB corti** derivano dalla fusione di oggetti compatti, come due
++  stelle di neutroni — gli stessi eventi che generano onde
++  gravitazionali.
++
++## Il ruolo di AGILE
++
++La sfida è reagire in fretta: un GRB svanisce in fretta. Gli strumenti
++di AGILE sono progettati per rilevare e localizzare rapidamente questi
++eventi, contribuendo agli allerta che permettono ad altri telescopi di
++puntare la sorgente prima che si spenga.
++
++## Perché studiarli
++
++I GRB sono fari cosmici: illuminano l'universo primordiale e permettono
++di studiare materia ed energia in condizioni irriproducibili sulla
++Terra. Ogni rivelazione aggiunge un tassello alla storia dell'universo.
+diff --git a/src/content/articoli/guida-app-agilescience.md b/src/content/articoli/guida-app-agilescience.md
+new file mode 100644
+index 0000000..f108036
+--- /dev/null
++++ b/src/content/articoli/guida-app-agilescience.md
+@@ -0,0 +1,37 @@
++---
++title: "Guida all'app AGILEScience (iOS e Android)"
++slug: "guida-app-agilescience"
++date: "2026-05-15"
++category: "App"
++excerpt: "Come usare AGILEScience per esplorare la missione AGILE: funzioni principali, dati disponibili e a chi è utile."
++author: "Redazione"
++readingTime: 4
++tags: ["AGILEScience", "app", "divulgazione"]
++---
++
++## A cosa serve
++
++AGILEScience è l'app ufficiale che porta la missione AGILE sul tuo
++dispositivo: informazioni sulla missione, sugli strumenti e sui dati
++osservativi, in un formato pensato per studenti, appassionati e
++divulgatori.
++
++## Funzioni principali
++
++- **Panoramica missione**: storia, obiettivi e strumenti a bordo.
++- **Sorgenti e fenomeni**: schede sui principali oggetti osservati ai
++  raggi gamma.
++- **Aggiornamenti**: contenuti che seguono i temi dell'astrofisica
++  delle alte energie.
++
++## Per chi è pensata
++
++Per chi vuole capire l'astrofisica gamma senza un background tecnico:
++la complessità dei dati viene mediata da spiegazioni chiare e da una
++navigazione semplice. È anche un supporto per attività didattiche.
++
++## Download
++
++L'app è disponibile gratuitamente per iOS e Android. Installandola hai
++sempre con te un riferimento divulgativo affidabile sulla missione
++scientifica italiana dedicata ai raggi gamma.
+diff --git a/src/content/articoli/inaf-asi-ruolo-agile.md b/src/content/articoli/inaf-asi-ruolo-agile.md
+new file mode 100644
+index 0000000..271ddc2
+--- /dev/null
++++ b/src/content/articoli/inaf-asi-ruolo-agile.md
+@@ -0,0 +1,36 @@
++---
++title: "Il ruolo di INAF e ASI nella missione AGILE"
++slug: "inaf-asi-ruolo-agile"
++date: "2026-05-14"
++category: "Missione"
++excerpt: "AGILE è un progetto tutto italiano: il contributo dell'Agenzia Spaziale Italiana, dell'INAF e dell'INFN."
++author: "Redazione"
++readingTime: 4
++tags: ["ASI", "INAF", "INFN", "AGILE"]
++---
++
++## Una missione di sistema
++
++AGILE nasce dalla collaborazione tra l'**Agenzia Spaziale Italiana**
++(ASI), responsabile del programma, l'**Istituto Nazionale di
++Astrofisica** (INAF) e l'**INFN**, con il coinvolgimento di università e
++industria nazionale. È un esempio di come la ricerca italiana sappia
++realizzare missioni scientifiche competitive a costi contenuti.
++
++## Chi fa cosa
++
++- **ASI** coordina il programma, il segmento di terra e le operazioni.
++- **INAF** guida l'analisi scientifica e l'interpretazione dei dati.
++- **INFN** ha contribuito alla rivelazione e alla strumentazione.
++
++## Un patrimonio condiviso
++
++I risultati di AGILE confluiscono in archivi e pubblicazioni usati dalla
++comunità internazionale. Non a caso il satellite è citato da istituzioni
++come NASA e dai principali centri di ricerca astrofisica.
++
++## Dalla ricerca al pubblico
++
++L'app AGILEScience chiude il cerchio: rende accessibile a tutti il
++lavoro di queste istituzioni, trasformando dati tecnici in conoscenza
++divulgabile.
+diff --git a/src/content/articoli/la-missione-agile.md b/src/content/articoli/la-missione-agile.md
+new file mode 100644
+index 0000000..152d393
+--- /dev/null
++++ b/src/content/articoli/la-missione-agile.md
+@@ -0,0 +1,42 @@
++---
++title: "La missione spaziale AGILE: cos'è e perché è importante"
++slug: "la-missione-agile"
++date: "2026-05-18"
++category: "Missione"
++excerpt: "AGILE è il satellite scientifico italiano per l'astrofisica delle alte energie: missione, strumenti e scoperte spiegati in modo chiaro."
++author: "Redazione"
++readingTime: 5
++tags: ["AGILE", "astrofisica", "raggi gamma", "INAF", "ASI"]
++---
++
++## Che cos'è AGILE
++
++AGILE (*Astrorivelatore Gamma a Immagini Leggero*) è un satellite
++scientifico dell'Agenzia Spaziale Italiana, realizzato con INAF e INFN e
++lanciato nel 2007 per osservare il cielo nei raggi X duri e gamma —
++una delle finestre più energetiche e difficili dell'universo.
++
++Pesa poco più di 350 kg: una missione "leggera" che ha però prodotto
++risultati di primo piano, dimostrando che un progetto compatto e ben
++concepito può competere con osservatori molto più grandi.
++
++## Gli strumenti
++
++Il cuore è il **Gamma-Ray Imaging Detector (GRID)**, affiancato dal
++calorimetro MCAL e dal rivelatore X Super-AGILE. Insieme localizzano
++sorgenti gamma transienti, ne misurano l'energia e reagiscono in tempi
++rapidi a fenomeni improvvisi come i gamma-ray burst.
++
++## Le scoperte
++
++- I **flare della Nebulosa del Granchio**, prima ritenuta stabile;
++- l'attività intensa di **blazar** e nuclei galattici attivi;
++- i **Terrestrial Gamma-ray Flashes** generati dai temporali terrestri.
++
++## Perché conta oggi
++
++I dati di AGILE alimentano un patrimonio ancora studiato dalla comunità
++internazionale e citato da NASA, INAF e ASI. L'app **AGILEScience**
++rende questo patrimonio accessibile a tutti, portando l'astrofisica
++delle alte energie su smartphone e tablet. Nei prossimi articoli
++approfondiamo strumenti, fenomeni e uso dell'app.
+diff --git a/src/content/articoli/rivelatore-grid.md b/src/content/articoli/rivelatore-grid.md
+new file mode 100644
+index 0000000..f217666
+--- /dev/null
++++ b/src/content/articoli/rivelatore-grid.md
+@@ -0,0 +1,37 @@
++---
++title: "Come funziona il rivelatore GRID a bordo di AGILE"
++slug: "rivelatore-grid"
++date: "2026-05-13"
++category: "Tecnologia"
++excerpt: "Il Gamma-Ray Imaging Detector è il cuore di AGILE: come trasforma fotoni gamma invisibili in immagini del cielo."
++author: "Redazione"
++readingTime: 5
++tags: ["GRID", "rivelatore", "tecnologia", "AGILE"]
++---
++
++## Fotografare l'invisibile
++
++I raggi gamma non si "riflettono" come la luce: non esistono lenti o
++specchi che li focalizzino. Per costruire un'immagine del cielo gamma
++serve un approccio diverso, basato sull'interazione dei fotoni con la
++materia.
++
++## Il principio del GRID
++
++Il **Gamma-Ray Imaging Detector** sfrutta la *produzione di coppie*:
++un fotone gamma ad alta energia, attraversando sottili strati di
++materiale, si converte in una coppia elettrone-positrone. Tracciando le
++traiettorie di queste particelle con un tracciatore al silicio, lo
++strumento ricostruisce la direzione di provenienza del fotone.
++
++## I componenti
++
++- Un **tracciatore al silicio** che registra le tracce delle particelle.
++- Un **calorimetro** che misura l'energia depositata.
++- Un sistema **anticoincidenza** che scarta i raggi cosmici di fondo.
++
++## Perché è importante
++
++Questo design ha permesso ad AGILE di mappare il cielo gamma e di
++cogliere variazioni rapide delle sorgenti. È la tecnologia che rende
++possibili le scoperte raccontate negli altri articoli.
+diff --git a/src/content/articoli/terrestrial-gamma-flashes.md b/src/content/articoli/terrestrial-gamma-flashes.md
+new file mode 100644
+index 0000000..2893166
+--- /dev/null
++++ b/src/content/articoli/terrestrial-gamma-flashes.md
+@@ -0,0 +1,36 @@
++---
++title: "I Terrestrial Gamma-ray Flashes (TGF)"
++slug: "terrestrial-gamma-flashes"
++date: "2026-05-10"
++category: "Scienza"
++excerpt: "Lampi gamma generati non nello spazio ma nei temporali della nostra atmosfera: cosa sono i TGF e il contributo di AGILE."
++author: "Redazione"
++readingTime: 4
++tags: ["TGF", "atmosfera", "temporali", "AGILE"]
++---
++
++## Gamma dalla Terra, non dal cosmo
++
++Non tutti i raggi gamma arrivano da galassie lontane. I **Terrestrial
++Gamma-ray Flashes** sono brevissimi lampi gamma prodotti dentro la nostra
++atmosfera, associati ai temporali e all'attività dei fulmini.
++
++## Come si formano
++
++Durante un temporale, intensi campi elettrici possono accelerare
++elettroni fino a energie elevatissime. Questi elettroni, interagendo con
++l'aria, emettono raggi gamma in lampi che durano meno di un millisecondo.
++
++## Il ruolo di AGILE
++
++AGILE ha rilevato numerosi TGF, contribuendo a misurarne lo spettro
++energetico con un dettaglio che ha aiutato a vincolare i modelli su come
++i temporali producono questa radiazione. Un risultato che collega
++astrofisica e fisica dell'atmosfera.
++
++## Perché interessa
++
++I TGF avvengono sopra le nostre teste e pongono domande aperte sulla
++fisica dei fulmini. Studiarli significa capire meglio fenomeni terrestri
++ancora non del tutto compresi, con un satellite nato per guardare lo
++spazio profondo.
+-- 
+2.43.0
+
+
+From 855994d34634dd07f77c6b564d0c107f2a6334c7 Mon Sep 17 00:00:00 2001
+From: c <c@l>
+Date: Mon, 18 May 2026 15:47:37 +0000
+Subject: [PATCH 3/4] Add 301s for legacy URLs carrying legit backlinks
+
+/wp/agilescienceen|it -> /blog/guida-app-agilescience (~16 links);
+/notices/* -> /blog/gamma-ray-burst (7 GRB/SGR alert citations);
+/wp/* -> /. Recovers Ahrefs link equity instead of 404.
+---
+ public/_redirects | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+ create mode 100644 public/_redirects
+
+diff --git a/public/_redirects b/public/_redirects
+new file mode 100644
+index 0000000..e724a64
+--- /dev/null
++++ b/public/_redirects
+@@ -0,0 +1,11 @@
++# Legacy WordPress URLs that carry legitimate backlinks (Ahrefs).
++# 301 -> most relevant new content so link equity is preserved
++# instead of 404. Cloudflare Pages format; first match wins.
++
++# App pages (EN/IT) — the highest-value targets (~16 backlinks)
++/wp/agilescienceen/*    /blog/guida-app-agilescience/    301
++/wp/agilescienceit/*    /blog/guida-app-agilescience/    301
++/wp/*                   /                                301
++
++# Scientific alert images cited by astronomer telegrams (GRB/SGR)
++/notices/*              /blog/gamma-ray-burst/           301
+-- 
+2.43.0
+
+
+From 6a6a6fbe368028de78c5fd0060d437582cc2dfe5 Mon Sep 17 00:00:00 2001
+From: c <c@l>
+Date: Mon, 18 May 2026 15:54:00 +0000
+Subject: [PATCH 4/4] Set institutional address (ASI Roma) instead of
+ placeholder
+
+AGILE is an Italian Space Agency mission; no SF/Rome company exists.
+Use the legitimate ASI HQ reference: Via del Politecnico snc, Roma,
+tel +39 06 85671 (verified via asi.it). Replaces 'San Francisco' stub.
+---
+ src/site.config.ts | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/site.config.ts b/src/site.config.ts
+index 96b8b2c..1414418 100644
+--- a/src/site.config.ts
++++ b/src/site.config.ts
+@@ -11,11 +11,11 @@ export default defineSiteConfig({
+   "subCategory": "",
+   "language": "it",
+   "address": {
+-    "street": "",
+-    "city": "San Francisco",
++    "street": "Via del Politecnico snc",
++    "city": "Roma",
+     "country": "IT"
+   },
+-  "phone": "",
++  "phone": "+39 06 85671",
+   "email": "",
+   "design": {
+     "style": "modern",
+-- 
+2.43.0
+

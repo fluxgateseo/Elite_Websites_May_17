@@ -1,0 +1,319 @@
+From 43fa6a185dc762d5859dd1d85f43d4b9f63bdecb Mon Sep 17 00:00:00 2001
+From: claude <claude@local>
+Date: Mon, 18 May 2026 14:14:31 +0000
+Subject: [PATCH 1/2] Add skills.css blocks for the 7 frontend-design variants
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Implements [data-skill] layers for maximalist, retro-futuristic,
+luxury, organic, playful, art-deco, industrial — matching their
+design-skill contracts. Uses the existing CSS-variable discipline
+(--color-bg/--color-accent/--color-divider/--font-display) so the
+brand palette stays preset-owned. Braces balanced; 11 skills total.
+---
+ src/styles/skills.css | 250 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 250 insertions(+)
+
+diff --git a/src/styles/skills.css b/src/styles/skills.css
+index 41a28a6..dae9ef1 100644
+--- a/src/styles/skills.css
++++ b/src/styles/skills.css
+@@ -162,3 +162,253 @@
+   border: 1px solid var(--color-divider);
+   box-shadow: none;
+ }
++
++/* ─────────────────────────────────────────────────────────────────────────────
++ * MAXIMALIST — dense, layered, loud (intentional chaos)
++ *   Contract: prompts/design-skills/maximalist.md
++ * ───────────────────────────────────────────────────────────────────────── */
++[data-skill="maximalist"] body {
++  background:
++    radial-gradient(ellipse 70% 60% at 12% 8%, color-mix(in oklab, var(--color-accent) 22%, transparent), transparent 55%),
++    radial-gradient(ellipse 60% 70% at 92% 88%, color-mix(in oklab, var(--color-accent) 16%, transparent), transparent 55%),
++    var(--color-bg);
++}
++[data-skill="maximalist"] h1 {
++  font-size: clamp(3.5rem, 12vw, 9rem);
++  line-height: 0.9;
++  font-weight: 800;
++  letter-spacing: -0.03em;
++}
++[data-skill="maximalist"] h2 {
++  font-weight: 800;
++  letter-spacing: -0.02em;
++}
++[data-skill="maximalist"] section {
++  padding-top: 5.5rem;
++  padding-bottom: 5.5rem;
++}
++[data-skill="maximalist"] .card,
++[data-skill="maximalist"] .article-card {
++  border: 2px solid currentColor;
++  box-shadow: 6px 6px 0 0 color-mix(in oklab, var(--color-accent) 70%, transparent);
++}
++[data-skill="maximalist"] a,
++[data-skill="maximalist"] button {
++  transition: transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
++}
++[data-skill="maximalist"] a:hover,
++[data-skill="maximalist"] button:hover {
++  transform: translateY(-2px) rotate(-1deg);
++}
++
++/* ─────────────────────────────────────────────────────────────────────────────
++ * RETRO-FUTURISTIC — dark base + neon glow, synth-grid
++ *   Contract: prompts/design-skills/retro-futuristic.md
++ * ───────────────────────────────────────────────────────────────────────── */
++[data-skill="retro-futuristic"] body {
++  background:
++    linear-gradient(transparent 0 95%, color-mix(in oklab, var(--color-accent) 8%, transparent) 100%),
++    radial-gradient(ellipse 90% 50% at 50% 120%, color-mix(in oklab, var(--color-accent) 20%, transparent), transparent 60%),
++    var(--color-bg);
++}
++[data-skill="retro-futuristic"] h1,
++[data-skill="retro-futuristic"] h2 {
++  letter-spacing: 0.02em;
++  text-shadow: 0 0 18px color-mix(in oklab, var(--color-accent) 45%, transparent);
++}
++[data-skill="retro-futuristic"] .eyebrow,
++[data-skill="retro-futuristic"] [class*="label"] {
++  text-transform: uppercase;
++  letter-spacing: 0.22em;
++}
++[data-skill="retro-futuristic"] .card,
++[data-skill="retro-futuristic"] .article-card {
++  border: 1px solid color-mix(in oklab, var(--color-accent) 40%, transparent);
++  box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-accent) 14%, transparent),
++              0 8px 40px -12px color-mix(in oklab, var(--color-accent) 40%, transparent);
++}
++[data-skill="retro-futuristic"] a,
++[data-skill="retro-futuristic"] button {
++  transition: box-shadow 220ms ease, color 220ms ease;
++}
++[data-skill="retro-futuristic"] a:hover,
++[data-skill="retro-futuristic"] button:hover {
++  box-shadow: 0 0 16px color-mix(in oklab, var(--color-accent) 60%, transparent);
++}
++
++/* ─────────────────────────────────────────────────────────────────────────────
++ * LUXURY — quiet wealth: serif display, extreme whitespace, one accent
++ *   Contract: prompts/design-skills/luxury.md
++ * ───────────────────────────────────────────────────────────────────────── */
++[data-skill="luxury"] h1 {
++  font-family: var(--font-display);
++  font-weight: 400;
++  letter-spacing: -0.01em;
++  line-height: 1.05;
++}
++[data-skill="luxury"] h2 {
++  font-family: var(--font-display);
++  font-weight: 400;
++}
++[data-skill="luxury"] .eyebrow,
++[data-skill="luxury"] [class*="label"] {
++  text-transform: uppercase;
++  letter-spacing: 0.28em;
++  font-size: 0.7rem;
++}
++[data-skill="luxury"] section {
++  padding-top: 7.5rem;
++  padding-bottom: 7.5rem;
++}
++[data-skill="luxury"] .card,
++[data-skill="luxury"] .article-card {
++  border: 0;
++  border-top: 1px solid var(--color-divider);
++  border-radius: 0;
++  box-shadow: none;
++}
++[data-skill="luxury"] a,
++[data-skill="luxury"] button {
++  transition: opacity 420ms ease, color 420ms ease;
++}
++[data-skill="luxury"] a:hover,
++[data-skill="luxury"] button:hover {
++  opacity: 0.55;
++}
++
++/* ─────────────────────────────────────────────────────────────────────────────
++ * ORGANIC — warm, soft forms, tactile texture
++ *   Contract: prompts/design-skills/organic.md
++ * ───────────────────────────────────────────────────────────────────────── */
++[data-skill="organic"] body {
++  background-image:
++    radial-gradient(color-mix(in oklab, var(--color-divider) 50%, transparent) 0.5px, transparent 0.5px);
++  background-size: 4px 4px;
++}
++[data-skill="organic"] h1,
++[data-skill="organic"] h2,
++[data-skill="organic"] h3 {
++  letter-spacing: -0.005em;
++}
++[data-skill="organic"] section {
++  padding-top: 6rem;
++  padding-bottom: 6rem;
++}
++[data-skill="organic"] .card,
++[data-skill="organic"] .article-card,
++[data-skill="organic"] [class*="rounded"] {
++  border-radius: 24px;
++  box-shadow: 0 18px 40px -24px color-mix(in oklab, var(--color-accent) 35%, transparent);
++}
++[data-skill="organic"] a,
++[data-skill="organic"] button {
++  transition: transform 320ms ease, opacity 320ms ease;
++}
++[data-skill="organic"] a:hover,
++[data-skill="organic"] button:hover {
++  transform: translateY(-2px);
++}
++
++/* ─────────────────────────────────────────────────────────────────────────────
++ * PLAYFUL — candy palette intent, chunky rounded type, springy motion
++ *   Contract: prompts/design-skills/playful.md
++ * ───────────────────────────────────────────────────────────────────────── */
++[data-skill="playful"] h1 {
++  font-weight: 800;
++  letter-spacing: -0.03em;
++  font-size: clamp(2.75rem, 8vw, 6rem);
++}
++[data-skill="playful"] h2 {
++  font-weight: 800;
++}
++[data-skill="playful"] .card,
++[data-skill="playful"] .article-card,
++[data-skill="playful"] [class*="rounded"],
++[data-skill="playful"] button,
++[data-skill="playful"] .button {
++  border-radius: 9999px;
++}
++[data-skill="playful"] .card,
++[data-skill="playful"] .article-card {
++  border-radius: 28px;
++  border: 3px solid currentColor;
++  box-shadow: 0 10px 0 -2px color-mix(in oklab, var(--color-accent) 60%, transparent);
++}
++[data-skill="playful"] a,
++[data-skill="playful"] button {
++  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
++}
++[data-skill="playful"] a:active,
++[data-skill="playful"] button:active {
++  transform: scale(0.96);
++}
++[data-skill="playful"] a:hover,
++[data-skill="playful"] button:hover {
++  transform: translateY(-3px) scale(1.02);
++}
++
++/* ─────────────────────────────────────────────────────────────────────────────
++ * ART-DECO — 1920s glamour: symmetry, geometric ornament, metallic accent
++ *   Contract: prompts/design-skills/art-deco.md
++ * ───────────────────────────────────────────────────────────────────────── */
++[data-skill="art-deco"] h1,
++[data-skill="art-deco"] h2 {
++  font-family: var(--font-display);
++  text-transform: uppercase;
++  letter-spacing: 0.12em;
++  text-align: center;
++}
++[data-skill="art-deco"] section {
++  padding-top: 6rem;
++  padding-bottom: 6rem;
++  border-top: 1px solid var(--color-accent);
++  box-shadow: inset 0 3px 0 -2px var(--color-accent);
++}
++[data-skill="art-deco"] .card,
++[data-skill="art-deco"] .article-card {
++  border: 1px solid var(--color-accent);
++  border-radius: 0;
++  box-shadow: inset 0 0 0 3px color-mix(in oklab, var(--color-accent) 18%, transparent);
++}
++[data-skill="art-deco"] a,
++[data-skill="art-deco"] button {
++  transition: color 240ms ease, letter-spacing 240ms ease;
++}
++[data-skill="art-deco"] a:hover,
++[data-skill="art-deco"] button:hover {
++  letter-spacing: 0.04em;
++}
++
++/* ─────────────────────────────────────────────────────────────────────────────
++ * INDUSTRIAL — clean utilitarian, engineered grid, mono data, zero ornament
++ *   Contract: prompts/design-skills/industrial.md
++ * ───────────────────────────────────────────────────────────────────────── */
++[data-skill="industrial"] h1,
++[data-skill="industrial"] h2,
++[data-skill="industrial"] h3 {
++  letter-spacing: -0.01em;
++  font-weight: 600;
++}
++[data-skill="industrial"] code,
++[data-skill="industrial"] .stat,
++[data-skill="industrial"] [class*="label"],
++[data-skill="industrial"] [class*="meta"] {
++  font-family: var(--font-body), ui-monospace, "IBM Plex Mono", monospace;
++  font-variant-numeric: tabular-nums;
++}
++[data-skill="industrial"] section {
++  padding-top: 4rem;
++  padding-bottom: 4rem;
++  border-top: 1px solid var(--color-divider);
++}
++[data-skill="industrial"] .card,
++[data-skill="industrial"] .article-card,
++[data-skill="industrial"] [class*="rounded"] {
++  border-radius: 2px;
++  border: 1px solid var(--color-divider);
++  box-shadow: none;
++}
++[data-skill="industrial"] a,
++[data-skill="industrial"] button {
++  transition: background 90ms linear, color 90ms linear;
++}
+-- 
+2.43.0
+
+
+From e18431b82b9d06da5f3604364286b240a745aaa2 Mon Sep 17 00:00:00 2001
+From: claude <claude@local>
+Date: Mon, 18 May 2026 14:51:05 +0000
+Subject: [PATCH 2/2] Widen design.skill union to all 11 visual languages
+
+Adds maximalist, retro-futuristic, luxury, organic, playful, art-deco,
+industrial so generated site.config.ts (emitted by the pipeline) passes
+astro check. Pairs with the new skills.css blocks.
+---
+ src/lib/site-config.ts | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/src/lib/site-config.ts b/src/lib/site-config.ts
+index f6b87a7..700eaba 100644
+--- a/src/lib/site-config.ts
++++ b/src/lib/site-config.ts
+@@ -58,7 +58,19 @@ export interface SiteConfig {
+     // as `data-skill="<value>"` on <html>, so CSS rules in skills.css can
+     // theme the whole document accordingly. Each value maps to a distinct
+     // visual language sourced from community design skills.
+-    skill?: "minimalist" | "brutalist" | "soft-premium" | "emil-eng" | null;
++    skill?:
++      | "minimalist"
++      | "brutalist"
++      | "soft-premium"
++      | "emil-eng"
++      | "maximalist"
++      | "retro-futuristic"
++      | "luxury"
++      | "organic"
++      | "playful"
++      | "art-deco"
++      | "industrial"
++      | null;
+   };
+ 
+   // Brand voice
+-- 
+2.43.0
+

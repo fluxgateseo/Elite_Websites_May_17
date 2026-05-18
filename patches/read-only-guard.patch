@@ -1,0 +1,166 @@
+From 3ba570bf5ec1bdba3947d175aa00c96dc2ac1d55 Mon Sep 17 00:00:00 2001
+From: claude <claude@local>
+Date: Sun, 17 May 2026 15:18:01 +0000
+Subject: [PATCH] Add READ_ONLY write-freeze guard to mutating API routes
+
+Implements plan-migrate-to-innotofuture.md M1: when READ_ONLY=1 (or
+"true") is set on a worker, the three mutating routes (builds/start,
+secrets, wizard/submit) refuse writes with 503 after auth, before any
+D1/CF/pipeline side effect. Shared helper in src/lib/read-only.ts, env
+read at call time. 6 vitest cases; full suite (54) + tsc green.
+---
+ src/app/api/builds/start/route.ts  |  4 +++
+ src/app/api/secrets/route.ts       |  4 +++
+ src/app/api/wizard/submit/route.ts |  4 +++
+ src/lib/read-only.ts               | 20 +++++++++++++
+ tests/read-only.test.ts            | 46 ++++++++++++++++++++++++++++++
+ 5 files changed, 78 insertions(+)
+ create mode 100644 src/lib/read-only.ts
+ create mode 100644 tests/read-only.test.ts
+
+diff --git a/src/app/api/builds/start/route.ts b/src/app/api/builds/start/route.ts
+index de69869..19a8426 100644
+--- a/src/app/api/builds/start/route.ts
++++ b/src/app/api/builds/start/route.ts
+@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db";
+ import { eliteSites, eliteJobs } from "@/lib/schema";
+ import { getCurrentUser } from "@/lib/auth";
+ import { triggerPipeline } from "@/lib/pipeline-trigger";
++import { isReadOnly, READ_ONLY_MESSAGE } from "@/lib/read-only";
+ 
+ export const dynamic = "force-dynamic";
+ 
+@@ -13,6 +14,9 @@ export async function POST(req: NextRequest) {
+   if (!user) {
+     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+   }
++  if (isReadOnly()) {
++    return NextResponse.json({ ok: false, error: READ_ONLY_MESSAGE }, { status: 503 });
++  }
+ 
+   let body: { domain?: string; dryRun?: boolean };
+   try {
+diff --git a/src/app/api/secrets/route.ts b/src/app/api/secrets/route.ts
+index ce72a07..0782b5e 100644
+--- a/src/app/api/secrets/route.ts
++++ b/src/app/api/secrets/route.ts
+@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
+ import { SECRETS } from "@/lib/secrets-config";
+ import { SCRIPT_NAMES } from "@/lib/secret-status";
+ import { getCurrentUser } from "@/lib/auth";
++import { isReadOnly, READ_ONLY_MESSAGE } from "@/lib/read-only";
+ 
+ async function deriveAccountId(token: string): Promise<string | null> {
+   try {
+@@ -25,6 +26,9 @@ export async function POST(req: NextRequest) {
+   if (user.role !== "admin") {
+     return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+   }
++  if (isReadOnly()) {
++    return NextResponse.json({ ok: false, error: READ_ONLY_MESSAGE }, { status: 503 });
++  }
+ 
+   let body: { name?: string; value?: string };
+   try {
+diff --git a/src/app/api/wizard/submit/route.ts b/src/app/api/wizard/submit/route.ts
+index 7ab06d4..499709a 100644
+--- a/src/app/api/wizard/submit/route.ts
++++ b/src/app/api/wizard/submit/route.ts
+@@ -5,12 +5,16 @@ import { eliteSites } from "@/lib/schema";
+ import type { WizardState } from "@/lib/wizard-types";
+ import { getCurrentUser } from "@/lib/auth";
+ import { inferAccountFromDomain } from "@/lib/cf-account";
++import { isReadOnly, READ_ONLY_MESSAGE } from "@/lib/read-only";
+ 
+ export async function POST(req: NextRequest) {
+   const user = await getCurrentUser();
+   if (!user) {
+     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+   }
++  if (isReadOnly()) {
++    return NextResponse.json({ ok: false, error: READ_ONLY_MESSAGE }, { status: 503 });
++  }
+ 
+   let state: WizardState;
+   try {
+diff --git a/src/lib/read-only.ts b/src/lib/read-only.ts
+new file mode 100644
+index 0000000..52ea9fc
+--- /dev/null
++++ b/src/lib/read-only.ts
+@@ -0,0 +1,20 @@
++/**
++ * Write-freeze flag for the parallel-deploy window.
++ *
++ * Plan reference: `docs/plan-migrate-to-innotofuture.md` M1 — "Add
++ * READ_ONLY=1 env var support to mutating API routes ... freeze writes
++ * during parallel period" — and M6, where the IT worker is frozen at
++ * cutover. Set `READ_ONLY=1` (or `true`) on a worker and every mutating
++ * API route refuses writes with 503 instead of touching D1 / CF / the
++ * pipeline.
++ *
++ * Read at call time (not module load) so tests can stub the env without
++ * resetting modules, matching the rest of the codebase's process.env use.
++ */
++export function isReadOnly(): boolean {
++  const v = process.env.READ_ONLY;
++  return v === "1" || v?.toLowerCase() === "true";
++}
++
++export const READ_ONLY_MESSAGE =
++  "Dashboard is in read-only mode (writes are frozen during the deploy migration).";
+diff --git a/tests/read-only.test.ts b/tests/read-only.test.ts
+new file mode 100644
+index 0000000..840d2ed
+--- /dev/null
++++ b/tests/read-only.test.ts
+@@ -0,0 +1,46 @@
++import { describe, it, expect, vi, beforeEach } from "vitest";
++
++beforeEach(() => {
++  vi.resetModules();
++  vi.unstubAllEnvs();
++});
++
++describe("isReadOnly", () => {
++  it("is false when READ_ONLY is unset", async () => {
++    const { isReadOnly } = await import("../src/lib/read-only");
++    expect(isReadOnly()).toBe(false);
++  });
++
++  it('is true when READ_ONLY="1"', async () => {
++    vi.stubEnv("READ_ONLY", "1");
++    const { isReadOnly } = await import("../src/lib/read-only");
++    expect(isReadOnly()).toBe(true);
++  });
++
++  it('is true when READ_ONLY="true" (any case)', async () => {
++    vi.stubEnv("READ_ONLY", "TRUE");
++    const { isReadOnly } = await import("../src/lib/read-only");
++    expect(isReadOnly()).toBe(true);
++  });
++
++  it('is false for "0", "false", or other values', async () => {
++    for (const v of ["0", "false", "yes", "", "on"]) {
++      vi.stubEnv("READ_ONLY", v);
++      const { isReadOnly } = await import("../src/lib/read-only");
++      expect(isReadOnly(), `value ${JSON.stringify(v)}`).toBe(false);
++      vi.resetModules();
++    }
++  });
++
++  it("re-reads the env at call time (not module load)", async () => {
++    const mod = await import("../src/lib/read-only");
++    expect(mod.isReadOnly()).toBe(false);
++    vi.stubEnv("READ_ONLY", "1");
++    expect(mod.isReadOnly()).toBe(true);
++  });
++
++  it("exposes a non-empty operator-facing message", async () => {
++    const { READ_ONLY_MESSAGE } = await import("../src/lib/read-only");
++    expect(READ_ONLY_MESSAGE).toMatch(/read-only/i);
++  });
++});
+-- 
+2.43.0
+

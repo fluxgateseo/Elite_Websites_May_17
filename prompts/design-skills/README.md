@@ -1,7 +1,8 @@
 # Design skills
 
-Four curated design philosophies selectable from the wizard Step 7
-template gallery. Each maps to:
+Eleven curated design philosophies selectable from the wizard Step 7
+template gallery (4 original + 7 from the `frontend-design` menu). Each
+maps to:
 
 - A `restaurant-templates.ts` preset (palette + fonts + hero variant +
   section list + category layout).
@@ -17,6 +18,18 @@ template gallery. Each maps to:
 | `brutalist`     | Swiss grid + tactical terminal. Monospace, uppercase H2s, hairline dividers, red accent. | `Leonxlnx/taste-skill` → `skills/brutalist-skill/SKILL.md` |
 | `soft-premium`  | OLED bg with mesh radial gradients, glass cards, backdrop-blur. Tight motion. | `Leonxlnx/taste-skill` → `skills/soft-skill/SKILL.md` |
 | `emil-eng`      | Design-engineering restraint. Tight type, refined transitions. | `emilkowalski/skill` → `skills/emil-design-eng/SKILL.md` |
+| `maximalist`    | Dense, layered, loud — intentional chaos. | `frontend-design` menu |
+| `retro-futuristic` | Dark + neon, CRT/synth-grid, optimistic sci-fi. | `frontend-design` menu |
+| `luxury`        | Quiet wealth: serif display, extreme whitespace, one accent. | `frontend-design` menu |
+| `organic`       | Earthy, soft forms, tactile texture, warm motion. | `frontend-design` menu |
+| `playful`       | Bright candy palette, chunky rounded type, springy motion. | `frontend-design` menu |
+| `art-deco`      | 1920s glamour: gold-on-dark, symmetry, geometric ornament. | `frontend-design` menu |
+| `industrial`    | Clean utilitarian, engineered grid, mono data, zero ornament. | `frontend-design` menu |
+
+The 7 `frontend-design`-menu variants ship their **design contract**
+(visual rules / banned / good-for); their `restaurant-templates.ts`
+preset and `skills.css` block are **TODO** until `elite-saas` / the
+template are touched.
 
 ## Non-preset quality layers
 

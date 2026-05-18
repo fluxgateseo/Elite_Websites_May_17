@@ -19,7 +19,8 @@ sibling code repos (dashboard, pipeline worker, Astro template) — see
 | See the live sites and their repos | `docs/sites.json` |
 | Send a free-text edit to an existing site | `docs/custom-prompt.md` |
 | Understand the leads worker (Plan E, separate workstream) | `docs/leads-worker.md` |
-| Understand the 4 design-skill variants in the wizard | `prompts/design-skills/` |
+| Keep generated sites from sharing a detectable footprint | `docs/anti-footprint.md` |
+| Understand the 11 design-skill variants in the wizard | `prompts/design-skills/` |
 | Read the frontend-architect persona / 7-level workflow | `Master Documents/` |
 
 ## Binary asset split (this section is unchanged)

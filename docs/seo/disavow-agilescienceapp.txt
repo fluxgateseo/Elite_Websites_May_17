@@ -1,0 +1,47 @@
+# Disavow — agilescienceapp.it
+# Source: Ahrefs refdomains export 2026-05-19; spam-flagged domains
+# Generated 2026-05-18; review before submitting to Google Search Console
+domain:99bestsite.com
+domain:atomizelink.icu
+domain:backlinkdirectory.site
+domain:bethanyfamilyinstitute.com
+domain:blogsphere.top
+domain:blueinblue.com
+domain:bye.fyi
+domain:creativeposts.top
+domain:crossover-p.com
+domain:developmentmi.com
+domain:driftseo.click
+domain:exlinko.net
+domain:fiverr-seo-for-business-growth.site
+domain:fiverr-seo-for-small-businesses.site
+domain:itxoft-organic-seo-growth.site
+domain:itxoft.com
+domain:jake.eu
+domain:linkbox.agency
+domain:metamagic.top
+domain:pages.dev
+domain:pirdu.com
+domain:prolinkbox.com
+domain:prolinkseo.com
+domain:rank-fast.agency
+domain:rank-optimizer.website
+domain:ranksdirectory.com
+domain:rankva.com
+domain:ready.pro
+domain:royalseohub.com
+domain:sbyme.com
+domain:screenshots.wiki
+domain:seoarticletime.com
+domain:seoboast.site
+domain:seoflx.net
+domain:seolink.info
+domain:seoprobox.click
+domain:seozumi.com
+domain:sparltech.com
+domain:starcourts.com
+domain:toparticlesdirectory.com
+domain:urls-shortener.eu
+domain:webranksite.com
+domain:websitehubs.com
+domain:za.com

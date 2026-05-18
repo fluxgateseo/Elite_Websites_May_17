@@ -18,11 +18,27 @@ template gallery. Each maps to:
 | `soft-premium`  | OLED bg with mesh radial gradients, glass cards, backdrop-blur. Tight motion. | `Leonxlnx/taste-skill` → `skills/soft-skill/SKILL.md` |
 | `emil-eng`      | Design-engineering restraint. Tight type, refined transitions. | `emilkowalski/skill` → `skills/emil-design-eng/SKILL.md` |
 
-The fifth referenced skill, `pbakaus/impeccable`, is a meta polish layer
-with 23 commands. **Not** wired as a separate preset — it's intended as
-an audit/critique overlay run via the `/custom-prompt` endpoint (give it
-the prompt "polish typography + spacing per impeccable rules"). Future
-work: surface as a dedicated dashboard action.
+## Non-preset quality layers
+
+Two referenced skills are **not** selectable presets — they govern/audit
+every variant instead:
+
+- **`frontend-design`** (`anthropics/claude-code`) — the governing
+  quality gate: bold, intentional aesthetic direction, no AI slop. Every
+  variant and every `/custom-prompt` edit must satisfy it. It also
+  enumerates the sanctioned aesthetic directions that are the candidate
+  pool for **new** variants (maximalist, retro-futuristic, luxury,
+  art-deco, organic, industrial, …). See `frontend-design.md`.
+- **`pbakaus/impeccable`** — a meta polish layer with 23 commands.
+  Intended as an audit/critique overlay run via the `/custom-prompt`
+  endpoint (prompt: "polish typography + spacing per impeccable rules").
+  Future work: surface as a dedicated dashboard action.
+
+New variants are added by picking an open direction from
+`frontend-design.md`'s menu, then authoring `<id>.md` with the same
+contract as the four below (its `restaurant-templates.ts` preset + the
+`skills.css` block are filled when `elite-saas` / the template are
+touched — flag those as TODO until then).
 
 ## How to update
 

@@ -56,9 +56,9 @@ currently shares, regardless of theme:
 |-------|-----------|-------|
 | 11 design contracts | this meta-repo | ✅ defined |
 | `designSkill` wizard selector (11 variants) | elite-saas | ✅ patch delivered (`feat/design-skill-selector`) |
-| `designSkill` → Stage 5 `renderSiteConfig` → `data-skill` | elite-pipeline-workflow | ⬜ TODO (private, out of access) |
+| `designSkill` → Stage 5 `renderSiteConfig` → `data-skill` | elite-pipeline-workflow | ✅ patch delivered (`feat/wire-design-skill`) |
 | Design canned prompts in `/custom-prompt` | elite-saas | ▣ spec'd in `docs/custom-prompt.md` |
-| 7 new `skills.css` `[data-skill]` blocks | elite-astro-template | ✅ patch delivered (`feat/skills-css-7-variants`) |
+| 7 `skills.css` blocks + 11-skill type union | elite-astro-template | ✅ patch delivered (`feat/skills-css-7-variants`) |
 | 7 new `restaurant-templates.ts` presets | elite-saas | ⬜ TODO (file absent from 2026-05-10 snapshot) |
 | Section/hero/category randomisation per site | template + Stage 5 | ⬜ TODO |
 | Markup/class-name variance | template | ⬜ TODO |

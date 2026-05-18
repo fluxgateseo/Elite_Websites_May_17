@@ -29,16 +29,59 @@ every variant instead:
   enumerates the sanctioned aesthetic directions that are the candidate
   pool for **new** variants (maximalist, retro-futuristic, luxury,
   art-deco, organic, industrial, …). See `frontend-design.md`.
-- **`pbakaus/impeccable`** — a meta polish layer with 23 commands.
-  Intended as an audit/critique overlay run via the `/custom-prompt`
-  endpoint (prompt: "polish typography + spacing per impeccable rules").
-  Future work: surface as a dedicated dashboard action.
+- **`pbakaus/impeccable`** — a meta polish/critique layer: 23 commands,
+  7 reference docs, 27 anti-patterns, built on `frontend-design`. Run as
+  a post-generation overlay via `/custom-prompt`. See `impeccable.md`.
 
 New variants are added by picking an open direction from
 `frontend-design.md`'s menu, then authoring `<id>.md` with the same
 contract as the four below (its `restaurant-templates.ts` preset + the
 `skills.css` block are filled when `elite-saas` / the template are
 touched — flag those as TODO until then).
+
+## Design diversity / anti-footprint
+
+The goal is that generated sites are not pattern-detectable as one
+network. **Combinatorial count is not the metric — correlated
+invariants are.** Theming variety alone (palette/font/skill) does not
+defeat footprint analysis if structure and infra stay constant.
+
+Verified design knobs (from `elite-saas` `wizard-types.ts`, Step 7):
+
+| Axis | Distinct values |
+|------|-----------------|
+| `designStyle` | 4 |
+| `palette` | 5 fixed + Custom (unbounded) |
+| `fontPairing` | 3 |
+| `designSkill` (`data-skill`) | 4 today → **11** with the frontend-design menu |
+| `hero` variant | 6 |
+| `categoryLayout` | 6 |
+| `sections` (ordered subset of 12) | hundreds of sensible arrangements |
+| voice tone × traits, industry, copy | per-site, Claude-generated (effectively unbounded) |
+
+Floor estimate (fixed presets, ~100 section arrangements):
+`4·5·3·4·6·6·100 ≈ 8.6×10⁵` visual+structural configs today;
+≈ `2.4×10⁶` with `designSkill` at 11. Copy is non-deterministic on top.
+
+**The honest caveat:** every site still shares one Astro template →
+identical component DOM, identical `skills.css` mechanism + `data-skill`
+attribute, identical build artifacts, sitemap/robots/llms.txt shape,
+the same `fluxgateseo/site-<slug>` + CF Pages + DNS pattern. Those are
+the real fingerprint and **none of them are touched by design
+variants**. De-correlating them (markup/class variance, build-artifact
+variance, hosting/owner/registration spread) is pipeline + template +
+infra work that lives in `elite-saas` / `elite-astro-template` / CF —
+**out of scope for this meta-repo**, flag separately.
+
+Anti-footprint levers, strongest first:
+1. **Structural variance** — vary the section *set + order*, `hero`,
+   and `categoryLayout` per site (changes DOM order; in-template).
+2. **Visual axis** — expand `designSkill` 4 → 11 (frontend-design menu).
+3. **Copy divergence** — enforce per-site tone/voice; ban shared
+   boilerplate (frontend-design mandate + `impeccable` `quieter`/
+   `bolder`/`distill`).
+4. **Infra/markup de-correlation** — *out of scope here*; the levers
+   that actually defeat footprint tools.
 
 ## How to update
 

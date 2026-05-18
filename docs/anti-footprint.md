@@ -55,6 +55,9 @@ currently shares, regardless of theme:
 | Lever | Owner repo | State |
 |-------|-----------|-------|
 | 11 design contracts | this meta-repo | ✅ defined |
+| `designSkill` wizard selector (11 variants) | elite-saas | ✅ patch delivered (`feat/design-skill-selector`) |
+| `designSkill` → Stage 5 `renderSiteConfig` → `data-skill` | elite-pipeline-workflow | ⬜ TODO (private, out of access) |
+| Design canned prompts in `/custom-prompt` | elite-saas | ▣ spec'd in `docs/custom-prompt.md` |
 | 7 new presets + `skills.css` | elite-saas + template | ⬜ TODO |
 | Section/hero/category randomisation per site | template + Stage 5 | ⬜ TODO |
 | Markup/class-name variance | template | ⬜ TODO |

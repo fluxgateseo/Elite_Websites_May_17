@@ -84,6 +84,38 @@ edits (filter again on `pathAllowed`).
 Add more in `andreabbo/elite-saas/src/components/PromptButton.tsx`
 (`CANNED_PROMPTS` array).
 
+## Design canned prompts (spec — to wire into `CANNED_PROMPTS`)
+
+These let an operator restyle a live site from `/sites` without the
+wizard. They pair with the 11 `prompts/design-skills/` variants and the
+`impeccable` overlay. Each is `config`+`content` scope unless noted.
+
+Apply a visual language (per variant in `prompts/design-skills/<id>.md`),
+prompt template:
+
+> "Restyle this site to the **<id>** design language: apply its visual
+> rules (typography, color, spacing, motion) and banned list from its
+> design-skill contract. Keep content and structure; change only styling
+> and `site.config` design tokens."
+
+Suggested buttons:
+
+- **Applica Minimalist / Brutalist / Soft-Premium / Emil / Maximalist /
+  Retro-futuristic / Luxury / Organic / Playful / Art-Deco / Industrial**
+  — one per `<id>`; fills the template above.
+- **Polish impeccable** — "Run an impeccable `polish` pass: fix
+  typography hierarchy, spacing rhythm, color contrast; remove the 27
+  anti-patterns. No structural change." (`impeccable.md`).
+- **Più bold / Più sobrio** — impeccable `bolder` / `quieter`: shift
+  intensity one notch (per-site de-duplication lever).
+- **De-footprint** — vary section order/markup phrasing vs the network
+  baseline (see `docs/anti-footprint.md`, lever C).
+
+> Snapshot note: the 2026-05-10 `elite-saas` export predates
+> `/custom-prompt` + `PromptButton.tsx`. This section is the contract to
+> implement when wiring `CANNED_PROMPTS` (or delivered as a patch once
+> the current dashboard source is available).
+
 ## Cost
 
 Single Claude Opus 4.7 call per prompt. Token budget depends on how much

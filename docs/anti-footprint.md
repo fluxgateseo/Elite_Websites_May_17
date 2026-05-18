@@ -58,7 +58,8 @@ currently shares, regardless of theme:
 | `designSkill` wizard selector (11 variants) | elite-saas | ✅ patch delivered (`feat/design-skill-selector`) |
 | `designSkill` → Stage 5 `renderSiteConfig` → `data-skill` | elite-pipeline-workflow | ⬜ TODO (private, out of access) |
 | Design canned prompts in `/custom-prompt` | elite-saas | ▣ spec'd in `docs/custom-prompt.md` |
-| 7 new presets + `skills.css` | elite-saas + template | ⬜ TODO |
+| 7 new `skills.css` `[data-skill]` blocks | elite-astro-template | ✅ patch delivered (`feat/skills-css-7-variants`) |
+| 7 new `restaurant-templates.ts` presets | elite-saas | ⬜ TODO (file absent from 2026-05-10 snapshot) |
 | Section/hero/category randomisation per site | template + Stage 5 | ⬜ TODO |
 | Markup/class-name variance | template | ⬜ TODO |
 | Build-artifact variance | template | ⬜ TODO |

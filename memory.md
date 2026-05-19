@@ -116,6 +116,41 @@ was text-only and is fully migrated into git — do not re-migrate.
   scope — already captured as Plan C lessons in the dashboard's
   `docs/plan-c-pipeline.md`. Nothing to do here.
 
+## Live-site polish & automation (2026-05-19)
+
+Two live sites hardened this session: `agilescienceapp.it`,
+`modoristorante.it` (both forks of `fluxgateseo/elite-astro-template`).
+
+Fixes shipped (via `patches/{agilescienceapp,modoristorante}-update.patch`,
+5 commits each): readable-text/contrast, AI editorial category covers
+(14× `nano_banana_2`, committed as `public/img/cat-*.png`, served
+same-origin via CF Pages — **never** Drive/R2 hotlink, both break in
+prod), full gallery, `gallery.json` reconciled to `.png` (the
+svg→png miss that broke gallery images — see lesson below),
+"Articoli correlati" same-category interlink, ASI institutional address.
+
+**Lesson (do not repeat):** a cover path lives in BOTH article
+front-matter `hero.src` AND `src/data/gallery.json`. Changing one and not
+the other ships broken images. `prompts/category-cover.prompt.md` codifies
+the wiring + the zero-stale-ref check.
+
+**Make future sites correct by construction (the real automation):**
+the code-only fixes (contrast + interlink) are template-portable and
+stored as `patches/template-elite-fixes.patch` (2 files:
+`src/layouts/BaseLayout.astro`, `ArticleLayout.astro`). Applied **once**
+to `fluxgateseo/elite-astro-template` (`git apply` on a clone, commit,
+push) every newly generated site inherits them with zero per-site work.
+Image covers are content/category-specific → belong in the pipeline
+Stage-4 image step, not the template; recipe codified in
+`prompts/category-cover.prompt.md`.
+
+**Access constraint (unchanged, verified):** from a cloud session only
+the meta-repo is writable. `elite-astro-template` is public read-only;
+`elite-pipeline-workflow` is private/out of scope. So the template apply
+and the Stage-4 wiring are **owner one-time actions** — cannot be done
+from here. Until then, per-site delivery stays the
+`patches/*-update.patch` → `git am -3` flow.
+
 ## How to resume
 
 1. `git fetch origin claude/setup-github-architecture` and fast-forward —

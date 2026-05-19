@@ -1,7 +1,7 @@
 From 07f374f19423e8b82a5cb6f6c6e57a03d2bcbd46 Mon Sep 17 00:00:00 2001
 From: c <c@l>
 Date: Tue, 19 May 2026 12:48:46 +0000
-Subject: [PATCH 1/5] Fix unreadable text: map --color-fg/muted/divider from
+Subject: [PATCH 1/6] Fix unreadable text: map --color-fg/muted/divider from
  palette
 
 BaseLayout remapped --color-bg from the palette but never --color-fg,
@@ -33,7 +33,7 @@ index 0d8e11d..4c33058 100644
 From 912e496fd1c140b11314a1949671bbb44e634c47 Mon Sep 17 00:00:00 2001
 From: c <c@l>
 Date: Tue, 19 May 2026 13:50:14 +0000
-Subject: [PATCH 2/5] Add branded SVG covers + wire article hero & gallery
+Subject: [PATCH 2/6] Add branded SVG covers + wire article hero & gallery
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
@@ -377,7 +377,7 @@ index fe51488..1f0cb71 100644
 From daa0d8917638a604fd6361d3ff61afbe4a5e3ace Mon Sep 17 00:00:00 2001
 From: c <c@l>
 Date: Tue, 19 May 2026 13:53:32 +0000
-Subject: [PATCH 3/5] Interlink: 'Articoli correlati' (same-category) on every
+Subject: [PATCH 3/6] Interlink: 'Articoli correlati' (same-category) on every
  article
 
 ---
@@ -455,7 +455,7 @@ index 211fe53..983d338 100644
 From 452f77800024fb3bf1032c12d3433edb30ac7f7c Mon Sep 17 00:00:00 2001
 From: c <c@l>
 Date: Tue, 19 May 2026 14:11:14 +0000
-Subject: [PATCH 4/5] Replace category covers with AI-generated editorial
+Subject: [PATCH 4/6] Replace category covers with AI-generated editorial
  images (PNG, served same-origin via Cloudflare Pages CDN)
 
 ---
@@ -195916,7 +195916,7 @@ index ef75e50..5215e1a 100644
 From 7bd052938fbfff791f48bcdb1a8ce5119263d555 Mon Sep 17 00:00:00 2001
 From: c <c@l>
 Date: Tue, 19 May 2026 14:36:48 +0000
-Subject: [PATCH 5/5] Fix broken gallery images: repoint gallery.json from
+Subject: [PATCH 5/6] Fix broken gallery images: repoint gallery.json from
  deleted .svg to AI .png covers
 
 ---
@@ -195976,6 +195976,51 @@ index 1f0cb71..3143cfb 100644
    }
  ]
 \ No newline at end of file
+-- 
+2.43.0
+
+
+From 9c44c42be20b02283a029f02d047df84872f4b9c Mon Sep 17 00:00:00 2001
+From: c <c@l>
+Date: Tue, 19 May 2026 14:40:01 +0000
+Subject: [PATCH 6/6] Fix empty /galleria page: render from gallery.json
+ instead of hardcoded empty array
+
+---
+ src/pages/galleria.astro | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/src/pages/galleria.astro b/src/pages/galleria.astro
+index 6153241..5c0eb06 100644
+--- a/src/pages/galleria.astro
++++ b/src/pages/galleria.astro
+@@ -1,19 +1,23 @@
+ ---
+ import BaseLayout from "../layouts/BaseLayout.astro";
+ import config from "../site.config";
++import galleryData from "../data/gallery.json";
+ 
+ if (!config.pages.galleria) {
+   return Astro.redirect("/");
+ }
+ 
+-// Placeholder: pipeline injects real images via src/data/gallery.ts or similar
+ interface GalleryImage {
+   src: string;
+   alt: string;
+-  caption: string;
++  caption?: string;
+ }
+ 
+-const images: GalleryImage[] = [];
++const images: GalleryImage[] = (galleryData as GalleryImage[]).map((g) => ({
++  src: g.src,
++  alt: g.alt,
++  caption: g.caption ?? g.alt,
++}));
+ ---
+ <BaseLayout
+   title="Galleria"
 -- 
 2.43.0
 

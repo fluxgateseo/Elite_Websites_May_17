@@ -1,0 +1,109 @@
+diff --git a/src/layouts/ArticleLayout.astro b/src/layouts/ArticleLayout.astro
+index 211fe53..983d338 100644
+--- a/src/layouts/ArticleLayout.astro
++++ b/src/layouts/ArticleLayout.astro
+@@ -1,5 +1,6 @@
+ ---
+ import BaseLayout from "./BaseLayout.astro";
++import { getCollection } from "astro:content";
+ import { articleSchema, breadcrumbSchema } from "../lib/schema";
+ import { buildCanonical, buildOgImage } from "../lib/seo";
+ import config from "../site.config";
+@@ -50,6 +51,17 @@ const crumbs = [
+   { name: title, url: canonicalUrl },
+ ];
+ const schemas = [artSchema, breadcrumbSchema(crumbs)];
++
++const _all = await getCollection("articoli");
++const _slug = (a: any) => a.data.slug ?? a.id.replace(/\.md$/, "");
++const related = _all
++  .filter((a) => _slug(a) !== slug)
++  .sort((a, b) => {
++    const sc = (x: any) => (x.data.category === category ? 0 : 1);
++    return sc(a) - sc(b) || new Date(b.data.date).getTime() - new Date(a.data.date).getTime();
++  })
++  .slice(0, 3)
++  .map((a) => ({ title: a.data.title, slug: _slug(a), category: a.data.category }));
+ ---
+ <BaseLayout
+   title={title}
+@@ -111,9 +123,33 @@ const schemas = [artSchema, breadcrumbSchema(crumbs)];
+       <slot name="toc" />
+     </aside>
+ 
++    {related.length > 0 && (
++      <nav
++        aria-label="Articoli correlati"
++        class="max-w-3xl border-t mt-16 pt-8"
++        style="border-color:var(--color-divider)"
++      >
++        <p class="text-xs font-medium uppercase tracking-widest mb-4" style="color:var(--color-accent)">Articoli correlati</p>
++        <ul class="space-y-3 list-none p-0 m-0">
++          {related.map((r) => (
++            <li>
++              <a
++                href={`/blog/${r.slug}/`}
++                class="no-underline hover:underline font-medium"
++                style="color:var(--color-fg)"
++              >
++                {r.title}
++              </a>
++              <span class="text-xs ml-2" style="color:var(--color-muted)">{r.category}</span>
++            </li>
++          ))}
++        </ul>
++      </nav>
++    )}
++
+     <!-- Back link -->
+     <div
+-      class="max-w-3xl border-t mt-16 pt-8"
++      class="max-w-3xl border-t mt-12 pt-8"
+       style="border-color:var(--color-divider)"
+     >
+       <a
+diff --git a/src/layouts/BaseLayout.astro b/src/layouts/BaseLayout.astro
+index 0d8e11d..4c33058 100644
+--- a/src/layouts/BaseLayout.astro
++++ b/src/layouts/BaseLayout.astro
+@@ -90,6 +90,9 @@ const darkModeClass =
+       --color-primary: var(--primary);
+       --color-accent: var(--accent);
+       --color-bg: var(--background);
++      --color-fg: var(--primary);
++      --color-muted: color-mix(in srgb, var(--primary) 60%, var(--background));
++      --color-divider: color-mix(in srgb, var(--primary) 18%, var(--background));
+       --font-display: v-display;
+       --font-body: v-body;
+     }
+diff --git a/src/pages/galleria.astro b/src/pages/galleria.astro
+index 6153241..5c0eb06 100644
+--- a/src/pages/galleria.astro
++++ b/src/pages/galleria.astro
+@@ -1,19 +1,23 @@
+ ---
+ import BaseLayout from "../layouts/BaseLayout.astro";
+ import config from "../site.config";
++import galleryData from "../data/gallery.json";
+ 
+ if (!config.pages.galleria) {
+   return Astro.redirect("/");
+ }
+ 
+-// Placeholder: pipeline injects real images via src/data/gallery.ts or similar
+ interface GalleryImage {
+   src: string;
+   alt: string;
+-  caption: string;
++  caption?: string;
+ }
+ 
+-const images: GalleryImage[] = [];
++const images: GalleryImage[] = (galleryData as GalleryImage[]).map((g) => ({
++  src: g.src,
++  alt: g.alt,
++  caption: g.caption ?? g.alt,
++}));
+ ---
+ <BaseLayout
+   title="Galleria"

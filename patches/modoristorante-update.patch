@@ -1,0 +1,570 @@
+From d57889d66a817b622eab2e2b1cde52629118b2a5 Mon Sep 17 00:00:00 2001
+From: c <c@l>
+Date: Tue, 19 May 2026 12:48:46 +0000
+Subject: [PATCH 1/2] Fix unreadable text: map --color-fg/muted/divider from
+ palette
+
+Same BaseLayout contrast bug as the sibling site: --color-fg was
+never remapped from the palette, yielding white-on-white under OS
+dark mode. Derive fg/muted/divider from palette primary.
+---
+ src/layouts/BaseLayout.astro | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/layouts/BaseLayout.astro b/src/layouts/BaseLayout.astro
+index 0d8e11d..4c33058 100644
+--- a/src/layouts/BaseLayout.astro
++++ b/src/layouts/BaseLayout.astro
+@@ -90,6 +90,9 @@ const darkModeClass =
+       --color-primary: var(--primary);
+       --color-accent: var(--accent);
+       --color-bg: var(--background);
++      --color-fg: var(--primary);
++      --color-muted: color-mix(in srgb, var(--primary) 60%, var(--background));
++      --color-divider: color-mix(in srgb, var(--primary) 18%, var(--background));
+       --font-display: v-display;
+       --font-body: v-body;
+     }
+-- 
+2.43.0
+
+
+From 334dd98ddba1dc7bf9358e00f9f280ae085ca8a5 Mon Sep 17 00:00:00 2001
+From: c <c@l>
+Date: Tue, 19 May 2026 13:50:14 +0000
+Subject: [PATCH 2/2] Add branded SVG covers + wire article hero & gallery
+
+Per-category SVG covers (text/SVG, no binaries). Every article gets a
+category hero; gallery.json fills the PhotoMosaic.
+---
+ public/img/cat-eventi.svg                     | 12 ++++++
+ public/img/cat-filosofia.svg                  | 12 ++++++
+ public/img/cat-musica.svg                     | 12 ++++++
+ public/img/cat-piatti.svg                     | 12 ++++++
+ public/img/cat-ricette.svg                    | 12 ++++++
+ public/img/cat-servizi.svg                    | 12 ++++++
+ public/img/cat-territorio.svg                 | 12 ++++++
+ public/img/cat-tradizione.svg                 | 12 ++++++
+ public/img/cat-vini.svg                       | 12 ++++++
+ src/content/articoli/amatriciana-storia.md    |  3 ++
+ src/content/articoli/cacio-e-pepe.md          |  3 ++
+ src/content/articoli/caffe-italiano-rito.md   |  3 ++
+ src/content/articoli/carbonara-autentica.md   |  3 ++
+ src/content/articoli/carciofo-romanesco.md    |  3 ++
+ src/content/articoli/cena-aziendale.md        |  3 ++
+ src/content/articoli/cucina-km-zero.md        |  3 ++
+ .../articoli/cucina-romana-tradizione.md      |  3 ++
+ .../dave-douglas-uri-caine-al-modo.md         |  3 ++
+ src/content/articoli/domenica-in-famiglia.md  |  3 ++
+ .../articoli/eventi-enogastronomici-roma.md   |  3 ++
+ .../articoli/eventi-privati-ristorante.md     |  3 ++
+ src/content/articoli/guida-quartiere.md       |  3 ++
+ src/content/articoli/jazz-a-roma-ostiense.md  |  3 ++
+ src/content/articoli/marina-rei-al-modo.md    |  3 ++
+ src/content/articoli/menu-stagionale.md       |  3 ++
+ .../articoli/musica-dal-vivo-al-modo.md       |  3 ++
+ .../articoli/programmazione-concerti-modo.md  |  3 ++
+ src/content/articoli/quinto-quarto.md         |  3 ++
+ .../articoli/vini-laziali-abbinamenti.md      |  3 ++
+ src/data/gallery.json                         | 39 ++++++++++++++++++-
+ 30 files changed, 206 insertions(+), 1 deletion(-)
+ create mode 100644 public/img/cat-eventi.svg
+ create mode 100644 public/img/cat-filosofia.svg
+ create mode 100644 public/img/cat-musica.svg
+ create mode 100644 public/img/cat-piatti.svg
+ create mode 100644 public/img/cat-ricette.svg
+ create mode 100644 public/img/cat-servizi.svg
+ create mode 100644 public/img/cat-territorio.svg
+ create mode 100644 public/img/cat-tradizione.svg
+ create mode 100644 public/img/cat-vini.svg
+
+diff --git a/public/img/cat-eventi.svg b/public/img/cat-eventi.svg
+new file mode 100644
+index 0000000..10677ec
+--- /dev/null
++++ b/public/img/cat-eventi.svg
+@@ -0,0 +1,12 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Eventi">
++  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
++    <stop offset="0" stop-color="#1E1A17"/><stop offset="1" stop-color="#B23A1F"/>
++  </linearGradient></defs>
++  <rect width="1200" height="675" fill="url(#g)"/>
++  <g fill="none" stroke="#FBF8F3" stroke-opacity="0.15" stroke-width="2">
++    <circle cx="970" cy="150" r="120"/><circle cx="970" cy="150" r="210"/><circle cx="970" cy="150" r="300"/>
++  </g>
++  <rect x="80" y="498" width="60" height="4" fill="#FBF8F3"/>
++  <text x="80" y="466" font-family="Georgia,serif" font-size="74" font-weight="700" fill="#FBF8F3">Eventi</text>
++  <text x="80" y="540" font-family="Inter,Arial,sans-serif" font-size="24" fill="#FBF8F3" fill-opacity="0.82">modoristorante</text>
++</svg>
+diff --git a/public/img/cat-filosofia.svg b/public/img/cat-filosofia.svg
+new file mode 100644
+index 0000000..1e32075
+--- /dev/null
++++ b/public/img/cat-filosofia.svg
+@@ -0,0 +1,12 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Filosofia">
++  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
++    <stop offset="0" stop-color="#1E1A17"/><stop offset="1" stop-color="#B23A1F"/>
++  </linearGradient></defs>
++  <rect width="1200" height="675" fill="url(#g)"/>
++  <g fill="none" stroke="#FBF8F3" stroke-opacity="0.15" stroke-width="2">
++    <circle cx="970" cy="150" r="120"/><circle cx="970" cy="150" r="210"/><circle cx="970" cy="150" r="300"/>
++  </g>
++  <rect x="80" y="498" width="60" height="4" fill="#FBF8F3"/>
++  <text x="80" y="466" font-family="Georgia,serif" font-size="74" font-weight="700" fill="#FBF8F3">Filosofia</text>
++  <text x="80" y="540" font-family="Inter,Arial,sans-serif" font-size="24" fill="#FBF8F3" fill-opacity="0.82">modoristorante</text>
++</svg>
+diff --git a/public/img/cat-musica.svg b/public/img/cat-musica.svg
+new file mode 100644
+index 0000000..9495ded
+--- /dev/null
++++ b/public/img/cat-musica.svg
+@@ -0,0 +1,12 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Musica">
++  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
++    <stop offset="0" stop-color="#1E1A17"/><stop offset="1" stop-color="#B23A1F"/>
++  </linearGradient></defs>
++  <rect width="1200" height="675" fill="url(#g)"/>
++  <g fill="none" stroke="#FBF8F3" stroke-opacity="0.15" stroke-width="2">
++    <circle cx="970" cy="150" r="120"/><circle cx="970" cy="150" r="210"/><circle cx="970" cy="150" r="300"/>
++  </g>
++  <rect x="80" y="498" width="60" height="4" fill="#FBF8F3"/>
++  <text x="80" y="466" font-family="Georgia,serif" font-size="74" font-weight="700" fill="#FBF8F3">Musica</text>
++  <text x="80" y="540" font-family="Inter,Arial,sans-serif" font-size="24" fill="#FBF8F3" fill-opacity="0.82">modoristorante</text>
++</svg>
+diff --git a/public/img/cat-piatti.svg b/public/img/cat-piatti.svg
+new file mode 100644
+index 0000000..179ba0a
+--- /dev/null
++++ b/public/img/cat-piatti.svg
+@@ -0,0 +1,12 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Piatti">
++  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
++    <stop offset="0" stop-color="#1E1A17"/><stop offset="1" stop-color="#B23A1F"/>
++  </linearGradient></defs>
++  <rect width="1200" height="675" fill="url(#g)"/>
++  <g fill="none" stroke="#FBF8F3" stroke-opacity="0.15" stroke-width="2">
++    <circle cx="970" cy="150" r="120"/><circle cx="970" cy="150" r="210"/><circle cx="970" cy="150" r="300"/>
++  </g>
++  <rect x="80" y="498" width="60" height="4" fill="#FBF8F3"/>
++  <text x="80" y="466" font-family="Georgia,serif" font-size="74" font-weight="700" fill="#FBF8F3">Piatti</text>
++  <text x="80" y="540" font-family="Inter,Arial,sans-serif" font-size="24" fill="#FBF8F3" fill-opacity="0.82">modoristorante</text>
++</svg>
+diff --git a/public/img/cat-ricette.svg b/public/img/cat-ricette.svg
+new file mode 100644
+index 0000000..4649e36
+--- /dev/null
++++ b/public/img/cat-ricette.svg
+@@ -0,0 +1,12 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Ricette">
++  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
++    <stop offset="0" stop-color="#1E1A17"/><stop offset="1" stop-color="#B23A1F"/>
++  </linearGradient></defs>
++  <rect width="1200" height="675" fill="url(#g)"/>
++  <g fill="none" stroke="#FBF8F3" stroke-opacity="0.15" stroke-width="2">
++    <circle cx="970" cy="150" r="120"/><circle cx="970" cy="150" r="210"/><circle cx="970" cy="150" r="300"/>
++  </g>
++  <rect x="80" y="498" width="60" height="4" fill="#FBF8F3"/>
++  <text x="80" y="466" font-family="Georgia,serif" font-size="74" font-weight="700" fill="#FBF8F3">Ricette</text>
++  <text x="80" y="540" font-family="Inter,Arial,sans-serif" font-size="24" fill="#FBF8F3" fill-opacity="0.82">modoristorante</text>
++</svg>
+diff --git a/public/img/cat-servizi.svg b/public/img/cat-servizi.svg
+new file mode 100644
+index 0000000..2355a92
+--- /dev/null
++++ b/public/img/cat-servizi.svg
+@@ -0,0 +1,12 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Servizi">
++  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
++    <stop offset="0" stop-color="#1E1A17"/><stop offset="1" stop-color="#B23A1F"/>
++  </linearGradient></defs>
++  <rect width="1200" height="675" fill="url(#g)"/>
++  <g fill="none" stroke="#FBF8F3" stroke-opacity="0.15" stroke-width="2">
++    <circle cx="970" cy="150" r="120"/><circle cx="970" cy="150" r="210"/><circle cx="970" cy="150" r="300"/>
++  </g>
++  <rect x="80" y="498" width="60" height="4" fill="#FBF8F3"/>
++  <text x="80" y="466" font-family="Georgia,serif" font-size="74" font-weight="700" fill="#FBF8F3">Servizi</text>
++  <text x="80" y="540" font-family="Inter,Arial,sans-serif" font-size="24" fill="#FBF8F3" fill-opacity="0.82">modoristorante</text>
++</svg>
+diff --git a/public/img/cat-territorio.svg b/public/img/cat-territorio.svg
+new file mode 100644
+index 0000000..cc964ea
+--- /dev/null
++++ b/public/img/cat-territorio.svg
+@@ -0,0 +1,12 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Territorio">
++  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
++    <stop offset="0" stop-color="#1E1A17"/><stop offset="1" stop-color="#B23A1F"/>
++  </linearGradient></defs>
++  <rect width="1200" height="675" fill="url(#g)"/>
++  <g fill="none" stroke="#FBF8F3" stroke-opacity="0.15" stroke-width="2">
++    <circle cx="970" cy="150" r="120"/><circle cx="970" cy="150" r="210"/><circle cx="970" cy="150" r="300"/>
++  </g>
++  <rect x="80" y="498" width="60" height="4" fill="#FBF8F3"/>
++  <text x="80" y="466" font-family="Georgia,serif" font-size="74" font-weight="700" fill="#FBF8F3">Territorio</text>
++  <text x="80" y="540" font-family="Inter,Arial,sans-serif" font-size="24" fill="#FBF8F3" fill-opacity="0.82">modoristorante</text>
++</svg>
+diff --git a/public/img/cat-tradizione.svg b/public/img/cat-tradizione.svg
+new file mode 100644
+index 0000000..62c2c7f
+--- /dev/null
++++ b/public/img/cat-tradizione.svg
+@@ -0,0 +1,12 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Tradizione">
++  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
++    <stop offset="0" stop-color="#1E1A17"/><stop offset="1" stop-color="#B23A1F"/>
++  </linearGradient></defs>
++  <rect width="1200" height="675" fill="url(#g)"/>
++  <g fill="none" stroke="#FBF8F3" stroke-opacity="0.15" stroke-width="2">
++    <circle cx="970" cy="150" r="120"/><circle cx="970" cy="150" r="210"/><circle cx="970" cy="150" r="300"/>
++  </g>
++  <rect x="80" y="498" width="60" height="4" fill="#FBF8F3"/>
++  <text x="80" y="466" font-family="Georgia,serif" font-size="74" font-weight="700" fill="#FBF8F3">Tradizione</text>
++  <text x="80" y="540" font-family="Inter,Arial,sans-serif" font-size="24" fill="#FBF8F3" fill-opacity="0.82">modoristorante</text>
++</svg>
+diff --git a/public/img/cat-vini.svg b/public/img/cat-vini.svg
+new file mode 100644
+index 0000000..42e6b92
+--- /dev/null
++++ b/public/img/cat-vini.svg
+@@ -0,0 +1,12 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Vini">
++  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
++    <stop offset="0" stop-color="#1E1A17"/><stop offset="1" stop-color="#B23A1F"/>
++  </linearGradient></defs>
++  <rect width="1200" height="675" fill="url(#g)"/>
++  <g fill="none" stroke="#FBF8F3" stroke-opacity="0.15" stroke-width="2">
++    <circle cx="970" cy="150" r="120"/><circle cx="970" cy="150" r="210"/><circle cx="970" cy="150" r="300"/>
++  </g>
++  <rect x="80" y="498" width="60" height="4" fill="#FBF8F3"/>
++  <text x="80" y="466" font-family="Georgia,serif" font-size="74" font-weight="700" fill="#FBF8F3">Vini</text>
++  <text x="80" y="540" font-family="Inter,Arial,sans-serif" font-size="24" fill="#FBF8F3" fill-opacity="0.82">modoristorante</text>
++</svg>
+diff --git a/src/content/articoli/amatriciana-storia.md b/src/content/articoli/amatriciana-storia.md
+index d2420bd..69e8346 100644
+--- a/src/content/articoli/amatriciana-storia.md
++++ b/src/content/articoli/amatriciana-storia.md
+@@ -4,6 +4,9 @@ slug: "amatriciana-storia"
+ date: "2026-05-12"
+ category: "Ricette"
+ excerpt: "Da Amatrice a Roma, con o senza cipolla: la storia dell'amatriciana e come la prepariamo noi."
++hero:
++  src: "/img/cat-ricette.svg"
++  alt: "Ricette"
+ author: "Redazione"
+ readingTime: 4
+ tags: ["amatriciana", "storia", "guanciale", "ricetta"]
+diff --git a/src/content/articoli/cacio-e-pepe.md b/src/content/articoli/cacio-e-pepe.md
+index ee352ed..4ec6275 100644
+--- a/src/content/articoli/cacio-e-pepe.md
++++ b/src/content/articoli/cacio-e-pepe.md
+@@ -4,6 +4,9 @@ slug: "cacio-e-pepe"
+ date: "2026-05-17"
+ category: "Piatti"
+ excerpt: "Tre ingredienti, una sola difficoltà: la crema. Come nasce una cacio e pepe fatta come si deve."
++hero:
++  src: "/img/cat-piatti.svg"
++  alt: "Piatti"
+ author: "Redazione"
+ readingTime: 4
+ tags: ["cacio e pepe", "pasta", "ricetta", "Roma"]
+diff --git a/src/content/articoli/caffe-italiano-rito.md b/src/content/articoli/caffe-italiano-rito.md
+index fbacb81..cb9d324 100644
+--- a/src/content/articoli/caffe-italiano-rito.md
++++ b/src/content/articoli/caffe-italiano-rito.md
+@@ -4,6 +4,9 @@ slug: "caffe-italiano-rito"
+ date: "2026-05-06"
+ category: "Tradizione"
+ excerpt: "Chiudere il pasto con un buon caffè non è un dettaglio: è parte dell'esperienza. Come lo intendiamo."
++hero:
++  src: "/img/cat-tradizione.svg"
++  alt: "Tradizione"
+ author: "Redazione"
+ readingTime: 3
+ tags: ["caffè", "rito", "tradizione", "fine pasto"]
+diff --git a/src/content/articoli/carbonara-autentica.md b/src/content/articoli/carbonara-autentica.md
+index 70f1b18..e854a70 100644
+--- a/src/content/articoli/carbonara-autentica.md
++++ b/src/content/articoli/carbonara-autentica.md
+@@ -4,6 +4,9 @@ slug: "carbonara-autentica"
+ date: "2026-05-16"
+ category: "Piatti"
+ excerpt: "Guanciale, uova, pecorino, pepe. Niente panna, niente pancetta: anatomia di un classico spesso tradito."
++hero:
++  src: "/img/cat-piatti.svg"
++  alt: "Piatti"
+ author: "Redazione"
+ readingTime: 4
+ tags: ["carbonara", "guanciale", "ricetta", "Roma"]
+diff --git a/src/content/articoli/carciofo-romanesco.md b/src/content/articoli/carciofo-romanesco.md
+index eab5f8c..a79b765 100644
+--- a/src/content/articoli/carciofo-romanesco.md
++++ b/src/content/articoli/carciofo-romanesco.md
+@@ -4,6 +4,9 @@ slug: "carciofo-romanesco"
+ date: "2026-05-09"
+ category: "Piatti"
+ excerpt: "Due preparazioni iconiche per un ortaggio simbolo: differenze, stagione e come scegliere il carciofo giusto."
++hero:
++  src: "/img/cat-piatti.svg"
++  alt: "Piatti"
+ author: "Redazione"
+ readingTime: 4
+ tags: ["carciofo", "romanesco", "stagione", "Roma"]
+diff --git a/src/content/articoli/cena-aziendale.md b/src/content/articoli/cena-aziendale.md
+index 0ab8594..09dad34 100644
+--- a/src/content/articoli/cena-aziendale.md
++++ b/src/content/articoli/cena-aziendale.md
+@@ -4,6 +4,9 @@ slug: "cena-aziendale"
+ date: "2026-05-11"
+ category: "Servizi"
+ excerpt: "Menu concordati, tempi giusti, spazi riservati: come trasformare una cena di lavoro in un evento riuscito."
++hero:
++  src: "/img/cat-servizi.svg"
++  alt: "Servizi"
+ author: "Redazione"
+ readingTime: 4
+ tags: ["cena aziendale", "eventi", "gruppi", "servizi"]
+diff --git a/src/content/articoli/cucina-km-zero.md b/src/content/articoli/cucina-km-zero.md
+index 64a27f0..c82ebd2 100644
+--- a/src/content/articoli/cucina-km-zero.md
++++ b/src/content/articoli/cucina-km-zero.md
+@@ -4,6 +4,9 @@ slug: "cucina-km-zero"
+ date: "2026-05-05"
+ category: "Filosofia"
+ excerpt: "Filiera corta, meno sprechi, stagionalità: cosa significa davvero 'km zero' oltre lo slogan."
++hero:
++  src: "/img/cat-filosofia.svg"
++  alt: "Filosofia"
+ author: "Redazione"
+ readingTime: 4
+ tags: ["sostenibilità", "km zero", "filiera corta", "territorio"]
+diff --git a/src/content/articoli/cucina-romana-tradizione.md b/src/content/articoli/cucina-romana-tradizione.md
+index ef504f1..98964e9 100644
+--- a/src/content/articoli/cucina-romana-tradizione.md
++++ b/src/content/articoli/cucina-romana-tradizione.md
+@@ -4,6 +4,9 @@ slug: "cucina-romana-tradizione"
+ date: "2026-05-18"
+ category: "Tradizione"
+ excerpt: "Dai primi piatti del quinto quarto alla pasta cacio e pepe: cosa rende la cucina romana un patrimonio vivo, e come la interpretiamo."
++hero:
++  src: "/img/cat-tradizione.svg"
++  alt: "Tradizione"
+ author: "Redazione"
+ readingTime: 5
+ tags: ["cucina romana", "tradizione", "Roma"]
+diff --git a/src/content/articoli/dave-douglas-uri-caine-al-modo.md b/src/content/articoli/dave-douglas-uri-caine-al-modo.md
+index 0777e95..cc77834 100644
+--- a/src/content/articoli/dave-douglas-uri-caine-al-modo.md
++++ b/src/content/articoli/dave-douglas-uri-caine-al-modo.md
+@@ -4,6 +4,9 @@ slug: "dave-douglas-uri-caine-al-modo"
+ date: "2026-05-01"
+ category: "Musica"
+ excerpt: "Il progetto 'Present Joys' di Dave Douglas e Uri Caine è passato dal palco del Modo: un esempio del jazz internazionale ospitato dal locale."
++hero:
++  src: "/img/cat-musica.svg"
++  alt: "Musica"
+ author: "Redazione"
+ readingTime: 3
+ tags: ["Dave Douglas", "Uri Caine", "jazz", "concerto", "Modo"]
+diff --git a/src/content/articoli/domenica-in-famiglia.md b/src/content/articoli/domenica-in-famiglia.md
+index 318f42b..bdd6373 100644
+--- a/src/content/articoli/domenica-in-famiglia.md
++++ b/src/content/articoli/domenica-in-famiglia.md
+@@ -4,6 +4,9 @@ slug: "domenica-in-famiglia"
+ date: "2026-05-07"
+ category: "Tradizione"
+ excerpt: "Il pranzo della domenica come momento che resiste al tempo: perché lo difendiamo, anche al ristorante."
++hero:
++  src: "/img/cat-tradizione.svg"
++  alt: "Tradizione"
+ author: "Redazione"
+ readingTime: 3
+ tags: ["domenica", "famiglia", "tradizione", "convivialità"]
+diff --git a/src/content/articoli/eventi-enogastronomici-roma.md b/src/content/articoli/eventi-enogastronomici-roma.md
+index 9a30109..053033c 100644
+--- a/src/content/articoli/eventi-enogastronomici-roma.md
++++ b/src/content/articoli/eventi-enogastronomici-roma.md
+@@ -4,6 +4,9 @@ slug: "eventi-enogastronomici-roma"
+ date: "2026-05-14"
+ category: "Eventi"
+ excerpt: "Sagre, mercati e rassegne: una guida agli appuntamenti del gusto a Roma e nel Lazio durante l'anno."
++hero:
++  src: "/img/cat-eventi.svg"
++  alt: "Eventi"
+ author: "Redazione"
+ readingTime: 4
+ tags: ["eventi", "Roma", "Lazio", "enogastronomia"]
+diff --git a/src/content/articoli/eventi-privati-ristorante.md b/src/content/articoli/eventi-privati-ristorante.md
+index 0ad3336..dd94dd3 100644
+--- a/src/content/articoli/eventi-privati-ristorante.md
++++ b/src/content/articoli/eventi-privati-ristorante.md
+@@ -4,6 +4,9 @@ slug: "eventi-privati-ristorante"
+ date: "2026-05-08"
+ category: "Servizi"
+ excerpt: "Compleanni, anniversari, piccole cerimonie: come organizziamo un evento privato curato nei dettagli."
++hero:
++  src: "/img/cat-servizi.svg"
++  alt: "Servizi"
+ author: "Redazione"
+ readingTime: 3
+ tags: ["eventi privati", "cerimonie", "servizi"]
+diff --git a/src/content/articoli/guida-quartiere.md b/src/content/articoli/guida-quartiere.md
+index 0258c0c..84ce662 100644
+--- a/src/content/articoli/guida-quartiere.md
++++ b/src/content/articoli/guida-quartiere.md
+@@ -4,6 +4,9 @@ slug: "guida-quartiere"
+ date: "2026-05-04"
+ category: "Territorio"
+ excerpt: "Un ristorante è anche il suo quartiere: cosa lo rende un punto di riferimento per chi ci vive e chi è di passaggio."
++hero:
++  src: "/img/cat-territorio.svg"
++  alt: "Territorio"
+ author: "Redazione"
+ readingTime: 3
+ tags: ["quartiere", "Roma", "territorio", "comunità"]
+diff --git a/src/content/articoli/jazz-a-roma-ostiense.md b/src/content/articoli/jazz-a-roma-ostiense.md
+index 56c0cd0..fb46cdd 100644
+--- a/src/content/articoli/jazz-a-roma-ostiense.md
++++ b/src/content/articoli/jazz-a-roma-ostiense.md
+@@ -4,6 +4,9 @@ slug: "jazz-a-roma-ostiense"
+ date: "2026-04-29"
+ category: "Musica"
+ excerpt: "Ostiense è uno dei quartieri più vivi di Roma per musica e cultura. Il ruolo del Modo nella scena jazz cittadina."
++hero:
++  src: "/img/cat-musica.svg"
++  alt: "Musica"
+ author: "Redazione"
+ readingTime: 3
+ tags: ["jazz", "Roma", "Ostiense", "musica", "cultura"]
+diff --git a/src/content/articoli/marina-rei-al-modo.md b/src/content/articoli/marina-rei-al-modo.md
+index 67b7a8f..8344e5d 100644
+--- a/src/content/articoli/marina-rei-al-modo.md
++++ b/src/content/articoli/marina-rei-al-modo.md
+@@ -4,6 +4,9 @@ slug: "marina-rei-al-modo"
+ date: "2026-05-02"
+ category: "Musica"
+ excerpt: "Tra i concerti che hanno segnato la storia musicale del Modo c'è la serata con Marina Rei. Cosa rende speciali queste serate."
++hero:
++  src: "/img/cat-musica.svg"
++  alt: "Musica"
+ author: "Redazione"
+ readingTime: 3
+ tags: ["Marina Rei", "concerto", "musica dal vivo", "Modo"]
+diff --git a/src/content/articoli/menu-stagionale.md b/src/content/articoli/menu-stagionale.md
+index e898cb3..5f41d9f 100644
+--- a/src/content/articoli/menu-stagionale.md
++++ b/src/content/articoli/menu-stagionale.md
+@@ -4,6 +4,9 @@ slug: "menu-stagionale"
+ date: "2026-05-15"
+ category: "Filosofia"
+ excerpt: "Cambiare il menu con le stagioni non è una moda: è una scelta di gusto, qualità e rispetto per chi produce."
++hero:
++  src: "/img/cat-filosofia.svg"
++  alt: "Filosofia"
+ author: "Redazione"
+ readingTime: 4
+ tags: ["stagionalità", "menu", "qualità", "territorio"]
+diff --git a/src/content/articoli/musica-dal-vivo-al-modo.md b/src/content/articoli/musica-dal-vivo-al-modo.md
+index 9e5c712..b3662de 100644
+--- a/src/content/articoli/musica-dal-vivo-al-modo.md
++++ b/src/content/articoli/musica-dal-vivo-al-modo.md
+@@ -4,6 +4,9 @@ slug: "musica-dal-vivo-al-modo"
+ date: "2026-05-03"
+ category: "Musica"
+ excerpt: "Il Modo non è solo cucina romana: è un locale con una lunga storia di concerti e jazz dal vivo. Ecco cosa significa per chi viene a trovarci."
++hero:
++  src: "/img/cat-musica.svg"
++  alt: "Musica"
+ author: "Redazione"
+ readingTime: 4
+ tags: ["musica dal vivo", "jazz", "concerti", "Modo", "Ostiense"]
+diff --git a/src/content/articoli/programmazione-concerti-modo.md b/src/content/articoli/programmazione-concerti-modo.md
+index 5bf3780..cf86f3b 100644
+--- a/src/content/articoli/programmazione-concerti-modo.md
++++ b/src/content/articoli/programmazione-concerti-modo.md
+@@ -4,6 +4,9 @@ slug: "programmazione-concerti-modo"
+ date: "2026-04-30"
+ category: "Musica"
+ excerpt: "Calendario, generi, prenotazioni: come è organizzata la stagione di musica dal vivo del Modo e come non perdere le serate."
++hero:
++  src: "/img/cat-musica.svg"
++  alt: "Musica"
+ author: "Redazione"
+ readingTime: 3
+ tags: ["programmazione", "concerti", "calendario", "jazz", "Modo"]
+diff --git a/src/content/articoli/quinto-quarto.md b/src/content/articoli/quinto-quarto.md
+index 50ae11c..8ab2d57 100644
+--- a/src/content/articoli/quinto-quarto.md
++++ b/src/content/articoli/quinto-quarto.md
+@@ -4,6 +4,9 @@ slug: "quinto-quarto"
+ date: "2026-05-10"
+ category: "Tradizione"
+ excerpt: "Coda alla vaccinara, rigatoni con la pajata: come la cucina del recupero è diventata identità gastronomica."
++hero:
++  src: "/img/cat-tradizione.svg"
++  alt: "Tradizione"
+ author: "Redazione"
+ readingTime: 4
+ tags: ["quinto quarto", "tradizione", "Roma", "Testaccio"]
+diff --git a/src/content/articoli/vini-laziali-abbinamenti.md b/src/content/articoli/vini-laziali-abbinamenti.md
+index b28e6e1..d9115e2 100644
+--- a/src/content/articoli/vini-laziali-abbinamenti.md
++++ b/src/content/articoli/vini-laziali-abbinamenti.md
+@@ -4,6 +4,9 @@ slug: "vini-laziali-abbinamenti"
+ date: "2026-05-13"
+ category: "Vini"
+ excerpt: "Dal Cesanese ai bianchi dei Castelli: come scegliere il vino laziale giusto per la cucina romana."
++hero:
++  src: "/img/cat-vini.svg"
++  alt: "Vini"
+ author: "Redazione"
+ readingTime: 4
+ tags: ["vini", "Lazio", "abbinamenti", "Cesanese"]
+diff --git a/src/data/gallery.json b/src/data/gallery.json
+index fe51488..cf2e006 100644
+--- a/src/data/gallery.json
++++ b/src/data/gallery.json
+@@ -1 +1,38 @@
+-[]
++[
++  {
++    "src": "/img/cat-ricette.svg",
++    "alt": "Ricette"
++  },
++  {
++    "src": "/img/cat-piatti.svg",
++    "alt": "Piatti"
++  },
++  {
++    "src": "/img/cat-tradizione.svg",
++    "alt": "Tradizione"
++  },
++  {
++    "src": "/img/cat-servizi.svg",
++    "alt": "Servizi"
++  },
++  {
++    "src": "/img/cat-filosofia.svg",
++    "alt": "Filosofia"
++  },
++  {
++    "src": "/img/cat-musica.svg",
++    "alt": "Musica"
++  },
++  {
++    "src": "/img/cat-eventi.svg",
++    "alt": "Eventi"
++  },
++  {
++    "src": "/img/cat-territorio.svg",
++    "alt": "Territorio"
++  },
++  {
++    "src": "/img/cat-vini.svg",
++    "alt": "Vini"
++  }
++]
+\ No newline at end of file
+-- 
+2.43.0
+

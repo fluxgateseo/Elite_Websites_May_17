@@ -1,0 +1,375 @@
+From 07f374f19423e8b82a5cb6f6c6e57a03d2bcbd46 Mon Sep 17 00:00:00 2001
+From: c <c@l>
+Date: Tue, 19 May 2026 12:48:46 +0000
+Subject: [PATCH 1/2] Fix unreadable text: map --color-fg/muted/divider from
+ palette
+
+BaseLayout remapped --color-bg from the palette but never --color-fg,
+so in OS dark mode .dark forced --color-fg #fafafa over a white bg
+(white-on-white). Derive fg/muted/divider from palette primary so
+text always contrasts the background.
+---
+ src/layouts/BaseLayout.astro | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/layouts/BaseLayout.astro b/src/layouts/BaseLayout.astro
+index 0d8e11d..4c33058 100644
+--- a/src/layouts/BaseLayout.astro
++++ b/src/layouts/BaseLayout.astro
+@@ -90,6 +90,9 @@ const darkModeClass =
+       --color-primary: var(--primary);
+       --color-accent: var(--accent);
+       --color-bg: var(--background);
++      --color-fg: var(--primary);
++      --color-muted: color-mix(in srgb, var(--primary) 60%, var(--background));
++      --color-divider: color-mix(in srgb, var(--primary) 18%, var(--background));
+       --font-display: v-display;
+       --font-body: v-body;
+     }
+-- 
+2.43.0
+
+
+From 912e496fd1c140b11314a1949671bbb44e634c47 Mon Sep 17 00:00:00 2001
+From: c <c@l>
+Date: Tue, 19 May 2026 13:50:14 +0000
+Subject: [PATCH 2/2] Add branded SVG covers + wire article hero & gallery
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Per-category SVG covers (no committed binaries — text/SVG). Every
+article gets a hero matching its category; gallery.json fills the
+PhotoMosaic. Articles already link via ArticleCard/blog index.
+---
+ public/img/cat-app.svg                        | 12 ++++++
+ public/img/cat-divulgazione.svg               | 12 ++++++
+ public/img/cat-missione.svg                   | 12 ++++++
+ public/img/cat-scienza.svg                    | 12 ++++++
+ public/img/cat-tecnologia.svg                 | 12 ++++++
+ src/content/articoli/agile-fermi-confronto.md |  3 ++
+ .../articoli/astrofisica-alte-energie.md      |  3 ++
+ .../articoli/astronomia-raggi-gamma.md        |  3 ++
+ .../blazar-nuclei-galattici-attivi.md         |  3 ++
+ .../divulgazione-astronomia-mobile.md         |  3 ++
+ .../articoli/flare-nebulosa-granchio.md       |  3 ++
+ src/content/articoli/gamma-ray-burst.md       |  3 ++
+ .../articoli/guida-app-agilescience.md        |  3 ++
+ src/content/articoli/inaf-asi-ruolo-agile.md  |  3 ++
+ src/content/articoli/la-missione-agile.md     |  3 ++
+ src/content/articoli/rivelatore-grid.md       |  3 ++
+ .../articoli/terrestrial-gamma-flashes.md     |  3 ++
+ src/data/gallery.json                         | 39 ++++++++++++++++++-
+ 18 files changed, 134 insertions(+), 1 deletion(-)
+ create mode 100644 public/img/cat-app.svg
+ create mode 100644 public/img/cat-divulgazione.svg
+ create mode 100644 public/img/cat-missione.svg
+ create mode 100644 public/img/cat-scienza.svg
+ create mode 100644 public/img/cat-tecnologia.svg
+
+diff --git a/public/img/cat-app.svg b/public/img/cat-app.svg
+new file mode 100644
+index 0000000..ba6798e
+--- /dev/null
++++ b/public/img/cat-app.svg
+@@ -0,0 +1,12 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="App">
++  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
++    <stop offset="0" stop-color="#161A22"/><stop offset="1" stop-color="#246585"/>
++  </linearGradient></defs>
++  <rect width="1200" height="675" fill="url(#g)"/>
++  <g fill="none" stroke="#FFFFFF" stroke-opacity="0.15" stroke-width="2">
++    <circle cx="970" cy="150" r="120"/><circle cx="970" cy="150" r="210"/><circle cx="970" cy="150" r="300"/>
++  </g>
++  <rect x="80" y="498" width="60" height="4" fill="#FFFFFF"/>
++  <text x="80" y="466" font-family="Georgia,serif" font-size="74" font-weight="700" fill="#FFFFFF">App</text>
++  <text x="80" y="540" font-family="Inter,Arial,sans-serif" font-size="24" fill="#FFFFFF" fill-opacity="0.82">agilescienceapp</text>
++</svg>
+diff --git a/public/img/cat-divulgazione.svg b/public/img/cat-divulgazione.svg
+new file mode 100644
+index 0000000..91f24c5
+--- /dev/null
++++ b/public/img/cat-divulgazione.svg
+@@ -0,0 +1,12 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Divulgazione">
++  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
++    <stop offset="0" stop-color="#161A22"/><stop offset="1" stop-color="#246585"/>
++  </linearGradient></defs>
++  <rect width="1200" height="675" fill="url(#g)"/>
++  <g fill="none" stroke="#FFFFFF" stroke-opacity="0.15" stroke-width="2">
++    <circle cx="970" cy="150" r="120"/><circle cx="970" cy="150" r="210"/><circle cx="970" cy="150" r="300"/>
++  </g>
++  <rect x="80" y="498" width="60" height="4" fill="#FFFFFF"/>
++  <text x="80" y="466" font-family="Georgia,serif" font-size="74" font-weight="700" fill="#FFFFFF">Divulgazione</text>
++  <text x="80" y="540" font-family="Inter,Arial,sans-serif" font-size="24" fill="#FFFFFF" fill-opacity="0.82">agilescienceapp</text>
++</svg>
+diff --git a/public/img/cat-missione.svg b/public/img/cat-missione.svg
+new file mode 100644
+index 0000000..69eeb8f
+--- /dev/null
++++ b/public/img/cat-missione.svg
+@@ -0,0 +1,12 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Missione">
++  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
++    <stop offset="0" stop-color="#161A22"/><stop offset="1" stop-color="#246585"/>
++  </linearGradient></defs>
++  <rect width="1200" height="675" fill="url(#g)"/>
++  <g fill="none" stroke="#FFFFFF" stroke-opacity="0.15" stroke-width="2">
++    <circle cx="970" cy="150" r="120"/><circle cx="970" cy="150" r="210"/><circle cx="970" cy="150" r="300"/>
++  </g>
++  <rect x="80" y="498" width="60" height="4" fill="#FFFFFF"/>
++  <text x="80" y="466" font-family="Georgia,serif" font-size="74" font-weight="700" fill="#FFFFFF">Missione</text>
++  <text x="80" y="540" font-family="Inter,Arial,sans-serif" font-size="24" fill="#FFFFFF" fill-opacity="0.82">agilescienceapp</text>
++</svg>
+diff --git a/public/img/cat-scienza.svg b/public/img/cat-scienza.svg
+new file mode 100644
+index 0000000..52721f3
+--- /dev/null
++++ b/public/img/cat-scienza.svg
+@@ -0,0 +1,12 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Scienza">
++  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
++    <stop offset="0" stop-color="#161A22"/><stop offset="1" stop-color="#246585"/>
++  </linearGradient></defs>
++  <rect width="1200" height="675" fill="url(#g)"/>
++  <g fill="none" stroke="#FFFFFF" stroke-opacity="0.15" stroke-width="2">
++    <circle cx="970" cy="150" r="120"/><circle cx="970" cy="150" r="210"/><circle cx="970" cy="150" r="300"/>
++  </g>
++  <rect x="80" y="498" width="60" height="4" fill="#FFFFFF"/>
++  <text x="80" y="466" font-family="Georgia,serif" font-size="74" font-weight="700" fill="#FFFFFF">Scienza</text>
++  <text x="80" y="540" font-family="Inter,Arial,sans-serif" font-size="24" fill="#FFFFFF" fill-opacity="0.82">agilescienceapp</text>
++</svg>
+diff --git a/public/img/cat-tecnologia.svg b/public/img/cat-tecnologia.svg
+new file mode 100644
+index 0000000..4f78b4b
+--- /dev/null
++++ b/public/img/cat-tecnologia.svg
+@@ -0,0 +1,12 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Tecnologia">
++  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
++    <stop offset="0" stop-color="#161A22"/><stop offset="1" stop-color="#246585"/>
++  </linearGradient></defs>
++  <rect width="1200" height="675" fill="url(#g)"/>
++  <g fill="none" stroke="#FFFFFF" stroke-opacity="0.15" stroke-width="2">
++    <circle cx="970" cy="150" r="120"/><circle cx="970" cy="150" r="210"/><circle cx="970" cy="150" r="300"/>
++  </g>
++  <rect x="80" y="498" width="60" height="4" fill="#FFFFFF"/>
++  <text x="80" y="466" font-family="Georgia,serif" font-size="74" font-weight="700" fill="#FFFFFF">Tecnologia</text>
++  <text x="80" y="540" font-family="Inter,Arial,sans-serif" font-size="24" fill="#FFFFFF" fill-opacity="0.82">agilescienceapp</text>
++</svg>
+diff --git a/src/content/articoli/agile-fermi-confronto.md b/src/content/articoli/agile-fermi-confronto.md
+index ca08b8b..fc4f327 100644
+--- a/src/content/articoli/agile-fermi-confronto.md
++++ b/src/content/articoli/agile-fermi-confronto.md
+@@ -4,6 +4,9 @@ slug: "agile-fermi-confronto"
+ date: "2026-05-08"
+ category: "Missione"
+ excerpt: "Lanciati a pochi mesi di distanza, AGILE e Fermi condividono la scienza ma hanno scale e ruoli diversi. Un confronto."
++hero:
++  src: "/img/cat-missione.svg"
++  alt: "Missione"
+ author: "Redazione"
+ readingTime: 4
+ tags: ["AGILE", "Fermi", "confronto", "missioni"]
+diff --git a/src/content/articoli/astrofisica-alte-energie.md b/src/content/articoli/astrofisica-alte-energie.md
+index 7e65726..3e435d4 100644
+--- a/src/content/articoli/astrofisica-alte-energie.md
++++ b/src/content/articoli/astrofisica-alte-energie.md
+@@ -4,6 +4,9 @@ slug: "astrofisica-alte-energie"
+ date: "2026-05-09"
+ category: "Scienza"
+ excerpt: "Raggi X, raggi gamma, particelle accelerate: una mappa per orientarsi nella fisica degli oggetti più estremi del cosmo."
++hero:
++  src: "/img/cat-scienza.svg"
++  alt: "Scienza"
+ author: "Redazione"
+ readingTime: 5
+ tags: ["alte energie", "astrofisica", "raggi X", "raggi gamma"]
+diff --git a/src/content/articoli/astronomia-raggi-gamma.md b/src/content/articoli/astronomia-raggi-gamma.md
+index 888e68e..651776f 100644
+--- a/src/content/articoli/astronomia-raggi-gamma.md
++++ b/src/content/articoli/astronomia-raggi-gamma.md
+@@ -4,6 +4,9 @@ slug: "astronomia-raggi-gamma"
+ date: "2026-05-17"
+ category: "Scienza"
+ excerpt: "Cosa sono i raggi gamma, perché si osservano dallo spazio e cosa ci raccontano sugli oggetti più estremi dell'universo."
++hero:
++  src: "/img/cat-scienza.svg"
++  alt: "Scienza"
+ author: "Redazione"
+ readingTime: 5
+ tags: ["raggi gamma", "astrofisica", "alte energie"]
+diff --git a/src/content/articoli/blazar-nuclei-galattici-attivi.md b/src/content/articoli/blazar-nuclei-galattici-attivi.md
+index 84763cb..3bb25e7 100644
+--- a/src/content/articoli/blazar-nuclei-galattici-attivi.md
++++ b/src/content/articoli/blazar-nuclei-galattici-attivi.md
+@@ -4,6 +4,9 @@ slug: "blazar-nuclei-galattici-attivi"
+ date: "2026-05-12"
+ category: "Scienza"
+ excerpt: "Galassie con un buco nero supermassiccio al centro che lancia getti verso di noi: cosa sono i blazar e perché variano."
++hero:
++  src: "/img/cat-scienza.svg"
++  alt: "Scienza"
+ author: "Redazione"
+ readingTime: 5
+ tags: ["blazar", "AGN", "buchi neri", "AGILE"]
+diff --git a/src/content/articoli/divulgazione-astronomia-mobile.md b/src/content/articoli/divulgazione-astronomia-mobile.md
+index 31bb6ea..7a50166 100644
+--- a/src/content/articoli/divulgazione-astronomia-mobile.md
++++ b/src/content/articoli/divulgazione-astronomia-mobile.md
+@@ -4,6 +4,9 @@ slug: "divulgazione-astronomia-mobile"
+ date: "2026-05-07"
+ category: "Divulgazione"
+ excerpt: "Perché un'app può essere uno strumento serio di divulgazione scientifica, e come AGILEScience prova a farlo bene."
++hero:
++  src: "/img/cat-divulgazione.svg"
++  alt: "Divulgazione"
+ author: "Redazione"
+ readingTime: 4
+ tags: ["divulgazione", "app", "didattica", "AGILEScience"]
+diff --git a/src/content/articoli/flare-nebulosa-granchio.md b/src/content/articoli/flare-nebulosa-granchio.md
+index cf3e506..faf49be 100644
+--- a/src/content/articoli/flare-nebulosa-granchio.md
++++ b/src/content/articoli/flare-nebulosa-granchio.md
+@@ -4,6 +4,9 @@ slug: "flare-nebulosa-granchio"
+ date: "2026-05-11"
+ category: "Scienza"
+ excerpt: "La 'candela standard' del cielo gamma non era così stabile: la scoperta dei flare del Granchio e perché ha sorpreso tutti."
++hero:
++  src: "/img/cat-scienza.svg"
++  alt: "Scienza"
+ author: "Redazione"
+ readingTime: 4
+ tags: ["Nebulosa del Granchio", "flare", "AGILE", "scoperte"]
+diff --git a/src/content/articoli/gamma-ray-burst.md b/src/content/articoli/gamma-ray-burst.md
+index c237671..24f5b62 100644
+--- a/src/content/articoli/gamma-ray-burst.md
++++ b/src/content/articoli/gamma-ray-burst.md
+@@ -4,6 +4,9 @@ slug: "gamma-ray-burst"
+ date: "2026-05-16"
+ category: "Scienza"
+ excerpt: "I gamma-ray burst rilasciano in pochi secondi più energia del Sole in miliardi di anni. Cosa sono e come AGILE li studia."
++hero:
++  src: "/img/cat-scienza.svg"
++  alt: "Scienza"
+ author: "Redazione"
+ readingTime: 5
+ tags: ["gamma-ray burst", "GRB", "AGILE"]
+diff --git a/src/content/articoli/guida-app-agilescience.md b/src/content/articoli/guida-app-agilescience.md
+index f108036..42359c7 100644
+--- a/src/content/articoli/guida-app-agilescience.md
++++ b/src/content/articoli/guida-app-agilescience.md
+@@ -4,6 +4,9 @@ slug: "guida-app-agilescience"
+ date: "2026-05-15"
+ category: "App"
+ excerpt: "Come usare AGILEScience per esplorare la missione AGILE: funzioni principali, dati disponibili e a chi è utile."
++hero:
++  src: "/img/cat-app.svg"
++  alt: "App"
+ author: "Redazione"
+ readingTime: 4
+ tags: ["AGILEScience", "app", "divulgazione"]
+diff --git a/src/content/articoli/inaf-asi-ruolo-agile.md b/src/content/articoli/inaf-asi-ruolo-agile.md
+index 271ddc2..67fc2b3 100644
+--- a/src/content/articoli/inaf-asi-ruolo-agile.md
++++ b/src/content/articoli/inaf-asi-ruolo-agile.md
+@@ -4,6 +4,9 @@ slug: "inaf-asi-ruolo-agile"
+ date: "2026-05-14"
+ category: "Missione"
+ excerpt: "AGILE è un progetto tutto italiano: il contributo dell'Agenzia Spaziale Italiana, dell'INAF e dell'INFN."
++hero:
++  src: "/img/cat-missione.svg"
++  alt: "Missione"
+ author: "Redazione"
+ readingTime: 4
+ tags: ["ASI", "INAF", "INFN", "AGILE"]
+diff --git a/src/content/articoli/la-missione-agile.md b/src/content/articoli/la-missione-agile.md
+index 152d393..0a05aa6 100644
+--- a/src/content/articoli/la-missione-agile.md
++++ b/src/content/articoli/la-missione-agile.md
+@@ -4,6 +4,9 @@ slug: "la-missione-agile"
+ date: "2026-05-18"
+ category: "Missione"
+ excerpt: "AGILE è il satellite scientifico italiano per l'astrofisica delle alte energie: missione, strumenti e scoperte spiegati in modo chiaro."
++hero:
++  src: "/img/cat-missione.svg"
++  alt: "Missione"
+ author: "Redazione"
+ readingTime: 5
+ tags: ["AGILE", "astrofisica", "raggi gamma", "INAF", "ASI"]
+diff --git a/src/content/articoli/rivelatore-grid.md b/src/content/articoli/rivelatore-grid.md
+index f217666..f5ab6ca 100644
+--- a/src/content/articoli/rivelatore-grid.md
++++ b/src/content/articoli/rivelatore-grid.md
+@@ -4,6 +4,9 @@ slug: "rivelatore-grid"
+ date: "2026-05-13"
+ category: "Tecnologia"
+ excerpt: "Il Gamma-Ray Imaging Detector è il cuore di AGILE: come trasforma fotoni gamma invisibili in immagini del cielo."
++hero:
++  src: "/img/cat-tecnologia.svg"
++  alt: "Tecnologia"
+ author: "Redazione"
+ readingTime: 5
+ tags: ["GRID", "rivelatore", "tecnologia", "AGILE"]
+diff --git a/src/content/articoli/terrestrial-gamma-flashes.md b/src/content/articoli/terrestrial-gamma-flashes.md
+index 2893166..ef75e50 100644
+--- a/src/content/articoli/terrestrial-gamma-flashes.md
++++ b/src/content/articoli/terrestrial-gamma-flashes.md
+@@ -4,6 +4,9 @@ slug: "terrestrial-gamma-flashes"
+ date: "2026-05-10"
+ category: "Scienza"
+ excerpt: "Lampi gamma generati non nello spazio ma nei temporali della nostra atmosfera: cosa sono i TGF e il contributo di AGILE."
++hero:
++  src: "/img/cat-scienza.svg"
++  alt: "Scienza"
+ author: "Redazione"
+ readingTime: 4
+ tags: ["TGF", "atmosfera", "temporali", "AGILE"]
+diff --git a/src/data/gallery.json b/src/data/gallery.json
+index fe51488..1f0cb71 100644
+--- a/src/data/gallery.json
++++ b/src/data/gallery.json
+@@ -1 +1,38 @@
+-[]
++[
++  {
++    "src": "/img/cat-missione.svg",
++    "alt": "Missione"
++  },
++  {
++    "src": "/img/cat-scienza.svg",
++    "alt": "Scienza"
++  },
++  {
++    "src": "/img/cat-divulgazione.svg",
++    "alt": "Divulgazione"
++  },
++  {
++    "src": "/img/cat-app.svg",
++    "alt": "App"
++  },
++  {
++    "src": "/img/cat-tecnologia.svg",
++    "alt": "Tecnologia"
++  },
++  {
++    "src": "/img/cat-missione.svg",
++    "alt": "Missione"
++  },
++  {
++    "src": "/img/cat-scienza.svg",
++    "alt": "Scienza"
++  },
++  {
++    "src": "/img/cat-divulgazione.svg",
++    "alt": "Divulgazione"
++  },
++  {
++    "src": "/img/cat-app.svg",
++    "alt": "App"
++  }
++]
+\ No newline at end of file
+-- 
+2.43.0
+

@@ -151,6 +151,21 @@ and the Stage-4 wiring are **owner one-time actions** — cannot be done
 from here. Until then, per-site delivery stays the
 `patches/*-update.patch` → `git am -3` flow.
 
+## CF Pages deploy was failing — ROOT CAUSE (2026-05-19)
+
+Sites would not update no matter what was pushed (stale build served,
+`.svg` 404s, `/galleria` empty). Not cache (`cf-cache-status: DYNAMIC`),
+not the patches (source builds clean locally). **Root cause:** `npm ci`
+— exactly what CF Pages runs — fails `ERESOLVE`: root needs `astro@^6`
+but `@astrojs/tailwind@6.0.2` peer-allows only `astro ^3||^4||^5`. CF
+install step aborts ⇒ every deploy red ⇒ last good (old) build served.
+`@astrojs/tailwind` has no astro-6 release, so the fix is **`.npmrc`
+with `legacy-peer-deps=true` + a lockfile regenerated under it**.
+Verified with the exact CF sequence (`npm ci` exit 0 → `npm run build`
+Complete!) on both sites. This is **template-level** — folded into
+`patches/template-elite-fixes.patch`; every generated site needs it or
+it will never deploy.
+
 ## How to resume
 
 1. `git fetch origin claude/setup-github-architecture` and fast-forward —

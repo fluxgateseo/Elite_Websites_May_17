@@ -1,3 +1,10 @@
+diff --git a/.npmrc b/.npmrc
+new file mode 100644
+index 0000000..521a9f7
+--- /dev/null
++++ b/.npmrc
+@@ -0,0 +1 @@
++legacy-peer-deps=true
 diff --git a/src/layouts/ArticleLayout.astro b/src/layouts/ArticleLayout.astro
 index 211fe53..983d338 100644
 --- a/src/layouts/ArticleLayout.astro

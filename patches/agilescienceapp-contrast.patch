@@ -1,0 +1,31 @@
+From 07f374f19423e8b82a5cb6f6c6e57a03d2bcbd46 Mon Sep 17 00:00:00 2001
+From: c <c@l>
+Date: Tue, 19 May 2026 12:48:46 +0000
+Subject: [PATCH] Fix unreadable text: map --color-fg/muted/divider from
+ palette
+
+BaseLayout remapped --color-bg from the palette but never --color-fg,
+so in OS dark mode .dark forced --color-fg #fafafa over a white bg
+(white-on-white). Derive fg/muted/divider from palette primary so
+text always contrasts the background.
+---
+ src/layouts/BaseLayout.astro | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/layouts/BaseLayout.astro b/src/layouts/BaseLayout.astro
+index 0d8e11d..4c33058 100644
+--- a/src/layouts/BaseLayout.astro
++++ b/src/layouts/BaseLayout.astro
+@@ -90,6 +90,9 @@ const darkModeClass =
+       --color-primary: var(--primary);
+       --color-accent: var(--accent);
+       --color-bg: var(--background);
++      --color-fg: var(--primary);
++      --color-muted: color-mix(in srgb, var(--primary) 60%, var(--background));
++      --color-divider: color-mix(in srgb, var(--primary) 18%, var(--background));
+       --font-display: v-display;
+       --font-body: v-body;
+     }
+-- 
+2.43.0
+

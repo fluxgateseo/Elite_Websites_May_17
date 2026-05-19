@@ -1,8 +1,8 @@
-From d48291e22e2e7926bd178425faa407d3ca867dcc Mon Sep 17 00:00:00 2001
+From 9f0896bf0fa0fb79d1e36f618fed1cefaa58f7ec Mon Sep 17 00:00:00 2001
 From: c <c@l>
-Date: Tue, 19 May 2026 15:11:23 +0000
-Subject: [PATCH] Elite polish + CF deploy fix (verified npm ci + build): AI
- covers, gallery, /galleria, interlink, contrast, .npmrc
+Date: Tue, 19 May 2026 16:01:07 +0000
+Subject: [PATCH] Elite polish + CF deploy fix + expanded articles (>=500w, >=5
+ internal, authoritative links)
 
 ---
  .npmrc                                        |    1 +
@@ -12,24 +12,24 @@ Subject: [PATCH] Elite polish + CF deploy fix (verified npm ci + build): AI
  public/img/cat-missione.png                   |  Bin 0 -> 2125611 bytes
  public/img/cat-scienza.png                    |  Bin 0 -> 2296994 bytes
  public/img/cat-tecnologia.png                 |  Bin 0 -> 1992978 bytes
- src/content/articoli/agile-fermi-confronto.md |    3 +
- .../articoli/astrofisica-alte-energie.md      |    3 +
- .../articoli/astronomia-raggi-gamma.md        |    3 +
- .../blazar-nuclei-galattici-attivi.md         |    3 +
- .../divulgazione-astronomia-mobile.md         |    3 +
- .../articoli/flare-nebulosa-granchio.md       |    3 +
- src/content/articoli/gamma-ray-burst.md       |    3 +
- .../articoli/guida-app-agilescience.md        |    3 +
- src/content/articoli/inaf-asi-ruolo-agile.md  |    3 +
- src/content/articoli/la-missione-agile.md     |    3 +
- src/content/articoli/rivelatore-grid.md       |    3 +
- .../articoli/terrestrial-gamma-flashes.md     |    3 +
+ src/content/articoli/agile-fermi-confronto.md |  107 +-
+ .../articoli/astrofisica-alte-energie.md      |  104 +-
+ .../articoli/astronomia-raggi-gamma.md        |   94 +-
+ .../blazar-nuclei-galattici-attivi.md         |   92 +-
+ .../divulgazione-astronomia-mobile.md         |   93 +-
+ .../articoli/flare-nebulosa-granchio.md       |   85 +-
+ src/content/articoli/gamma-ray-burst.md       |   92 +-
+ .../articoli/guida-app-agilescience.md        |   99 +-
+ src/content/articoli/inaf-asi-ruolo-agile.md  |   86 +-
+ src/content/articoli/la-missione-agile.md     |   89 +-
+ src/content/articoli/rivelatore-grid.md       |   90 +-
+ .../articoli/terrestrial-gamma-flashes.md     |   76 +-
  src/data/gallery.json                         |   39 +-
  src/layouts/ArticleLayout.astro               |   38 +-
  src/layouts/BaseLayout.astro                  |    3 +
  src/pages/galleria.astro                      |   10 +-
  src/site.config.ts                            |    6 +-
- 24 files changed, 6022 insertions(+), 8 deletions(-)
+ 24 files changed, 6915 insertions(+), 186 deletions(-)
  create mode 100644 .npmrc
  create mode 100644 package-lock.json
  create mode 100644 public/img/cat-app.png
@@ -201119,7 +201119,7 @@ literal 0
 HcmV?d00001
 
 diff --git a/src/content/articoli/agile-fermi-confronto.md b/src/content/articoli/agile-fermi-confronto.md
-index ca08b8b..2cc2985 100644
+index ca08b8b..90e147e 100644
 --- a/src/content/articoli/agile-fermi-confronto.md
 +++ b/src/content/articoli/agile-fermi-confronto.md
 @@ -4,6 +4,9 @@ slug: "agile-fermi-confronto"
@@ -201132,8 +201132,124 @@ index ca08b8b..2cc2985 100644
  author: "Redazione"
  readingTime: 4
  tags: ["AGILE", "Fermi", "confronto", "missioni"]
+@@ -11,27 +14,99 @@ tags: ["AGILE", "Fermi", "confronto", "missioni"]
+ 
+ ## Due missioni, una scienza
+ 
+-AGILE (2007) e il Fermi Gamma-ray Space Telescope della NASA (2008)
+-osservano lo stesso cielo gamma con tecniche affini, basate sulla
+-produzione di coppie. Spesso hanno studiato gli stessi eventi, da
+-prospettive complementari.
++AGILE, lanciato nell'aprile 2007, e il
++[Fermi Gamma-ray Space Telescope](https://it.wikipedia.org/wiki/Fermi_Gamma-ray_Space_Telescope)
++della NASA, in orbita dal giugno 2008, osservano lo stesso cielo gamma
++con tecniche affini, basate sulla rivelazione dei fotoni attraverso il
++processo di produzione di coppie elettrone-positrone. Quando un fotone
++gamma sufficientemente energetico attraversa uno strato di materiale
++denso, può convertirsi in una coppia elettrone-positrone la cui
++traiettoria viene ricostruita dal tracciatore: da quelle tracce si
++risale alla direzione di provenienza e all'energia del fotone
++originario. Entrambi gli osservatori condividono l'obiettivo di mappare
++le sorgenti più estreme dell'universo, dai blazar ai resti di
++supernova, e di seguire la
++[fisica degli oggetti più violenti del cosmo](/blog/astrofisica-alte-energie/).
++Più che concorrenti, sono stati strumenti complementari: in molte
++occasioni hanno puntato gli stessi bersagli, fornendo conferme
++incrociate che hanno reso più solide le scoperte. Per un quadro
++generale del tipo di radiazione che entrambi studiano è utile partire
++dalla [panoramica dell'astronomia gamma](/blog/astronomia-raggi-gamma/).
+ 
+-## Le differenze
++## Le differenze di scala e progetto
+ 
+-- **Scala**: Fermi è una grande missione internazionale; AGILE è una
+-  missione compatta e a basso costo.
+-- **Tempismo**: AGILE ha preceduto Fermi, fornendo risultati pionieristici.
+-- **Ruolo**: la rapidità di AGILE lo rende efficace su transienti e
+-  allerta.
++La differenza più evidente è dimensionale e organizzativa. Fermi è una
++grande missione internazionale con uno strumento principale, il Large
++Area Telescope, dall'ampia area efficace e da un budget di prima
++categoria; lo affianca il Gamma-ray Burst Monitor, dedicato ai lampi
++gamma a più bassa energia. AGILE è invece una missione compatta e a
++basso costo, frutto di un programma scientifico nazionale: pesa poco
++più di 350 chilogrammi e dimostra che un progetto snello può comunque
++produrre risultati di frontiera. Il
++[rivelatore GRID a bordo di AGILE](/blog/rivelatore-grid/)
++combina un tracciatore al silicio, un calorimetro e un sistema
++anticoincidenza, una soluzione ingegneristica elegante che ha
++anticipato, in scala ridotta, l'architettura poi adottata da Fermi.
++Una caratteristica distintiva di AGILE è il campo di vista molto ampio,
++che gli consente di tenere sotto controllo una porzione consistente del
++cielo contemporaneamente: un vantaggio decisivo per intercettare eventi
++imprevisti.
++
++Si possono riassumere così le distinzioni principali:
++
++- **Scala**: Fermi è una grande missione internazionale; AGILE è
++  compatto, leggero e a basso costo.
++- **Tempismo**: AGILE ha preceduto Fermi di oltre un anno, fornendo
++  risultati pionieristici sui transienti gamma.
++- **Ruolo**: la rapidità di reazione di AGILE lo rende particolarmente
++  efficace nel seguire fenomeni rapidi e nel diramare allerte alla
++  comunità scientifica.
++
++## Risultati condivisi e conferme incrociate
++
++Il caso più celebre di sinergia riguarda
++[i flare della Nebulosa del Granchio](/blog/flare-nebulosa-granchio/),
++gli improvvisi aumenti di emissione gamma che hanno messo in
++discussione l'idea della nebulosa come sorgente perfettamente stabile.
++La scoperta, annunciata quasi simultaneamente da AGILE e da Fermi
++nel 2010, è stata rafforzata proprio dall'esistenza di due strumenti
++indipendenti che osservavano lo stesso oggetto: una circostanza che ha
++tolto ogni dubbio sulla natura astrofisica e non strumentale del
++fenomeno. Anche nello studio dei
++[blazar e dei nuclei galattici attivi](/blog/blazar-nuclei-galattici-attivi/)
++le osservazioni congiunte hanno permesso di seguire le rapide
++variazioni dei getti relativistici con una copertura temporale che un
++singolo satellite non avrebbe garantito. La complementarità si è
++rivelata utile anche per lo studio dei
++[gamma-ray burst](/blog/gamma-ray-burst/): quando uno strumento è
++impegnato altrove o ha la sorgente fuori campo, l'altro può comunque
++registrare l'evento, riducendo i tempi morti complessivi della rete.
+ 
+ ## Collaborazione, non competizione
+ 
+-Avere più strumenti che osservano in parallelo aumenta la copertura
+-temporale del cielo e la solidità delle scoperte. I flare del Granchio,
+-per esempio, sono stati confermati grazie a osservazioni indipendenti.
++Avere più osservatori che scrutano in parallelo lo stesso cielo aumenta
++la copertura temporale, riduce i tempi morti e moltiplica le occasioni
++di cogliere eventi transienti. Questa logica di rete è ormai centrale
++nell'astrofisica multimessaggera, dove un allerta rapido può attivare
++telescopi a terra e nello spazio nel giro di minuti. Il successo di
++queste collaborazioni dipende anche dalla solida organizzazione che le
++sostiene: nel caso italiano, il
++[ruolo di INAF e ASI nella missione AGILE](/blog/inaf-asi-ruolo-agile/)
++è stato determinante per mantenere lo strumento operativo e integrato
++nei circuiti internazionali. La condivisione di allerte e dati tra
++gruppi diversi è oggi una prassi consolidata, e i due osservatori hanno
++contribuito a renderla efficiente.
+ 
+ ## La lezione
+ 
+-AGILE dimostra che progetti agili e mirati hanno un posto accanto alle
+-grandi missioni: è una storia di efficienza scientifica che vale la pena
+-divulgare.
++Il confronto tra AGILE e Fermi mostra che progetti agili e mirati hanno
++un posto accanto alle grandi missioni: non si tratta di sostituire la
++potenza con l'economia, ma di costruire un ecosistema in cui strumenti
++diversi si completano. Le grandi infrastrutture garantiscono
++sensibilità e profondità; le missioni leggere aggiungono prontezza,
++flessibilità e capacità di osare su obiettivi rischiosi. È una storia
++di efficienza scientifica che vale la pena raccontare anche al grande
++pubblico, ad esempio attraverso la
++[divulgazione tramite app mobili](/blog/divulgazione-astronomia-mobile/),
++perché aiuta a capire come la conoscenza dell'universo nasca da
++cooperazione e ingegno più che da una semplice gara di dimensioni.
 diff --git a/src/content/articoli/astrofisica-alte-energie.md b/src/content/articoli/astrofisica-alte-energie.md
-index 7e65726..6ac6526 100644
+index 7e65726..3547fdb 100644
 --- a/src/content/articoli/astrofisica-alte-energie.md
 +++ b/src/content/articoli/astrofisica-alte-energie.md
 @@ -4,6 +4,9 @@ slug: "astrofisica-alte-energie"
@@ -201146,8 +201262,122 @@ index 7e65726..6ac6526 100644
  author: "Redazione"
  readingTime: 5
  tags: ["alte energie", "astrofisica", "raggi X", "raggi gamma"]
+@@ -11,26 +14,99 @@ tags: ["alte energie", "astrofisica", "raggi X", "raggi gamma"]
+ 
+ ## Di cosa si occupa
+ 
+-L'astrofisica delle alte energie studia i fenomeni in cui la materia
+-viene scaldata a milioni di gradi o le particelle accelerate a velocità
+-prossime a quella della luce: buchi neri, stelle di neutroni, resti di
+-supernova, getti relativistici.
++L'[astrofisica delle alte energie](https://it.wikipedia.org/wiki/Astrofisica)
++studia i fenomeni in cui la materia viene scaldata a milioni di gradi
++oppure le particelle vengono accelerate a velocità prossime a quella
++della luce. Il suo campo di indagine comprende i buchi neri, le stelle
++di neutroni, i resti di supernova, i getti relativistici lanciati dai
++nuclei galattici e le esplosioni più potenti che conosciamo. A queste
++energie la fisica diventa estrema: i campi magnetici sono miliardi di
++volte più intensi di quelli terrestri, la gravità deforma lo spazio-
++tempo e le particelle raggiungono energie irraggiungibili in qualsiasi
++laboratorio. È in questo regime che si manifestano i
++[raggi gamma, la radiazione più energetica](/blog/astronomia-raggi-gamma/),
++veri e propri messaggeri dei processi più violenti del cosmo.
+ 
+ ## Gli strumenti dell'osservazione
+ 
+-Poiché l'atmosfera blocca raggi X e gamma, questa scienza si fa dallo
+-spazio. Satelliti come AGILE rivelano i fotoni più energetici e ne
+-ricostruiscono direzione ed energia, costruendo una mappa del cielo
+-"violento".
++Poiché l'atmosfera terrestre assorbe quasi completamente raggi X e
++gamma, questa scienza si fa necessariamente dallo spazio. Satelliti
++come AGILE rivelano i fotoni più energetici, ne ricostruiscono
++direzione ed energia e costruiscono progressivamente una mappa del
++cielo "violento". Il cuore tecnologico di un osservatorio gamma è il
++suo strumento di rivelazione: nel caso del satellite italiano è il
++[rivelatore GRID](/blog/rivelatore-grid/), che sfrutta la produzione di
++coppie elettrone-positrone per identificare la traiettoria del fotone
++incidente. La realizzazione e la gestione di una missione di questo
++tipo richiedono una solida struttura istituzionale, come mostra il
++[ruolo svolto da INAF e ASI nella missione AGILE](/blog/inaf-asi-ruolo-agile/).
++
++## I protagonisti del cielo violento
++
++Tra le sorgenti che popolano l'astrofisica delle alte energie spiccano
++i [blazar e i nuclei galattici attivi](/blog/blazar-nuclei-galattici-attivi/),
++galassie il cui buco nero centrale lancia getti puntati verso di noi, e
++i [gamma-ray burst](/blog/gamma-ray-burst/), i lampi più energetici
++mai osservati, associati al collasso di stelle massicce o alla fusione
++di stelle di neutroni. Anche oggetti considerati stabili possono
++riservare sorprese: lo dimostrano
++[i flare della Nebulosa del Granchio](/blog/flare-nebulosa-granchio/),
++improvvisi e inattesi aumenti dell'emissione gamma che hanno costretto
++a rivedere modelli consolidati di accelerazione delle particelle.
+ 
+ ## Le domande aperte
+ 
+-- Come e dove vengono accelerate le particelle cosmiche?
+-- Cosa accade nelle immediate vicinanze di un buco nero?
+-- Qual è il legame tra eventi gamma e onde gravitazionali?
++Nonostante decenni di osservazioni, restano molte questioni
++fondamentali ancora irrisolte:
++
++- Come e dove vengono accelerate le particelle cosmiche fino a energie
++  estreme?
++- Cosa accade esattamente nelle immediate vicinanze di un buco nero,
++  dove materia e campi magnetici interagiscono in modo turbolento?
++- Qual è il legame tra eventi gamma, neutrini e onde gravitazionali
++  nell'emergente astronomia multimessaggera?
++
++## I processi fisici in gioco
++
++A queste energie entrano in gioco meccanismi che nella vita quotidiana
++non osserviamo mai. L'emissione di sincrotrone, prodotta da elettroni
++relativistici che spiralano lungo intense linee di campo magnetico,
++genera radiazione dalle onde radio fino ai raggi X. Lo scattering
++Compton inverso, in cui un elettrone velocissimo cede energia a un
++fotone di bassa energia "spingendolo" fino alla banda gamma, è uno dei
++principali responsabili della radiazione più penetrante. A questi si
++aggiungono i processi adronici, in cui protoni accelerati urtano contro
++gas e producono particelle instabili che decadono emettendo fotoni
++gamma. Distinguere il contributo di ciascun meccanismo a partire dagli
++spettri osservati è uno dei compiti più delicati di chi studia il
++[cielo dei raggi gamma](/blog/astronomia-raggi-gamma/), e richiede sia
++modelli teorici raffinati sia dati di buona qualità.
++
++## Una rete di osservatori
++
++Nessun singolo strumento copre l'intero spettro delle alte energie. Per
++questo l'astrofisica moderna lavora come una rete: telescopi a raggi X,
++osservatori gamma spaziali, rivelatori Cherenkov a terra, antenne radio
++e — sempre più spesso — rivelatori di neutrini e onde gravitazionali
++osservano insieme gli stessi eventi. La complementarità tra missioni
++diverse emerge bene dal confronto tra
++[AGILE e Fermi](/blog/agile-fermi-confronto/): due osservatori gamma
++con scale e ruoli differenti che, lavorando in parallelo, hanno
++aumentato copertura temporale e affidabilità delle scoperte. La rapidità
++con cui un satellite può segnalare un transiente alla comunità è oggi
++parte integrante del metodo scientifico in questo campo.
+ 
+ ## Un campo in evoluzione
+ 
+-Ogni missione aggiunge tasselli. AGILE ha mostrato che anche osservatori
+-compatti possono dare contributi decisivi. L'app AGILEScience nasce per
+-raccontare questo campo a un pubblico più ampio, senza banalizzarlo.
++Ogni missione aggiunge tasselli a un quadro ancora incompleto. AGILE ha
++mostrato che anche osservatori compatti possono dare contributi
++decisivi, soprattutto grazie alla rapidità con cui reagiscono ai
++fenomeni transienti e al campo di vista ampio che consente di
++sorvegliare contemporaneamente molte sorgenti. Comunicare questi
++risultati senza tradirne la complessità è una sfida a sé: per questo
++nasce l'idea di una
++[divulgazione seria attraverso app mobili](/blog/divulgazione-astronomia-mobile/),
++pensata per raccontare un campo affascinante a un pubblico più ampio
++senza banalizzarlo né cedere a semplificazioni fuorvianti. Capire
++l'astrofisica delle alte energie significa, in fondo, capire come
++l'universo costruisce e distrugge le sue strutture più estreme.
 diff --git a/src/content/articoli/astronomia-raggi-gamma.md b/src/content/articoli/astronomia-raggi-gamma.md
-index 888e68e..c9e5e6d 100644
+index 888e68e..d8fef54 100644
 --- a/src/content/articoli/astronomia-raggi-gamma.md
 +++ b/src/content/articoli/astronomia-raggi-gamma.md
 @@ -4,6 +4,9 @@ slug: "astronomia-raggi-gamma"
@@ -201160,8 +201390,113 @@ index 888e68e..c9e5e6d 100644
  author: "Redazione"
  readingTime: 5
  tags: ["raggi gamma", "astrofisica", "alte energie"]
+@@ -11,28 +14,89 @@ tags: ["raggi gamma", "astrofisica", "alte energie"]
+ 
+ ## La radiazione più energetica
+ 
+-I raggi gamma sono la forma di luce a più alta energia dello spettro
+-elettromagnetico: miliardi di volte più energetici della luce visibile.
+-Vengono prodotti dai processi più violenti del cosmo — esplosioni
+-stellari, materia che cade verso buchi neri, particelle accelerate a
+-velocità prossime a quella della luce.
++I [raggi gamma](https://it.wikipedia.org/wiki/Raggi_gamma) sono la
++forma di luce a più alta energia dello spettro elettromagnetico:
++miliardi di volte più energetici della luce visibile e capaci di
++trasportare singolarmente l'energia di milioni di fotoni ottici. Non
++sono che fotoni come quelli che il nostro occhio percepisce, ma con una
++frequenza talmente elevata da rivelare i processi più estremi della
++natura. Vengono prodotti là dove la fisica raggiunge condizioni
++impossibili da riprodurre sulla Terra: esplosioni stellari, materia che
++precipita verso un buco nero, particelle accelerate a velocità prossime
++a quella della luce in campi magnetici intensissimi. Lo studio di
++questa radiazione è il cuore dell'
++[astrofisica delle alte energie](/blog/astrofisica-alte-energie/), la
++branca che indaga gli oggetti più violenti del cosmo.
+ 
+ ## Perché serve un satellite
+ 
+-L'atmosfera terrestre assorbe i raggi gamma: è una fortuna per la vita,
+-ma significa che non possono essere osservati da terra. Per studiarli
+-occorre un rivelatore in orbita, come quello a bordo di AGILE.
++L'atmosfera terrestre assorbe i raggi gamma prima che raggiungano il
++suolo: è una fortuna per la vita, perché ci protegge da una radiazione
++ionizzante pericolosa, ma significa che questi fotoni non possono essere
++osservati direttamente da terra. Per studiarli occorre portare il
++rivelatore in orbita. È esattamente ciò che fa il satellite AGILE
++attraverso il [rivelatore GRID](/blog/rivelatore-grid/), che ricostruisce
++direzione ed energia di ogni fotone sfruttando la produzione di coppie
++elettrone-positrone. Una missione di questo tipo nasce da un lungo
++lavoro istituzionale e tecnico, descritto nel
++[ruolo di INAF e ASI nella missione AGILE](/blog/inaf-asi-ruolo-agile/).
+ 
+ ## Cosa osserviamo
+ 
+ Il cielo gamma è dominato da sorgenti **transienti**: oggetti che si
+-"accendono" per ore o giorni e poi svaniscono. Pulsar, blazar, resti di
+-supernova e gamma-ray burst sono i protagonisti. Mappare questi eventi
+-aiuta a capire come l'universo accelera le particelle e libera energia.
++"accendono" per ore o giorni e poi svaniscono, costringendo gli
++osservatori a una sorveglianza continua. Tra i protagonisti ci sono le
++pulsar, i resti di supernova, i
++[blazar e i nuclei galattici attivi](/blog/blazar-nuclei-galattici-attivi/)
++e soprattutto i [gamma-ray burst](/blog/gamma-ray-burst/), i lampi più
++energetici dell'universo, che in pochi secondi liberano più energia di
++quanta il Sole ne emetta in miliardi di anni. Persino sorgenti ritenute
++stabili possono sorprendere, come dimostrano
++[i flare della Nebulosa del Granchio](/blog/flare-nebulosa-granchio/).
++Mappare tutti questi eventi aiuta a capire come l'universo accelera le
++particelle e libera quantità di energia altrimenti inimmaginabili.
++
++## Come si "vede" un raggio gamma
++
++Un fotone gamma non può essere messo a fuoco da lenti o specchi come la
++luce visibile: la sua energia è troppo elevata e attraverserebbe
++qualsiasi ottica tradizionale. Per rivelarlo si sfrutta invece la
++fisica delle particelle. Quando il fotone interagisce con il materiale
++del rivelatore produce una coppia elettrone-positrone; misurando la
++traiettoria di queste due particelle si ricostruisce la direzione di
++provenienza, mentre l'energia depositata in un calorimetro permette di
++stimare l'energia del fotone originario. Un sistema di anticoincidenza
++scarta le particelle cariche provenienti dai raggi cosmici, che
++altrimenti soffocherebbero il debole segnale gamma. È esattamente
++questa la logica del [rivelatore GRID](/blog/rivelatore-grid/) di
++AGILE. Lo stesso principio, su scala maggiore, è alla base di
++osservatori come quelli messi a confronto nell'articolo su
++[AGILE e Fermi](/blog/agile-fermi-confronto/).
++
++## Perché studiare il cielo gamma
++
++Osservare l'universo in banda gamma non è una curiosità tecnica: è il
++modo più diretto per studiare i meccanismi con cui la natura accelera
++particelle fino a energie irraggiungibili in laboratorio. Questi
++processi sono al centro dell'
++[astrofisica delle alte energie](/blog/astrofisica-alte-energie/) e
++toccano questioni fondamentali, dall'origine dei raggi cosmici alla
++fisica della materia in condizioni estreme. Una missione capace di
++sorvegliare il cielo richiede una struttura organizzativa solida e
++continuativa: nel caso italiano, lo illustra bene il
++[ruolo di INAF e ASI nella missione AGILE](/blog/inaf-asi-ruolo-agile/),
++senza la quale nessun risultato sarebbe stato possibile.
+ 
+ ## Dal dato alla divulgazione
+ 
+-Ogni rivelazione è un punto su una mappa del cielo ad alte energie.
+-L'app AGILEScience traduce questi dati in visualizzazioni comprensibili,
+-avvicinando il pubblico a una branca dell'astrofisica spesso percepita
+-come inaccessibile.
++Ogni rivelazione è un punto su una mappa del cielo ad alte energie, e
++ogni mappa è il risultato di mesi di osservazioni e di analisi
++sofisticate. Tra le sorgenti più studiate ci sono i
++[blazar e i nuclei galattici attivi](/blog/blazar-nuclei-galattici-attivi/),
++che possono variare di luminosità nel giro di poche ore. Trasformare
++questi dati in conoscenza condivisa richiede un lavoro di traduzione: è
++l'obiettivo di una
++[divulgazione dell'astronomia tramite app mobili](/blog/divulgazione-astronomia-mobile/),
++pensata per avvicinare il pubblico a una branca dell'astrofisica spesso
++percepita come inaccessibile, senza rinunciare al rigore e all'onestà
++sui limiti della ricerca.
 diff --git a/src/content/articoli/blazar-nuclei-galattici-attivi.md b/src/content/articoli/blazar-nuclei-galattici-attivi.md
-index 84763cb..d4566ac 100644
+index 84763cb..a1e202d 100644
 --- a/src/content/articoli/blazar-nuclei-galattici-attivi.md
 +++ b/src/content/articoli/blazar-nuclei-galattici-attivi.md
 @@ -4,6 +4,9 @@ slug: "blazar-nuclei-galattici-attivi"
@@ -201174,8 +201509,111 @@ index 84763cb..d4566ac 100644
  author: "Redazione"
  readingTime: 5
  tags: ["blazar", "AGN", "buchi neri", "AGILE"]
+@@ -11,27 +14,88 @@ tags: ["blazar", "AGN", "buchi neri", "AGILE"]
+ 
+ ## Motori al centro delle galassie
+ 
+-Molte galassie ospitano al centro un buco nero supermassiccio. Quando
+-questo accresce materia in modo intenso, la galassia diventa un **nucleo
+-galattico attivo** (AGN), capace di emettere enormi quantità di energia
+-su tutto lo spettro.
++Molte galassie ospitano al loro centro un buco nero supermassiccio,
++con masse che vanno da milioni a miliardi di volte quella del Sole.
++Quando questo buco nero accresce materia in modo intenso, attirando gas
++e polveri che spiraleggiano in un disco di accrescimento incandescente,
++la galassia diventa un
++[nucleo galattico attivo](https://it.wikipedia.org/wiki/Nucleo_galattico_attivo)
++(AGN), capace di emettere enormi quantità di energia su tutto lo
++spettro elettromagnetico, dalle onde radio fino ai raggi gamma. Un
++singolo AGN può superare in luminosità l'intera galassia che lo ospita,
++rendendolo uno degli oggetti più potenti dell'universo e un protagonista
++naturale dell'[astrofisica delle alte energie](/blog/astrofisica-alte-energie/).
+ 
+ ## Cosa rende speciale un blazar
+ 
+-Un **blazar** è un AGN che lancia un getto di particelle relativistiche
+-puntato quasi esattamente verso la Terra. Questo allineamento amplifica
+-l'emissione e la rende estremamente variabile: un blazar può cambiare
+-luminosità nel giro di ore.
++Un **blazar** è una particolare classe di AGN che lancia un getto di
++particelle relativistiche — un getto collimato di plasma accelerato
++quasi alla velocità della luce — puntato per pura prospettiva quasi
++esattamente verso la Terra. Questo allineamento produce un effetto di
++amplificazione relativistica (beaming) che intensifica enormemente
++l'emissione osservata e la rende estremamente variabile: un blazar può
++cambiare luminosità nel giro di poche ore, e proprio nei
++[raggi gamma, la radiazione più energetica](/blog/astronomia-raggi-gamma/),
++queste variazioni risultano particolarmente marcate. Studiare come e
++dove i fotoni gamma vengano prodotti nel getto è una delle questioni
++centrali del settore.
+ 
+ ## Il contributo di AGILE
+ 
+ AGILE ha osservato numerosi blazar durante fasi di intensa attività
+-gamma, contribuendo a studiare come e dove le particelle vengono
+-accelerate nei getti. La rapidità di risposta dello strumento è decisiva
+-per cogliere questi episodi transienti.
++gamma, contribuendo a chiarire i meccanismi con cui le particelle
++vengono accelerate lungo i getti. La rapidità di risposta dello
++strumento, garantita dal
++[rivelatore GRID a bordo del satellite](/blog/rivelatore-grid/), è
++decisiva per cogliere episodi transienti che durano solo ore o giorni.
++La capacità di lanciare allerte tempestive alla comunità ha permesso
++campagne osservative coordinate con telescopi a terra e nello spazio,
++spesso in sinergia con altri osservatori gamma, come illustrato nel
++confronto tra [AGILE e Fermi](/blog/agile-fermi-confronto/). Tutto ciò
++è stato possibile grazie alla solida cornice istituzionale descritta
++nel [ruolo di INAF e ASI nella missione AGILE](/blog/inaf-asi-ruolo-agile/).
++
++## La doppia gobba dello spettro
++
++Lo spettro di un blazar mostra in genere due ampie regioni di
++emissione, spesso descritte come due "gobbe". La prima, dalle onde
++radio ai raggi X, è attribuita all'emissione di sincrotrone di
++elettroni relativistici che spiralano nel campo magnetico del getto.
++La seconda, che si estende fino ai
++[raggi gamma più energetici](/blog/astronomia-raggi-gamma/), è spiegata
++nella maggior parte dei modelli dallo scattering Compton inverso, in
++cui gli stessi elettroni cedono energia a fotoni di bassa energia
++"spingendoli" fino alla banda gamma. In alternativa, alcuni modelli
++chiamano in causa processi adronici legati a protoni accelerati. Capire
++quale meccanismo domini in un dato blazar è una delle questioni aperte
++dell'[astrofisica delle alte energie](/blog/astrofisica-alte-energie/),
++e richiede osservazioni simultanee su molte bande dello spettro.
++
++## Perché la variabilità conta
++
++La rapidità con cui un blazar cambia luminosità è un'informazione
++fisica preziosa: una variazione su scala di ore implica che la regione
++da cui proviene l'emissione è molto compatta, perché nessun segnale può
++attraversarla più velocemente della luce. Seguire queste variazioni
++richiede strumenti pronti a reagire e campagne coordinate, esattamente
++ciò che ha reso utile la complementarità descritta nel confronto tra
++[AGILE e Fermi](/blog/agile-fermi-confronto/). Lo studio dei getti
++relativistici dei blazar è inoltre collegato a quello di altri
++fenomeni transienti estremi, come i
++[gamma-ray burst](/blog/gamma-ray-burst/), con cui condivide parte
++della fisica dell'accelerazione delle particelle.
+ 
+ ## Una finestra sui processi estremi
+ 
+-Studiare i blazar significa osservare la fisica vicino a un buco nero in
+-condizioni impossibili da riprodurre in laboratorio: un laboratorio
+-cosmico per l'astrofisica delle alte energie.
++Studiare i blazar significa osservare la fisica nelle immediate
++vicinanze di un buco nero in condizioni impossibili da riprodurre in
++laboratorio: campi magnetici intensissimi, plasmi relativistici e
++processi di accelerazione che restano in parte misteriosi. Sono, in un
++certo senso, laboratori cosmici naturali, resi accessibili solo da
++missioni come AGILE e dalla cornice istituzionale descritta nel
++[ruolo di INAF e ASI nella missione AGILE](/blog/inaf-asi-ruolo-agile/).
++Raccontarli al pubblico senza tradirne la complessità è anche
++l'obiettivo di una
++[divulgazione dell'astronomia tramite app mobili](/blog/divulgazione-astronomia-mobile/),
++che usa casi concreti come questo per avvicinare studenti e curiosi
++all'astrofisica delle alte energie.
 diff --git a/src/content/articoli/divulgazione-astronomia-mobile.md b/src/content/articoli/divulgazione-astronomia-mobile.md
-index 31bb6ea..060dcc0 100644
+index 31bb6ea..62883ff 100644
 --- a/src/content/articoli/divulgazione-astronomia-mobile.md
 +++ b/src/content/articoli/divulgazione-astronomia-mobile.md
 @@ -4,6 +4,9 @@ slug: "divulgazione-astronomia-mobile"
@@ -201188,8 +201626,111 @@ index 31bb6ea..060dcc0 100644
  author: "Redazione"
  readingTime: 4
  tags: ["divulgazione", "app", "didattica", "AGILEScience"]
+@@ -11,25 +14,89 @@ tags: ["divulgazione", "app", "didattica", "AGILEScience"]
+ 
+ ## La scienza ha bisogno di racconto
+ 
+-I risultati di una missione spaziale restano spesso confinati in articoli
+-tecnici. La divulgazione serve a restituire alla collettività una ricerca
+-che la collettività ha finanziato — e a ispirare nuove vocazioni
+-scientifiche.
++I risultati di una missione spaziale restano spesso confinati in
++articoli tecnici, scritti da specialisti per altri specialisti. La
++[divulgazione scientifica](https://it.wikipedia.org/wiki/Divulgazione_scientifica)
++serve a colmare quella distanza: restituisce alla collettività una
++ricerca che la collettività ha finanziato con risorse pubbliche e, non
++meno importante, ispira nuove vocazioni. Una ragazza o un ragazzo che a
++quattordici anni capisce come funziona un satellite gamma può
++diventare, dieci anni dopo, chi quei satelliti li progetta. Raccontare
++bene una missione non è un ornamento accessorio della scienza: è parte
++del suo ciclo vitale. È anche un modo per spiegare perché valga la pena
++investire nello studio dei
++[fenomeni più estremi dell'universo](/blog/astrofisica-alte-energie/),
++un ambito che a prima vista può sembrare lontano dalla vita quotidiana.
+ 
+ ## Perché un'app
+ 
+-Lo smartphone è il dispositivo più diffuso e personale. Un'app permette
+-contenuti aggiornabili, visualizzazioni interattive e un linguaggio
+-adatto a chi non ha basi tecniche, senza rinunciare al rigore.
++Lo smartphone è oggi il dispositivo più diffuso e personale: è quasi
++sempre a portata di mano, è connesso e consente un rapporto continuo
++con i contenuti. Un'app dedicata permette di aggiornare le informazioni
++man mano che arrivano nuovi risultati, di proporre visualizzazioni
++interattive — mappe del cielo, spettri, animazioni — e di adottare un
++linguaggio adatto a chi non ha basi tecniche senza per questo
++rinunciare al rigore. Rispetto a un sito statico, un'app può guidare il
++lettore lungo percorsi tematici: dal concetto di
++[raggi gamma](/blog/astronomia-raggi-gamma/) fino alle sorgenti che li
++producono, come i
++[blazar e i nuclei galattici attivi](/blog/blazar-nuclei-galattici-attivi/).
++La portabilità abilita anche la divulgazione "fuori dall'aula", durante
++una visita a un osservatorio o una serata di osservazione, quando la
++curiosità è massima.
+ 
+ ## Il rischio da evitare
+ 
+-La divulgazione scadente semplifica fino a falsare. L'approccio corretto
+-è spiegare *cosa* osserviamo e *perché* è difficile, mantenendo
+-l'onestà sui limiti e sulle incertezze.
++Il pericolo principale di ogni divulgazione è la semplificazione che
++falsa. Ridurre un fenomeno complesso a uno slogan accattivante può
++generare convinzioni sbagliate difficili da correggere. L'approccio
++corretto è diverso: spiegare *cosa* osserviamo, *perché* è difficile
++osservarlo e *quali* incertezze restano. Un buon esempio è la vicenda
++dei [flare della Nebulosa del Granchio](/blog/flare-nebulosa-granchio/):
++raccontarla bene significa anche dire che una sorgente considerata
++stabile si è rivelata variabile, costringendo gli scienziati a
++rivedere le proprie assunzioni. L'errore non è un difetto da nascondere
++ma il motore del metodo scientifico, e una divulgazione onesta lo
++mostra. Allo stesso modo, confrontare strumenti diversi — come nel caso
++di [AGILE e Fermi](/blog/agile-fermi-confronto/) — aiuta a far capire
++che la conoscenza nasce da verifiche incrociate, non da annunci isolati.
++
++## Strumenti per non banalizzare
++
++Mantenere il rigore in un formato divulgativo richiede alcune scelte
++precise:
++
++- usare dati e immagini reali della missione, non illustrazioni
++  generiche;
++- distinguere sempre ciò che è osservato da ciò che è interpretato o
++  modellato;
++- offrire approfondimenti progressivi, così che il lettore curioso
++  possa spingersi oltre senza che il principiante si perda;
++- citare le istituzioni e il lavoro che rendono possibile la ricerca,
++  come il [ruolo di INAF e ASI nella missione AGILE](/blog/inaf-asi-ruolo-agile/).
++
++## Misurare se la divulgazione funziona
++
++Un'app non è solo un contenitore di contenuti: è anche uno strumento
++che permette di capire se il racconto sta funzionando. Quali percorsi
++vengono completati, dove i lettori abbandonano, quali argomenti
++generano più curiosità sono indicazioni preziose per migliorare il
++materiale nel tempo. Questo non significa inseguire l'intrattenimento a
++ogni costo: significa accorgersi quando una spiegazione è troppo
++densa o, al contrario, troppo vaga, e correggerla. La divulgazione di
++qualità è un processo iterativo, non un prodotto chiuso una volta per
++tutte, e un canale digitale ben progettato rende quel processo
++possibile. Anche la scelta di legare i contenuti a una missione reale,
++con dati pubblici e verificabili, contribuisce alla credibilità: il
++lettore può sempre risalire alla fonte di ciò che legge.
+ 
+ ## L'obiettivo di AGILEScience
+ 
+-Portare l'astrofisica delle alte energie nelle mani di studenti e
+-curiosi, usando la missione AGILE come caso concreto: una storia italiana
+-di scienza che merita di essere conosciuta.
++L'app AGILEScience nasce per portare l'astrofisica delle alte energie
++nelle mani di studenti e curiosi, usando la missione AGILE come caso
++concreto: una storia italiana di scienza, fatta di ingegno e
++collaborazione, che merita di essere conosciuta. L'obiettivo non è
++trasformare il lettore in un esperto, ma renderlo capace di leggere una
++notizia astronomica con spirito critico, riconoscendo cosa significhi
++davvero una scoperta e quanto lavoro ci sia dietro ogni singolo
++risultato.
 diff --git a/src/content/articoli/flare-nebulosa-granchio.md b/src/content/articoli/flare-nebulosa-granchio.md
-index cf3e506..62db4a6 100644
+index cf3e506..8f56862 100644
 --- a/src/content/articoli/flare-nebulosa-granchio.md
 +++ b/src/content/articoli/flare-nebulosa-granchio.md
 @@ -4,6 +4,9 @@ slug: "flare-nebulosa-granchio"
@@ -201202,8 +201743,102 @@ index cf3e506..62db4a6 100644
  author: "Redazione"
  readingTime: 4
  tags: ["Nebulosa del Granchio", "flare", "AGILE", "scoperte"]
+@@ -11,26 +14,78 @@ tags: ["Nebulosa del Granchio", "flare", "AGILE", "scoperte"]
+ 
+ ## Una candela non così standard
+ 
+-La Nebulosa del Granchio, resto della supernova osservata nel 1054, è
+-stata a lungo usata come riferimento di luminosità stabile per gli
+-strumenti gamma. L'idea: se il Granchio è costante, eventuali variazioni
+-sono dello strumento, non del cielo.
++La [Nebulosa del Granchio](https://it.wikipedia.org/wiki/Nebulosa_del_Granchio),
++resto della supernova osservata e documentata dagli astronomi cinesi
++nel 1054, è uno degli oggetti più studiati del cielo. Al suo centro
++pulsa una stella di neutroni in rapida rotazione, una pulsar, che
++inietta continuamente energia in una nebulosa di plasma e campi
++magnetici. Per decenni il Granchio è stato considerato così costante in
++banda X e gamma da essere usato come riferimento di calibrazione per
++gli strumenti: la "candela standard" del cielo ad alte energie. Il
++ragionamento era semplice e robusto: se il Granchio è stabile,
++qualunque variazione misurata da uno strumento è imputabile allo
++strumento stesso, non alla sorgente. Su questa assunzione si è basata
++buona parte dell'[astronomia dei raggi gamma](/blog/astronomia-raggi-gamma/)
++per molti anni.
+ 
+ ## La sorpresa
+ 
+-AGILE, insieme ad altri osservatori, ha rilevato **flare**: improvvisi
+-aumenti dell'emissione gamma della nebulosa, su scale di giorni. Un
+-risultato inatteso che ha messo in discussione un'assunzione consolidata
+-dell'astrofisica.
++Nel 2010 AGILE, e in modo indipendente il satellite Fermi, hanno
++rilevato qualcosa che non avrebbe dovuto esistere: **flare**,
++improvvisi e intensi aumenti dell'emissione gamma della nebulosa, su
++scale di pochi giorni e talvolta di ore. Durante questi episodi il
++flusso gamma poteva più che raddoppiare per poi tornare ai valori
++abituali. Il fatto che due osservatori distinti avessero visto lo
++stesso fenomeno fu decisivo: escludeva un artefatto strumentale e
++imponeva una conclusione scomoda, cioè che la candela standard non era
++affatto stabile. La conferma incrociata, resa possibile dalla
++complementarità descritta nel confronto tra
++[AGILE e Fermi](/blog/agile-fermi-confronto/), trasformò una possibile
++anomalia in una scoperta solida.
+ 
+-## Cosa significa
++## Perché era difficile crederci
+ 
+-I flare indicano che nella nebulosa avvengono processi di accelerazione
+-di particelle molto più rapidi e violenti del previsto, probabilmente
+-legati al campo magnetico vicino alla pulsar centrale.
++L'idea di una sorgente di calibrazione costante non era un dogma
++arbitrario: derivava da decenni di osservazioni in cui il Granchio si
++era comportato in modo prevedibile. Mettere in discussione una
++convinzione tanto radicata richiedeva prove molto forti, ed è qui che
++la prudenza del metodo scientifico ha giocato un ruolo essenziale.
++Prima di parlare di scoperta, i gruppi di lavoro hanno escluso una
++lunga lista di possibili cause strumentali: malfunzionamenti dei
++rivelatori, errori di analisi, contaminazioni da sorgenti vicine.
++Soltanto dopo che ogni spiegazione alternativa era stata scartata, e
++soprattutto dopo che due osservatori indipendenti avevano misurato lo
++stesso comportamento, il fenomeno è stato accettato come reale. È un
++esempio istruttivo di come funziona davvero la ricerca: non per annunci
++isolati, ma per verifiche incrociate e scetticismo organizzato.
++
++## Cosa significa fisicamente
++
++I flare indicano che in una regione compatta della nebulosa avvengono
++processi di accelerazione di particelle molto più rapidi e violenti di
++quanto i modelli prevedessero. La variabilità su scala di giorni
++implica che la zona di emissione è piccola, e l'energia raggiunta dagli
++elettroni è tale da sfidare i meccanismi di accelerazione noti, che
++faticano a spiegare un guadagno energetico così rapido. L'ipotesi più
++accreditata chiama in causa la riconnessione magnetica nelle vicinanze
++della pulsar centrale, un processo in cui le linee di campo magnetico
++si riorganizzano bruscamente liberando enormi quantità di energia. È un
++problema aperto e centrale per l'
++[astrofisica delle alte energie](/blog/astrofisica-alte-energie/),
++con implicazioni anche per altre sorgenti estreme come i
++[blazar e i nuclei galattici attivi](/blog/blazar-nuclei-galattici-attivi/).
+ 
+ ## L'eredità
+ 
+-La scoperta ha aperto un filone di ricerca tuttora attivo e dimostra il
+-valore di una missione "leggera" capace di cogliere l'inatteso. È uno
+-dei risultati di cui AGILE va più fiera.
++La scoperta ha aperto un filone di ricerca tuttora attivo, ha imposto
++una revisione delle procedure di calibrazione e ha ricordato a tutti
++che anche gli oggetti meglio conosciuti possono sorprendere. Dimostra
++inoltre il valore di una missione compatta e reattiva, capace di
++cogliere l'inatteso grazie alla rapidità del
++[rivelatore GRID](/blog/rivelatore-grid/) e alla solida organizzazione
++descritta nel
++[ruolo di INAF e ASI nella missione AGILE](/blog/inaf-asi-ruolo-agile/).
++È uno dei risultati di cui la missione va più fiera, e un caso ideale
++per la [divulgazione tramite app mobili](/blog/divulgazione-astronomia-mobile/):
++una storia che mostra, in modo concreto, come funziona davvero la
++scoperta scientifica.
 diff --git a/src/content/articoli/gamma-ray-burst.md b/src/content/articoli/gamma-ray-burst.md
-index c237671..d16b9ea 100644
+index c237671..77115b5 100644
 --- a/src/content/articoli/gamma-ray-burst.md
 +++ b/src/content/articoli/gamma-ray-burst.md
 @@ -4,6 +4,9 @@ slug: "gamma-ray-burst"
@@ -201216,8 +201851,109 @@ index c237671..d16b9ea 100644
  author: "Redazione"
  readingTime: 5
  tags: ["gamma-ray burst", "GRB", "AGILE"]
+@@ -12,27 +15,84 @@ tags: ["gamma-ray burst", "GRB", "AGILE"]
+ ## Esplosioni ai confini del cosmo
+ 
+ Un gamma-ray burst (GRB) è il lampo di raggi gamma più potente che
+-conosciamo: in pochi secondi libera più energia di quanta il Sole ne
+-produrrà in tutta la sua vita. La maggior parte arriva da galassie
+-lontanissime, miliardi di anni luce da noi.
++conosciamo: in pochi secondi può liberare più energia di quanta il Sole
++ne produrrà in tutta la sua vita, stimata in circa dieci miliardi di
++anni. La maggior parte di questi eventi arriva da galassie
++lontanissime, a miliardi di anni luce da noi, il che significa che li
++osserviamo come apparivano quando l'universo era molto più giovane.
++Proprio per questa loro luminosità estrema, i GRB sono visibili a
++distanze cosmologiche e rappresentano uno strumento prezioso per
++sondare le epoche remote del cosmo. Per un quadro generale del campo
++conviene partire da una panoramica sull'[astronomia dei raggi
++gamma](/blog/astronomia-raggi-gamma/) e sull'[astrofisica delle alte
++energie](/blog/astrofisica-alte-energie/), discipline che studiano i
++fenomeni più violenti dell'universo.
+ 
+-## Due famiglie
++## Due famiglie distinte
+ 
+-- I **GRB lunghi** (oltre ~2 secondi) sono legati al collasso di stelle
+-  massicce in buchi neri.
+-- I **GRB corti** derivano dalla fusione di oggetti compatti, come due
+-  stelle di neutroni — gli stessi eventi che generano onde
+-  gravitazionali.
++I GRB non sono tutti uguali. La classificazione più consolidata si basa
++sulla durata dell'emissione gamma:
++
++- I **GRB lunghi** (oltre circa 2 secondi, fino a centinaia di secondi)
++  sono associati al collasso del nucleo di stelle molto massicce, che
++  termina con la formazione di un buco nero e l'espulsione di getti
++  relativistici. Molti GRB lunghi sono accompagnati da una supernova di
++  tipo Ic.
++- I **GRB corti** (sotto i 2 secondi) derivano dalla fusione di oggetti
++  compatti, tipicamente due stelle di neutroni o una stella di neutroni
++  e un buco nero. Sono gli stessi eventi che generano onde
++  gravitazionali rilevabili: il caso GW170817/GRB 170817A nel 2017 ha
++  confermato in modo diretto questo legame, inaugurando l'astronomia
++  multimessaggera.
++
++In entrambi i casi l'emissione gamma è seguita da un *afterglow* — un
++bagliore residuo che si attenua progressivamente nei raggi X, ottici e
++radio — fondamentale per misurare la distanza della sorgente. Lo studio
++combinato del lampo iniziale (*prompt emission*) e dell'afterglow ha
++permesso di costruire il modello del *fireball*: un getto di materia
++ultrarelativistico, lanciato a velocità prossime a quella della luce, in
++cui le collisioni interne ed esterne fra strati di plasma convertono
++l'energia cinetica in radiazione. La forte collimazione del getto spiega
++perché i GRB ci appaiano così luminosi pur essendo lontanissimi: vediamo
++solo gli eventi il cui fascio è puntato verso di noi.
++
++## Una sorgente di emissione estrema
++
++L'energia liberata da un GRB, se fosse isotropa, raggiungerebbe valori
++dell'ordine di 10⁴⁷ joule, ma la collimazione del getto riduce
++l'energia reale a una frazione di questo. Anche così resta uno degli
++eventi più violenti dell'universo, capace di sintetizzare elementi pesanti
++e, nel caso dei GRB corti, di disperdere nello spazio materiale arricchito
++prodotto dalla fusione di stelle di neutroni. I GRB sono spesso messi in
++relazione con altre sorgenti gamma transienti studiate da AGILE, come i
++[blazar e i nuclei galattici attivi](/blog/blazar-nuclei-galattici-attivi/),
++in cui pure compaiono getti relativistici alimentati da buchi neri.
+ 
+ ## Il ruolo di AGILE
+ 
+-La sfida è reagire in fretta: un GRB svanisce in fretta. Gli strumenti
+-di AGILE sono progettati per rilevare e localizzare rapidamente questi
+-eventi, contribuendo agli allerta che permettono ad altri telescopi di
+-puntare la sorgente prima che si spenga.
++La sfida principale nello studio dei GRB è la rapidità: l'emissione
++gamma può svanire in pochi secondi o decine di secondi. Gli strumenti
++di [AGILE](/blog/la-missione-agile/), in particolare il
++[rivelatore GRID](/blog/rivelatore-grid/) e il calorimetro MCAL,
++sono progettati per rilevare e localizzare rapidamente questi eventi
++transitori, contribuendo agli allerta che permettono ad altri
++telescopi terrestri e spaziali di puntare la sorgente prima che si
++spenga. AGILE ha contribuito alla rete internazionale di osservazione
++dei GRB, e il suo lavoro è spesso messo in relazione con quello del
++telescopio Fermi, come illustrato nel
++[confronto tra AGILE e Fermi](/blog/agile-fermi-confronto/).
++Il calorimetro è particolarmente adatto a registrare l'emissione più
++energetica e i transienti molto brevi.
+ 
+ ## Perché studiarli
+ 
+-I GRB sono fari cosmici: illuminano l'universo primordiale e permettono
+-di studiare materia ed energia in condizioni irriproducibili sulla
+-Terra. Ogni rivelazione aggiunge un tassello alla storia dell'universo.
++I GRB sono autentici fari cosmici: illuminano l'universo primordiale e
++permettono di studiare materia ed energia in condizioni irriproducibili
++in qualsiasi laboratorio terrestre, con campi gravitazionali e densità
++estremi. Ogni rivelazione aggiunge un tassello alla storia
++dell'evoluzione stellare e galattica. Per approfondire il fenomeno è
++utile la voce di [Wikipedia sul lampo
++gamma](https://it.wikipedia.org/wiki/Lampo_gamma), mentre chi desidera
++seguire questi temi in mobilità può consultare la
++[guida all'app AGILEScience](/blog/guida-app-agilescience/), pensata
++per rendere accessibile a tutti l'astrofisica delle alte energie.
 diff --git a/src/content/articoli/guida-app-agilescience.md b/src/content/articoli/guida-app-agilescience.md
-index f108036..8c8a1a6 100644
+index f108036..1ab4fdb 100644
 --- a/src/content/articoli/guida-app-agilescience.md
 +++ b/src/content/articoli/guida-app-agilescience.md
 @@ -4,6 +4,9 @@ slug: "guida-app-agilescience"
@@ -201230,8 +201966,116 @@ index f108036..8c8a1a6 100644
  author: "Redazione"
  readingTime: 4
  tags: ["AGILEScience", "app", "divulgazione"]
+@@ -11,27 +14,91 @@ tags: ["AGILEScience", "app", "divulgazione"]
+ 
+ ## A cosa serve
+ 
+-AGILEScience è l'app ufficiale che porta la missione AGILE sul tuo
+-dispositivo: informazioni sulla missione, sugli strumenti e sui dati
+-osservativi, in un formato pensato per studenti, appassionati e
+-divulgatori.
++AGILEScience è l'app ufficiale che porta la missione
++[AGILE](/blog/la-missione-agile/) sul tuo dispositivo: informazioni
++sulla missione, sugli strumenti a bordo e sui fenomeni astrofisici che
++il satellite osserva, in un formato pensato per studenti, appassionati,
++insegnanti e divulgatori. L'obiettivo è colmare la distanza tra la
++ricerca scientifica di frontiera e il pubblico generale, traducendo
++concetti complessi in contenuti chiari senza sacrificare la correttezza.
++L'app rientra in un più ampio sforzo di
++[divulgazione dell'astronomia tramite app
++mobili](/blog/divulgazione-astronomia-mobile/), un canale ormai centrale
++per avvicinare nuove generazioni alla scienza.
+ 
+ ## Funzioni principali
+ 
+-- **Panoramica missione**: storia, obiettivi e strumenti a bordo.
+-- **Sorgenti e fenomeni**: schede sui principali oggetti osservati ai
+-  raggi gamma.
+-- **Aggiornamenti**: contenuti che seguono i temi dell'astrofisica
+-  delle alte energie.
++L'applicazione organizza i contenuti in sezioni tematiche, in modo che
++chiunque possa trovare un percorso adatto al proprio livello di
++conoscenza:
++
++- **Panoramica missione**: storia, obiettivi scientifici, partner
++  istituzionali e strumenti a bordo, dal
++  [rivelatore GRID](/blog/rivelatore-grid/) al calorimetro e al
++  rivelatore di raggi X.
++- **Sorgenti e fenomeni**: schede divulgative sui principali oggetti
++  osservati ai raggi gamma, dai [gamma-ray
++  burst](/blog/gamma-ray-burst/) ai [blazar e nuclei galattici
++  attivi](/blog/blazar-nuclei-galattici-attivi/), fino ai
++  [Terrestrial Gamma-ray Flashes](/blog/terrestrial-gamma-flashes/)
++  generati dai temporali terrestri.
++- **Contesto istituzionale**: il
++  [ruolo di INAF e ASI](/blog/inaf-asi-ruolo-agile/) nella
++  realizzazione e gestione della missione.
++- **Aggiornamenti e approfondimenti**: contenuti che seguono i temi
++  dell'[astrofisica delle alte energie](/blog/astrofisica-alte-energie/)
++  e le scoperte più significative.
+ 
+ ## Per chi è pensata
+ 
+-Per chi vuole capire l'astrofisica gamma senza un background tecnico:
+-la complessità dei dati viene mediata da spiegazioni chiare e da una
+-navigazione semplice. È anche un supporto per attività didattiche.
++AGILEScience è rivolta a chiunque voglia capire l'astrofisica gamma
++senza un background tecnico specialistico: la complessità dei dati
++scientifici viene mediata da spiegazioni accessibili e da una
++navigazione semplice e ordinata. È un valido supporto per attività
++didattiche nelle scuole secondarie, per progetti di alternanza e per
++chi prepara presentazioni o lezioni divulgative. Allo stesso tempo
++offre riferimenti corretti anche a un pubblico più preparato, che può
++usarla come introduzione rapida prima di consultare le pubblicazioni
++scientifiche. Per inquadrare la disciplina trattata nell'app è utile
++consultare la voce di [Wikipedia sui raggi
++gamma](https://it.wikipedia.org/wiki/Raggi_gamma), che spiega la natura
++di questa radiazione elettromagnetica e i suoi effetti.
++
++## Un percorso di lettura suggerito
++
++Chi si avvicina per la prima volta ai temi dell'app può seguire un
++itinerario logico, dal generale al particolare. Conviene partire da una
++panoramica sull'[astronomia dei raggi gamma](/blog/astronomia-raggi-gamma/),
++per capire che cosa sia questa radiazione e perché richieda osservatori
++spaziali. Da lì si passa alla [missione AGILE](/blog/la-missione-agile/),
++al suo [rivelatore GRID](/blog/rivelatore-grid/) e infine ai fenomeni
++specifici, come i [flare della Nebulosa del
++Granchio](/blog/flare-nebulosa-granchio/), che hanno sorpreso la comunità
++scientifica perché provenienti da una sorgente ritenuta stabile. Questo
++ordine aiuta a costruire le basi prima di affrontare i casi di studio più
++complessi, ed è lo stesso percorso che molti insegnanti adottano in aula.
++
++## Perché un'app dedicata
++
++Rispetto a un sito web, un'applicazione mobile permette di raggiungere il
++pubblico nei momenti e nei luoghi in cui la curiosità nasce davvero:
++durante un evento di astronomia pubblica, una visita a un planetario o
++semplicemente osservando il cielo. La fruizione per piccole schede
++tematiche, brevi ma rigorose, è coerente con i tempi di attenzione tipici
++dell'uso mobile e si presta a essere ripresa più volte. È anche un modo
++per documentare in forma accessibile l'eredità di un programma
++finanziato con risorse pubbliche, restituendo alla collettività il valore
++scientifico prodotto da una missione di lunga durata.
+ 
+-## Download
++## Download e utilizzo
+ 
+-L'app è disponibile gratuitamente per iOS e Android. Installandola hai
+-sempre con te un riferimento divulgativo affidabile sulla missione
+-scientifica italiana dedicata ai raggi gamma.
++L'app è disponibile gratuitamente per iOS e Android. Una volta
++installata, hai sempre con te un riferimento divulgativo affidabile
++sulla principale missione scientifica italiana dedicata ai raggi
++gamma. È pensata per essere consultata anche in mobilità, durante un
++evento di astronomia pubblica o una visita a un planetario, e per
++stimolare la curiosità con contenuti brevi ma rigorosi. In questo modo
++il lavoro del satellite — e delle istituzioni che lo hanno reso
++possibile, secondo il [ruolo di INAF e
++ASI](/blog/inaf-asi-ruolo-agile/) — diventa patrimonio condiviso e non
++resta confinato alla sola comunità degli specialisti.
 diff --git a/src/content/articoli/inaf-asi-ruolo-agile.md b/src/content/articoli/inaf-asi-ruolo-agile.md
-index 271ddc2..1af7b20 100644
+index 271ddc2..ec0bbfc 100644
 --- a/src/content/articoli/inaf-asi-ruolo-agile.md
 +++ b/src/content/articoli/inaf-asi-ruolo-agile.md
 @@ -4,6 +4,9 @@ slug: "inaf-asi-ruolo-agile"
@@ -201244,8 +202088,104 @@ index 271ddc2..1af7b20 100644
  author: "Redazione"
  readingTime: 4
  tags: ["ASI", "INAF", "INFN", "AGILE"]
+@@ -11,26 +14,81 @@ tags: ["ASI", "INAF", "INFN", "AGILE"]
+ 
+ ## Una missione di sistema
+ 
+-AGILE nasce dalla collaborazione tra l'**Agenzia Spaziale Italiana**
+-(ASI), responsabile del programma, l'**Istituto Nazionale di
+-Astrofisica** (INAF) e l'**INFN**, con il coinvolgimento di università e
+-industria nazionale. È un esempio di come la ricerca italiana sappia
+-realizzare missioni scientifiche competitive a costi contenuti.
++La [missione AGILE](/blog/la-missione-agile/) nasce dalla
++collaborazione tra l'**Agenzia Spaziale Italiana** (ASI), responsabile
++del programma e del finanziamento, l'**Istituto Nazionale di
++Astrofisica** (INAF) e l'**Istituto Nazionale di Fisica Nucleare**
++(INFN), con il coinvolgimento di università italiane e dell'industria
++aerospaziale nazionale. È un esempio significativo di come la ricerca
++italiana sappia concepire e realizzare missioni scientifiche
++competitive a costi contenuti, sfruttando una stretta integrazione tra
++enti diversi. AGILE, lanciato nel 2007 da una base indiana, ha operato
++per oltre quattordici anni, ben oltre la durata nominale prevista,
++producendo risultati di rilievo internazionale nell'[astrofisica delle
++alte energie](/blog/astrofisica-alte-energie/).
+ 
+ ## Chi fa cosa
+ 
+-- **ASI** coordina il programma, il segmento di terra e le operazioni.
+-- **INAF** guida l'analisi scientifica e l'interpretazione dei dati.
+-- **INFN** ha contribuito alla rivelazione e alla strumentazione.
++Il successo di una missione spaziale dipende dalla chiara divisione dei
++ruoli tra i partner istituzionali. Nel caso di AGILE:
++
++- **ASI** coordina il programma, gestisce il rapporto con l'industria,
++  il segmento di terra e le operazioni del satellite. L'agenzia,
++  descritta nella voce di [Wikipedia sull'Agenzia Spaziale
++  Italiana](https://it.wikipedia.org/wiki/Agenzia_Spaziale_Italiana),
++  è il riferimento nazionale per le attività spaziali civili.
++- **INAF** guida l'analisi scientifica, la calibrazione degli strumenti
++  e l'interpretazione dei dati osservativi, mettendo a disposizione la
++  sua rete di osservatori e ricercatori.
++- **INFN** ha contribuito in modo determinante alla progettazione dei
++  rivelatori, in particolare del [rivelatore
++  GRID](/blog/rivelatore-grid/), basato su tecnologie di fisica delle
++  particelle come il tracciatore al silicio.
++
++A questi si aggiungono dipartimenti universitari e aziende del settore
++aerospaziale, che hanno realizzato componenti, il segmento di terra e il
++software di analisi dei dati. L'INAF, in particolare, è l'ente di ricerca
++pubblico italiano dedicato all'astronomia e all'astrofisica, descritto
++nella voce di [Wikipedia sull'Istituto nazionale di
++astrofisica](https://it.wikipedia.org/wiki/Istituto_nazionale_di_astrofisica),
++e mette a disposizione la rete di osservatori e i gruppi di ricerca che
++analizzano le osservazioni del satellite.
++
++## Un modello di collaborazione
++
++Il caso AGILE è spesso citato come esempio virtuoso di missione
++"di sistema": nessun ente avrebbe potuto realizzarla da solo, ma la
++combinazione di competenze programmatiche (ASI), scientifiche (INAF) e di
++fisica dei rivelatori (INFN) ha permesso di costruire uno strumento
++competitivo a costi contenuti. È un modello che ricorre anche in altre
++missioni e che vale la pena confrontare con l'esperienza di osservatori
++internazionali più grandi, come illustrato nel [confronto tra AGILE e
++Fermi](/blog/agile-fermi-confronto/). La stessa logica di integrazione si
++ritrova nella progettazione degli strumenti: il
++[rivelatore GRID](/blog/rivelatore-grid/) nasce dall'incontro tra cultura
++astrofisica e tecniche di fisica delle particelle, ed è ciò che ha reso
++possibile lo studio di fenomeni tanto diversi come i [gamma-ray
++burst](/blog/gamma-ray-burst/) e i [Terrestrial Gamma-ray
++Flashes](/blog/terrestrial-gamma-flashes/).
+ 
+ ## Un patrimonio condiviso
+ 
+-I risultati di AGILE confluiscono in archivi e pubblicazioni usati dalla
+-comunità internazionale. Non a caso il satellite è citato da istituzioni
+-come NASA e dai principali centri di ricerca astrofisica.
++I risultati di AGILE confluiscono in archivi pubblici e in centinaia di
++pubblicazioni scientifiche utilizzate dalla comunità internazionale.
++Scoperte come i [flare della Nebulosa del
++Granchio](/blog/flare-nebulosa-granchio/) o i [Terrestrial Gamma-ray
++Flashes](/blog/terrestrial-gamma-flashes/) hanno avuto impatto ben
++oltre i confini nazionali, e il satellite è regolarmente citato da
++istituzioni come la NASA e dai principali centri di ricerca
++astrofisica. Questo dimostra il valore di una collaborazione
++istituzionale ben strutturata, in cui ciascun ente apporta competenze
++complementari.
+ 
+ ## Dalla ricerca al pubblico
+ 
+-L'app AGILEScience chiude il cerchio: rende accessibile a tutti il
+-lavoro di queste istituzioni, trasformando dati tecnici in conoscenza
+-divulgabile.
++L'app [AGILEScience](/blog/guida-app-agilescience/) chiude il cerchio:
++rende accessibile a tutti il lavoro di queste istituzioni, trasformando
++dati tecnici in conoscenza divulgabile. È un modo concreto per
++restituire alla collettività il valore di un investimento pubblico
++nella ricerca, mostrando come scienza, tecnologia e cooperazione tra
++enti possano generare conoscenza condivisa e duratura.
 diff --git a/src/content/articoli/la-missione-agile.md b/src/content/articoli/la-missione-agile.md
-index 152d393..64abf45 100644
+index 152d393..e423233 100644
 --- a/src/content/articoli/la-missione-agile.md
 +++ b/src/content/articoli/la-missione-agile.md
 @@ -4,6 +4,9 @@ slug: "la-missione-agile"
@@ -201258,8 +202198,108 @@ index 152d393..64abf45 100644
  author: "Redazione"
  readingTime: 5
  tags: ["AGILE", "astrofisica", "raggi gamma", "INAF", "ASI"]
+@@ -12,31 +15,81 @@ tags: ["AGILE", "astrofisica", "raggi gamma", "INAF", "ASI"]
+ ## Che cos'è AGILE
+ 
+ AGILE (*Astrorivelatore Gamma a Immagini Leggero*) è un satellite
+-scientifico dell'Agenzia Spaziale Italiana, realizzato con INAF e INFN e
+-lanciato nel 2007 per osservare il cielo nei raggi X duri e gamma —
+-una delle finestre più energetiche e difficili dell'universo.
++scientifico dell'Agenzia Spaziale Italiana, realizzato in
++collaborazione con INAF e INFN e lanciato il 23 aprile 2007 da una base
++indiana per osservare il cielo nei raggi X duri e gamma — una delle
++finestre più energetiche e difficili dell'universo. Si trova su
++un'orbita bassa quasi equatoriale, scelta che riduce il fondo di
++particelle e favorisce lo studio dei fenomeni terrestri. Per una
++panoramica sulla disciplina si rimanda all'introduzione all'[astrofisica
++delle alte energie](/blog/astrofisica-alte-energie/) e a quella
++sull'[astronomia dei raggi gamma](/blog/astronomia-raggi-gamma/).
+ 
+-Pesa poco più di 350 kg: una missione "leggera" che ha però prodotto
+-risultati di primo piano, dimostrando che un progetto compatto e ben
+-concepito può competere con osservatori molto più grandi.
++Pesa poco più di 350 kg: una missione "leggera", come dice il nome, che
++ha però prodotto risultati di primo piano, dimostrando che un progetto
++compatto e ben concepito può competere con osservatori molto più
++grandi. La durata operativa, prevista inizialmente in pochi anni, si è
++estesa per oltre un decennio. Maggiori dettagli storici sono
++disponibili nella voce di [Wikipedia sul satellite
++AGILE](https://it.wikipedia.org/wiki/AGILE_(satellite)).
+ 
+ ## Gli strumenti
+ 
+-Il cuore è il **Gamma-Ray Imaging Detector (GRID)**, affiancato dal
+-calorimetro MCAL e dal rivelatore X Super-AGILE. Insieme localizzano
+-sorgenti gamma transienti, ne misurano l'energia e reagiscono in tempi
+-rapidi a fenomeni improvvisi come i gamma-ray burst.
++Il cuore della missione è il **Gamma-Ray Imaging Detector (GRID)**, un
++[rivelatore basato sulla produzione di
++coppie](/blog/rivelatore-grid/), affiancato dal calorimetro MCAL e dal
++rivelatore di raggi X Super-AGILE, oltre a un sistema di
++anticoincidenza che scarta il fondo di raggi cosmici. Insieme questi
++strumenti localizzano sorgenti gamma transienti, ne misurano l'energia
++e reagiscono in tempi rapidi a fenomeni improvvisi come i [gamma-ray
++burst](/blog/gamma-ray-burst/). Una caratteristica distintiva di AGILE
++è l'ampio campo di vista, che consente di monitorare contemporaneamente
++una vasta porzione di cielo.
+ 
+ ## Le scoperte
+ 
+-- I **flare della Nebulosa del Granchio**, prima ritenuta stabile;
+-- l'attività intensa di **blazar** e nuclei galattici attivi;
+-- i **Terrestrial Gamma-ray Flashes** generati dai temporali terrestri.
++Nel corso della sua attività AGILE ha collezionato risultati di rilievo
++internazionale:
++
++- I sorprendenti [flare della Nebulosa del
++  Granchio](/blog/flare-nebulosa-granchio/), una sorgente in precedenza
++  ritenuta stabile e usata come candela di calibrazione;
++- l'attività intensa di [blazar e nuclei galattici
++  attivi](/blog/blazar-nuclei-galattici-attivi/), alimentati da buchi
++  neri supermassicci;
++- i [Terrestrial Gamma-ray
++  Flashes](/blog/terrestrial-gamma-flashes/) generati dai temporali
++  della nostra atmosfera, un ponte tra astrofisica e geofisica.
++
++## Una missione rapida e reattiva
++
++Una delle caratteristiche che hanno reso AGILE prezioso è la capacità di
++reagire in fretta. L'ampio campo di vista, unito a un sistema di analisi
++in tempo quasi reale, consentiva di emettere allerte rapide quando una
++sorgente diventava improvvisamente attiva. Questa reattività è stata
++decisiva per cogliere fenomeni di breve durata e per coordinarsi con
++altri osservatori, terrestri e spaziali, secondo la logica
++dell'astronomia multimessaggera. Il confronto con il telescopio
++statunitense Fermi, lanciato l'anno successivo, è naturale e istruttivo:
++i due strumenti hanno caratteristiche complementari, come spiegato nel
++[confronto tra AGILE e Fermi](/blog/agile-fermi-confronto/). Per chi
++desidera capire come lo strumento ricostruisca la direzione dei fotoni
++gamma, è utile l'approfondimento sull'[astronomia dei raggi
++gamma](/blog/astronomia-raggi-gamma/) e quello dedicato al funzionamento
++del [rivelatore GRID](/blog/rivelatore-grid/).
+ 
+ ## Perché conta oggi
+ 
+-I dati di AGILE alimentano un patrimonio ancora studiato dalla comunità
+-internazionale e citato da NASA, INAF e ASI. L'app **AGILEScience**
+-rende questo patrimonio accessibile a tutti, portando l'astrofisica
+-delle alte energie su smartphone e tablet. Nei prossimi articoli
+-approfondiamo strumenti, fenomeni e uso dell'app.
++I dati di AGILE alimentano un patrimonio scientifico ancora studiato
++dalla comunità internazionale e citato da NASA, INAF e ASI; il
++[ruolo di INAF e ASI](/blog/inaf-asi-ruolo-agile/) è stato decisivo
++nel renderlo possibile. Anche dopo la fine delle operazioni, gli archivi
++restano una risorsa: contengono anni di monitoraggio continuo del cielo
++gamma, indispensabile per ricostruire la storia a lungo termine di
++sorgenti variabili come i [blazar e i nuclei galattici
++attivi](/blog/blazar-nuclei-galattici-attivi/). L'app
++[AGILEScience](/blog/guida-app-agilescience/) rende questo patrimonio
++accessibile a tutti, portando l'astrofisica delle alte energie su
++smartphone e tablet, mentre il lavoro di [divulgazione tramite app
++mobili](/blog/divulgazione-astronomia-mobile/) ne amplia la portata.
++Nei prossimi articoli approfondiamo strumenti, fenomeni e uso dell'app.
 diff --git a/src/content/articoli/rivelatore-grid.md b/src/content/articoli/rivelatore-grid.md
-index f217666..f91534c 100644
+index f217666..64f7a7a 100644
 --- a/src/content/articoli/rivelatore-grid.md
 +++ b/src/content/articoli/rivelatore-grid.md
 @@ -4,6 +4,9 @@ slug: "rivelatore-grid"
@@ -201272,8 +202312,109 @@ index f217666..f91534c 100644
  author: "Redazione"
  readingTime: 5
  tags: ["GRID", "rivelatore", "tecnologia", "AGILE"]
+@@ -11,27 +14,86 @@ tags: ["GRID", "rivelatore", "tecnologia", "AGILE"]
+ 
+ ## Fotografare l'invisibile
+ 
+-I raggi gamma non si "riflettono" come la luce: non esistono lenti o
+-specchi che li focalizzino. Per costruire un'immagine del cielo gamma
+-serve un approccio diverso, basato sull'interazione dei fotoni con la
+-materia.
++I raggi gamma non si "riflettono" come la luce visibile: la loro
++energia è così elevata che non esistono lenti o specchi capaci di
++focalizzarli. Per costruire un'immagine del cielo gamma serve quindi un
++approccio radicalmente diverso, basato sull'interazione diretta dei
++fotoni con la materia del rivelatore. È il principio che sta alla base
++di tutta l'[astronomia dei raggi gamma](/blog/astronomia-raggi-gamma/) e,
++più in generale, dell'[astrofisica delle alte
++energie](/blog/astrofisica-alte-energie/). La voce di [Wikipedia sui
++raggi gamma](https://it.wikipedia.org/wiki/Raggi_gamma) descrive bene la
++natura di questa radiazione e perché richiede strumenti tanto
++particolari.
+ 
+ ## Il principio del GRID
+ 
+ Il **Gamma-Ray Imaging Detector** sfrutta la *produzione di coppie*:
+-un fotone gamma ad alta energia, attraversando sottili strati di
+-materiale, si converte in una coppia elettrone-positrone. Tracciando le
+-traiettorie di queste particelle con un tracciatore al silicio, lo
+-strumento ricostruisce la direzione di provenienza del fotone.
++quando un fotone gamma ad alta energia (tipicamente sopra i 30 MeV)
++attraversa sottili lamine di materiale ad alto numero atomico, in
++prossimità di un nucleo si converte in una coppia
++elettrone-positrone. Le due particelle cariche proseguono nel
++rivelatore e le loro traiettorie vengono registrate; ricostruendole, lo
++strumento risale alla direzione di provenienza del fotone originario e
++ne stima l'energia. Questo schema è ereditato dalla fisica delle
++particelle ed è stato adattato all'ambiente spaziale grazie al
++contributo dell'[INFN nella missione](/blog/inaf-asi-ruolo-agile/).
+ 
+ ## I componenti
+ 
+-- Un **tracciatore al silicio** che registra le tracce delle particelle.
+-- Un **calorimetro** che misura l'energia depositata.
+-- Un sistema **anticoincidenza** che scarta i raggi cosmici di fondo.
++Il GRID è un sistema integrato di sotto-rivelatori che lavorano in
++coincidenza:
++
++- Un **tracciatore al silicio**, organizzato in piani alternati a
++  sottili convertitori in tungsteno, che registra con precisione le
++  tracce di elettrone e positrone.
++- Un **calorimetro** a ioduro di cesio che misura l'energia depositata
++  dalle particelle e contribuisce alla determinazione spettrale.
++- Un sistema di **anticoincidenza** che circonda lo strumento e scarta
++  l'enorme fondo di raggi cosmici carichi, lasciando passare solo gli
++  eventi gamma genuini.
++
++L'insieme garantisce ad AGILE un campo di vista molto ampio, ideale per
++sorvegliare contemporaneamente vaste regioni di cielo.
++
++## Dalla traccia all'immagine
++
++Ricostruire un'immagine del cielo gamma è un problema di analisi dati,
++non di ottica. Ogni evento utile fornisce una direzione di arrivo
++ricavata dalla geometria della coppia elettrone-positrone, ma la
++precisione di un singolo evento è limitata dalle deviazioni che le
++particelle subiscono attraversando i convertitori (lo *scattering*
++multiplo). Solo accumulando molti eventi e applicando tecniche statistiche
++si ottiene una mappa significativa. Per questo i raggi gamma più
++energetici, che subiscono meno deviazioni, permettono localizzazioni più
++accurate, mentre alle energie più basse la risoluzione angolare peggiora.
++È un compromesso intrinseco a tutti gli strumenti che lavorano per
++produzione di coppie, ben noto a chi si occupa di [astrofisica delle alte
++energie](/blog/astrofisica-alte-energie/).
++
++## Un'eredità tecnologica condivisa
++
++L'architettura del GRID, con tracciatore al silicio e calorimetro, è
++diventata un riferimento per gli strumenti gamma successivi: lo stesso
++schema, su scala maggiore, è alla base del telescopio Fermi-LAT, e il
++[confronto tra AGILE e Fermi](/blog/agile-fermi-confronto/) mostra come
++scelte progettuali simili portino a prestazioni complementari. La
++reattività del rivelatore è stata inoltre essenziale per cogliere eventi
++brevissimi come i [Terrestrial Gamma-ray
++Flashes](/blog/terrestrial-gamma-flashes/), in cui il calorimetro MCAL ha
++avuto un ruolo di primo piano. La capacità di rispondere rapidamente a
++sorgenti variabili rende questa tecnologia preziosa anche per l'app
++[AGILEScience](/blog/guida-app-agilescience/), che racconta in forma
++divulgativa le scoperte rese possibili da questo strumento.
+ 
+ ## Perché è importante
+ 
+-Questo design ha permesso ad AGILE di mappare il cielo gamma e di
+-cogliere variazioni rapide delle sorgenti. È la tecnologia che rende
+-possibili le scoperte raccontate negli altri articoli.
++Questo design ha permesso alla [missione
++AGILE](/blog/la-missione-agile/) di mappare il cielo gamma e, grazie
++alla rapidità di risposta, di cogliere variazioni veloci delle
++sorgenti: dai [gamma-ray burst](/blog/gamma-ray-burst/) ai
++sorprendenti [flare della Nebulosa del
++Granchio](/blog/flare-nebulosa-granchio/). È la tecnologia che rende
++possibili le scoperte raccontate negli altri articoli, e che ancora
++oggi alimenta archivi consultati dalla comunità scientifica
++internazionale.
 diff --git a/src/content/articoli/terrestrial-gamma-flashes.md b/src/content/articoli/terrestrial-gamma-flashes.md
-index 2893166..5215e1a 100644
+index 2893166..35a4689 100644
 --- a/src/content/articoli/terrestrial-gamma-flashes.md
 +++ b/src/content/articoli/terrestrial-gamma-flashes.md
 @@ -4,6 +4,9 @@ slug: "terrestrial-gamma-flashes"
@@ -201286,6 +202427,92 @@ index 2893166..5215e1a 100644
  author: "Redazione"
  readingTime: 4
  tags: ["TGF", "atmosfera", "temporali", "AGILE"]
+@@ -12,25 +15,72 @@ tags: ["TGF", "atmosfera", "temporali", "AGILE"]
+ ## Gamma dalla Terra, non dal cosmo
+ 
+ Non tutti i raggi gamma arrivano da galassie lontane. I **Terrestrial
+-Gamma-ray Flashes** sono brevissimi lampi gamma prodotti dentro la nostra
+-atmosfera, associati ai temporali e all'attività dei fulmini.
++Gamma-ray Flashes** (TGF) sono brevissimi lampi di raggi gamma prodotti
++all'interno della nostra atmosfera, associati ai temporali e all'attività
++dei fulmini. Scoperti per la prima volta all'inizio degli anni Novanta
++dal satellite statunitense BATSE/CGRO, hanno rivelato che la Terra stessa
++è una sorgente naturale di radiazione gamma di alta energia. Sono uno dei
++fenomeni più curiosi studiati nell'ambito dell'[astrofisica delle alte
++energie](/blog/astrofisica-alte-energie/), perché collegano lo studio del
++cielo profondo a quello dell'atmosfera terrestre. La radiazione coinvolta
++è la stessa descritta nell'[astronomia dei raggi
++gamma](/blog/astronomia-raggi-gamma/) e nella voce di [Wikipedia sui
++raggi gamma](https://it.wikipedia.org/wiki/Raggi_gamma), ma qui l'origine
++non è cosmica: è atmosferica.
+ 
+ ## Come si formano
+ 
+-Durante un temporale, intensi campi elettrici possono accelerare
+-elettroni fino a energie elevatissime. Questi elettroni, interagendo con
+-l'aria, emettono raggi gamma in lampi che durano meno di un millisecondo.
++Durante un temporale, le differenze di carica fra nube e nube o fra nube
++e suolo generano campi elettrici molto intensi. In determinate
++condizioni questi campi possono accelerare elettroni liberi fino a
++energie relativistiche, innescando un processo a valanga noto come
++*Relativistic Runaway Electron Avalanche* (RREA). Gli elettroni così
++accelerati, urtando i nuclei degli atomi dell'aria, perdono energia
++emettendo fotoni gamma per radiazione di frenamento (*bremsstrahlung*).
++Il risultato è un lampo intensissimo ma estremamente breve, che dura
++tipicamente da qualche decina di microsecondi a meno di un millisecondo.
++L'emissione si origina ad altitudini di una decina di chilometri, in
++corrispondenza delle regioni più attive dei sistemi temporaleschi, e può
++essere accompagnata dalla produzione di positroni e di fasci di elettroni
++che risalgono lungo le linee del campo magnetico terrestre.
+ 
+ ## Il ruolo di AGILE
+ 
+-AGILE ha rilevato numerosi TGF, contribuendo a misurarne lo spettro
+-energetico con un dettaglio che ha aiutato a vincolare i modelli su come
+-i temporali producono questa radiazione. Un risultato che collega
+-astrofisica e fisica dell'atmosfera.
++La [missione AGILE](/blog/la-missione-agile/) si è rivelata
++particolarmente adatta allo studio dei TGF grazie alla sua orbita bassa,
++quasi equatoriale, che la porta a sorvolare le fasce tropicali dove i
++temporali sono più frequenti e violenti. Il [rivelatore
++GRID](/blog/rivelatore-grid/) e soprattutto il calorimetro MCAL hanno
++permesso di registrare numerosi eventi e di misurarne lo spettro
++energetico fino a energie sorprendentemente alte, ben oltre quelle
++osservate in precedenza. Queste misure hanno contribuito a vincolare i
++modelli teorici su come i temporali accelerano le particelle e su quanta
++energia possano realmente raggiungere i fotoni prodotti. Il lavoro su
++questi fenomeni è frutto della collaborazione fra gli enti descritti nel
++[ruolo di INAF e ASI](/blog/inaf-asi-ruolo-agile/), e mostra come uno
++strumento progettato per l'astrofisica possa dare contributi alla
++geofisica. I dati sui TGF sono spesso confrontati con quelli del
++telescopio statunitense Fermi, come illustrato nel [confronto tra AGILE
++e Fermi](/blog/agile-fermi-confronto/).
+ 
+ ## Perché interessa
+ 
+-I TGF avvengono sopra le nostre teste e pongono domande aperte sulla
+-fisica dei fulmini. Studiarli significa capire meglio fenomeni terrestri
+-ancora non del tutto compresi, con un satellite nato per guardare lo
+-spazio profondo.
++I TGF avvengono letteralmente sopra le nostre teste e sollevano domande
++ancora aperte sulla fisica dei fulmini, un fenomeno familiare ma
++sorprendentemente poco compreso nei suoi meccanismi più estremi.
++Comprendere come e dove si producono ha implicazioni anche pratiche: i
++lampi e i fasci di elettroni associati possono attraversare regioni
++percorse dal traffico aereo, e capirne la frequenza e l'intensità è utile
++per la valutazione dell'esposizione alla radiazione in quota. Studiare i
++TGF significa quindi unire astrofisica, fisica dell'atmosfera e
++applicazioni concrete, usando un satellite nato per guardare lo spazio
++profondo. C'è infine un aspetto metodologico interessante: i TGF
++illustrano bene come uno stesso tipo di radiazione possa avere origini
++profondamente diverse, cosmiche come nei [gamma-ray
++burst](/blog/gamma-ray-burst/) oppure locali come nei temporali, e come
++distinguere le due richieda strumenti sensibili e ben calibrati. Per chi
++vuole seguire questi temi in modo accessibile, la [guida all'app
++AGILEScience](/blog/guida-app-agilescience/) raccoglie schede divulgative
++anche su questi fenomeni di confine, nel quadro più ampio della
++[divulgazione dell'astronomia tramite app
++mobili](/blog/divulgazione-astronomia-mobile/).
 diff --git a/src/data/gallery.json b/src/data/gallery.json
 index fe51488..3143cfb 100644
 --- a/src/data/gallery.json

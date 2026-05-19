@@ -1,7 +1,7 @@
 From d57889d66a817b622eab2e2b1cde52629118b2a5 Mon Sep 17 00:00:00 2001
 From: c <c@l>
 Date: Tue, 19 May 2026 12:48:46 +0000
-Subject: [PATCH 1/2] Fix unreadable text: map --color-fg/muted/divider from
+Subject: [PATCH 1/3] Fix unreadable text: map --color-fg/muted/divider from
  palette
 
 Same BaseLayout contrast bug as the sibling site: --color-fg was
@@ -32,7 +32,7 @@ index 0d8e11d..4c33058 100644
 From 334dd98ddba1dc7bf9358e00f9f280ae085ca8a5 Mon Sep 17 00:00:00 2001
 From: c <c@l>
 Date: Tue, 19 May 2026 13:50:14 +0000
-Subject: [PATCH 2/2] Add branded SVG covers + wire article hero & gallery
+Subject: [PATCH 2/3] Add branded SVG covers + wire article hero & gallery
 
 Per-category SVG covers (text/SVG, no binaries). Every article gets a
 category hero; gallery.json fills the PhotoMosaic.
@@ -565,6 +565,84 @@ index fe51488..cf2e006 100644
 +  }
 +]
 \ No newline at end of file
+-- 
+2.43.0
+
+
+From 5fe945cc53bd02c393823a63eb73663ed161f620 Mon Sep 17 00:00:00 2001
+From: c <c@l>
+Date: Tue, 19 May 2026 13:53:32 +0000
+Subject: [PATCH 3/3] Interlink: 'Articoli correlati' (same-category) on every
+ article
+
+---
+ src/layouts/ArticleLayout.astro | 38 ++++++++++++++++++++++++++++++++-
+ 1 file changed, 37 insertions(+), 1 deletion(-)
+
+diff --git a/src/layouts/ArticleLayout.astro b/src/layouts/ArticleLayout.astro
+index 211fe53..983d338 100644
+--- a/src/layouts/ArticleLayout.astro
++++ b/src/layouts/ArticleLayout.astro
+@@ -1,5 +1,6 @@
+ ---
+ import BaseLayout from "./BaseLayout.astro";
++import { getCollection } from "astro:content";
+ import { articleSchema, breadcrumbSchema } from "../lib/schema";
+ import { buildCanonical, buildOgImage } from "../lib/seo";
+ import config from "../site.config";
+@@ -50,6 +51,17 @@ const crumbs = [
+   { name: title, url: canonicalUrl },
+ ];
+ const schemas = [artSchema, breadcrumbSchema(crumbs)];
++
++const _all = await getCollection("articoli");
++const _slug = (a: any) => a.data.slug ?? a.id.replace(/\.md$/, "");
++const related = _all
++  .filter((a) => _slug(a) !== slug)
++  .sort((a, b) => {
++    const sc = (x: any) => (x.data.category === category ? 0 : 1);
++    return sc(a) - sc(b) || new Date(b.data.date).getTime() - new Date(a.data.date).getTime();
++  })
++  .slice(0, 3)
++  .map((a) => ({ title: a.data.title, slug: _slug(a), category: a.data.category }));
+ ---
+ <BaseLayout
+   title={title}
+@@ -111,9 +123,33 @@ const schemas = [artSchema, breadcrumbSchema(crumbs)];
+       <slot name="toc" />
+     </aside>
+ 
++    {related.length > 0 && (
++      <nav
++        aria-label="Articoli correlati"
++        class="max-w-3xl border-t mt-16 pt-8"
++        style="border-color:var(--color-divider)"
++      >
++        <p class="text-xs font-medium uppercase tracking-widest mb-4" style="color:var(--color-accent)">Articoli correlati</p>
++        <ul class="space-y-3 list-none p-0 m-0">
++          {related.map((r) => (
++            <li>
++              <a
++                href={`/blog/${r.slug}/`}
++                class="no-underline hover:underline font-medium"
++                style="color:var(--color-fg)"
++              >
++                {r.title}
++              </a>
++              <span class="text-xs ml-2" style="color:var(--color-muted)">{r.category}</span>
++            </li>
++          ))}
++        </ul>
++      </nav>
++    )}
++
+     <!-- Back link -->
+     <div
+-      class="max-w-3xl border-t mt-16 pt-8"
++      class="max-w-3xl border-t mt-12 pt-8"
+       style="border-color:var(--color-divider)"
+     >
+       <a
 -- 
 2.43.0
 

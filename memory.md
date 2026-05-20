@@ -151,6 +151,13 @@ and the Stage-4 wiring are **owner one-time actions** — cannot be done
 from here. Until then, per-site delivery stays the
 `patches/*-update.patch` → `git am -3` flow.
 
+## ⚠ TODO — open reminders
+
+- **Rendere privati di nuovo i repo dei siti** (`site-agilescienceapp`,
+  `site-modoristorante`) appena finito di sbloccare il deploy CF Pages. Il
+  proprietario li aveva resi pubblici temporaneamente in questa sessione
+  per facilitare il debug — vanno ripristinati a `private` su GitHub.
+
 ## CF Pages deploy was failing — ROOT CAUSE (2026-05-19)
 
 Sites would not update no matter what was pushed (stale build served,

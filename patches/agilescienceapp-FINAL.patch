@@ -1,11 +1,12 @@
-From 9f0896bf0fa0fb79d1e36f618fed1cefaa58f7ec Mon Sep 17 00:00:00 2001
+From f04a6d911c10ce1c750ad82d74c22c8ce2dd94c8 Mon Sep 17 00:00:00 2001
 From: c <c@l>
-Date: Tue, 19 May 2026 16:01:07 +0000
-Subject: [PATCH] Elite polish + CF deploy fix + expanded articles (>=500w, >=5
- internal, authoritative links)
+Date: Wed, 20 May 2026 14:06:07 +0000
+Subject: [PATCH] Elite polish + CF deploy fix (.npmrc + .nvmrc) + expanded
+ articles + AI covers + galleria
 
 ---
  .npmrc                                        |    1 +
+ .nvmrc                                        |    1 +
  package-lock.json                             | 5897 +++++++++++++++++
  public/img/cat-app.png                        |  Bin 0 -> 1586952 bytes
  public/img/cat-divulgazione.png               |  Bin 0 -> 2149099 bytes
@@ -29,8 +30,9 @@ Subject: [PATCH] Elite polish + CF deploy fix + expanded articles (>=500w, >=5
  src/layouts/BaseLayout.astro                  |    3 +
  src/pages/galleria.astro                      |   10 +-
  src/site.config.ts                            |    6 +-
- 24 files changed, 6915 insertions(+), 186 deletions(-)
+ 25 files changed, 6916 insertions(+), 186 deletions(-)
  create mode 100644 .npmrc
+ create mode 100644 .nvmrc
  create mode 100644 package-lock.json
  create mode 100644 public/img/cat-app.png
  create mode 100644 public/img/cat-divulgazione.png
@@ -45,6 +47,13 @@ index 0000000..521a9f7
 +++ b/.npmrc
 @@ -0,0 +1 @@
 +legacy-peer-deps=true
+diff --git a/.nvmrc b/.nvmrc
+new file mode 100644
+index 0000000..1d9b783
+--- /dev/null
++++ b/.nvmrc
+@@ -0,0 +1 @@
++22.12.0
 diff --git a/package-lock.json b/package-lock.json
 new file mode 100644
 index 0000000..62a0240

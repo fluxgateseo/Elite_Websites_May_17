@@ -1,0 +1,363 @@
+From 8a5c1e6c76d5adad3ae70d595880bf0740485fce Mon Sep 17 00:00:00 2001
+From: c <c@c>
+Date: Wed, 20 May 2026 15:11:10 +0000
+Subject: [PATCH] Implement /custom-prompt endpoint: dashboard-driven site
+ edits via Claude Opus + multi-blob commit (per docs/custom-prompt.md)
+
+---
+ src/custom-prompt.ts        | 276 ++++++++++++++++++++++++++++++++++++
+ src/index.ts                |  15 ++
+ tests/custom-prompt.test.ts |  27 ++++
+ 3 files changed, 318 insertions(+)
+ create mode 100644 src/custom-prompt.ts
+ create mode 100644 tests/custom-prompt.test.ts
+
+diff --git a/src/custom-prompt.ts b/src/custom-prompt.ts
+new file mode 100644
+index 0000000..610db4d
+--- /dev/null
++++ b/src/custom-prompt.ts
+@@ -0,0 +1,276 @@
++// /custom-prompt — dashboard-driven site edits.
++// Free-text instruction → Claude Opus → multi-blob commit on main →
++// site's GHA auto-deploy. See ../docs/custom-prompt.md (in meta repo)
++// for the contract.
++
++import { callAnthropic } from "./lib/anthropic";
++import { commitFiles } from "./lib/github";
++import { getDb, loadSiteByDomain } from "./lib/db";
++import { parseBrief } from "./lib/brief";
++import type { Env } from "./pipeline";
++
++export type CustomPromptScope = "content" | "config" | "all";
++
++export type CustomPromptBody = {
++  domain?: string;
++  prompt?: string;
++  scope?: CustomPromptScope;
++};
++
++export type CustomPromptResult = {
++  ok: true;
++  commitSha: string;
++  filesChanged: string[];
++  modelUsage: {
++    inputTokens: number;
++    outputTokens: number;
++    cacheReadInputTokens: number;
++  };
++} | {
++  ok: false;
++  error: string;
++};
++
++const MAX_PROMPT_LEN = 2000;
++const MAX_OUTPUT_TOKENS = 16000;
++
++// Path allow-list per scope. Mirrors docs/custom-prompt.md "Scope rules".
++// Enforced BOTH before fetching (filter the tree walk) and after Claude
++// returns edits (filter the edits[] array) — same belt-and-braces as the
++// docs prescribe.
++export function pathAllowed(path: string, scope: CustomPromptScope): boolean {
++  if (scope === "content" || scope === "all") {
++    if (/^src\/content\/articoli\/[A-Za-z0-9_-]+\.md$/.test(path)) return true;
++    if (/^src\/content\/pages\/[A-Za-z0-9_-]+\.md$/.test(path)) return true;
++  }
++  if (scope === "config" || scope === "all") {
++    if (path === "src/site.config.ts") return true;
++  }
++  if (scope === "all") {
++    if (path === "extra-redirects.txt") return true;
++  }
++  return false;
++}
++
++type RepoFile = { path: string; content: string };
++
++async function fetchInScopeFiles(args: {
++  token: string;
++  owner: string;
++  repo: string;
++  scope: CustomPromptScope;
++  fetcher?: typeof fetch;
++}): Promise<RepoFile[]> {
++  const fetcher = args.fetcher ?? fetch;
++  const headers = {
++    Authorization: `Bearer ${args.token}`,
++    Accept: "application/vnd.github+json",
++    "X-GitHub-Api-Version": "2022-11-28",
++    "User-Agent": "elite-pipeline-workflow",
++  };
++  const refRes = await fetcher(
++    `https://api.github.com/repos/${args.owner}/${args.repo}/git/refs/heads/main`,
++    { headers },
++  );
++  if (!refRes.ok) throw new Error(`GitHub ref ${refRes.status}`);
++  const refJson = (await refRes.json()) as { object: { sha: string } };
++  const treeRes = await fetcher(
++    `https://api.github.com/repos/${args.owner}/${args.repo}/git/trees/${refJson.object.sha}?recursive=1`,
++    { headers },
++  );
++  if (!treeRes.ok) throw new Error(`GitHub tree ${treeRes.status}`);
++  const treeJson = (await treeRes.json()) as {
++    tree: { path: string; type: string; sha: string }[];
++  };
++  const inScope = treeJson.tree.filter(
++    (t) => t.type === "blob" && pathAllowed(t.path, args.scope),
++  );
++  const out: RepoFile[] = [];
++  for (const f of inScope) {
++    const blobRes = await fetcher(
++      `https://api.github.com/repos/${args.owner}/${args.repo}/git/blobs/${f.sha}`,
++      { headers },
++    );
++    if (!blobRes.ok) continue;
++    const blobJson = (await blobRes.json()) as {
++      content: string;
++      encoding: "base64" | "utf-8";
++    };
++    const content =
++      blobJson.encoding === "base64"
++        ? atob(blobJson.content.replace(/\n/g, ""))
++        : blobJson.content;
++    out.push({ path: f.path, content });
++  }
++  return out;
++}
++
++function stripCodeFence(s: string): string {
++  const trimmed = s.trim();
++  // Strip ```json ... ``` or ``` ... ``` wrappers
++  const fence = /^```(?:json)?\s*\n([\s\S]+?)\n```$/;
++  const m = trimmed.match(fence);
++  return m ? m[1].trim() : trimmed;
++}
++
++type EditsResponse = { edits?: { path?: string; content?: string }[] };
++
++function parseEdits(text: string): { path: string; content: string }[] {
++  let json: EditsResponse;
++  try {
++    json = JSON.parse(stripCodeFence(text)) as EditsResponse;
++  } catch {
++    throw new Error("Claude did not return parseable JSON");
++  }
++  if (!Array.isArray(json.edits)) return [];
++  return json.edits
++    .filter(
++      (e): e is { path: string; content: string } =>
++        typeof e?.path === "string" && typeof e?.content === "string",
++    )
++    .map((e) => ({ path: e.path, content: e.content }));
++}
++
++export async function handleCustomPrompt(
++  request: Request,
++  env: Env,
++): Promise<Response> {
++  let body: CustomPromptBody;
++  try {
++    body = (await request.json()) as CustomPromptBody;
++  } catch {
++    return Response.json({ ok: false, error: "Bad JSON" } satisfies CustomPromptResult, { status: 400 });
++  }
++  const domain = (body.domain ?? "").trim().toLowerCase();
++  const userPrompt = (body.prompt ?? "").trim();
++  const scope: CustomPromptScope =
++    body.scope === "content" || body.scope === "config" ? body.scope : "all";
++  if (!domain) return Response.json({ ok: false, error: "domain required" }, { status: 400 });
++  if (!userPrompt) return Response.json({ ok: false, error: "prompt required" }, { status: 400 });
++  if (userPrompt.length > MAX_PROMPT_LEN) {
++    return Response.json(
++      { ok: false, error: `prompt > ${MAX_PROMPT_LEN} chars` },
++      { status: 400 },
++    );
++  }
++  if (!env.ANTHROPIC_API_KEY) {
++    return Response.json({ ok: false, error: "ANTHROPIC_API_KEY not configured" }, { status: 500 });
++  }
++  if (!env.GITHUB_TOKEN) {
++    return Response.json({ ok: false, error: "GITHUB_TOKEN not configured" }, { status: 500 });
++  }
++
++  const db = getDb(env.DB);
++  const site = await loadSiteByDomain(db, domain);
++  if (!site) return Response.json({ ok: false, error: `site ${domain} not found` }, { status: 404 });
++  if (!site.githubRepo) {
++    return Response.json({ ok: false, error: `site ${domain} has no githubRepo recorded` }, { status: 409 });
++  }
++  const [owner, repo] = site.githubRepo.split("/");
++  if (!owner || !repo) {
++    return Response.json({ ok: false, error: `bad githubRepo: ${site.githubRepo}` }, { status: 500 });
++  }
++  const brief = parseBrief(site.briefJson);
++
++  const files = await fetchInScopeFiles({
++    token: env.GITHUB_TOKEN,
++    owner,
++    repo,
++    scope,
++  });
++  const fileMap = new Map(files.map((f) => [f.path, f.content]));
++
++  // System: brand context (cacheable) + repo state (cacheable).
++  const brandBlock = [
++    `Sito: ${site.businessName} (${domain}).`,
++    `Account Cloudflare: ${site.account}.`,
++    brief.step3?.scenario ? `Scenario: ${brief.step3.scenario}.` : "",
++    brief.step4?.description ? `Descrizione: ${brief.step4.description}` : "",
++    brief.step4?.usp ? `USP: ${brief.step4.usp}` : "",
++    brief.step7?.designStyle ? `Stile: ${brief.step7.designStyle}.` : "",
++    brief.step8?.voiceTraits?.length ? `Voice: ${brief.step8.voiceTraits.join(", ")}.` : "",
++    brief.step8?.brandKeywords ? `Keywords: ${brief.step8.brandKeywords}.` : "",
++  ]
++    .filter(Boolean)
++    .join("\n");
++
++  const repoBlock = files
++    .map((f) => `<<<FILE ${f.path}>>>\n${f.content}\n<<<END>>>`)
++    .join("\n\n");
++
++  const systemBlocks = [
++    {
++      type: "text" as const,
++      text: [
++        "Sei l'editor SEO/UX del sito. Modifichi solo i file in scope.",
++        "Rispondi SOLO con JSON valido nel formato:",
++        '{"edits":[{"path":"<repo-relative path>","content":"<full new file content>"}, ...]}',
++        "- Non includere file fuori dallo scope: saranno scartati comunque.",
++        "- Non includere file che resterebbero invariati: scartali.",
++        '- "content" deve essere il file completo, NON una patch/diff.',
++        "- Italiano corretto, niente AI slop. Mantieni la frontmatter YAML byte-per-byte se presente.",
++        "- Se la richiesta non è realizzabile dentro lo scope, restituisci {\"edits\":[]}",
++      ].join("\n"),
++      cache_control: { type: "ephemeral" as const },
++    },
++    {
++      type: "text" as const,
++      text: `Brand context:\n${brandBlock}`,
++      cache_control: { type: "ephemeral" as const },
++    },
++    {
++      type: "text" as const,
++      text: `Stato repo (scope=${scope}):\n${repoBlock}`,
++      cache_control: { type: "ephemeral" as const },
++    },
++  ];
++
++  const claude = await callAnthropic({
++    apiKey: env.ANTHROPIC_API_KEY,
++    model: "claude-opus-4-7",
++    systemBlocks,
++    messages: [{ role: "user", content: userPrompt }],
++    maxTokens: MAX_OUTPUT_TOKENS,
++  });
++
++  const proposed = parseEdits(claude.text);
++  const filtered = proposed.filter((e) => pathAllowed(e.path, scope));
++  const changed = filtered.filter((e) => {
++    const existing = fileMap.get(e.path);
++    return existing === undefined ? true : existing !== e.content;
++  });
++
++  if (changed.length === 0) {
++    return Response.json({
++      ok: true,
++      commitSha: "",
++      filesChanged: [],
++      modelUsage: {
++        inputTokens: claude.usage.inputTokens,
++        outputTokens: claude.usage.outputTokens,
++        cacheReadInputTokens: claude.usage.cacheReadInputTokens,
++      },
++    } satisfies CustomPromptResult);
++  }
++
++  const messageSummary = userPrompt.length > 60 ? `${userPrompt.slice(0, 57)}...` : userPrompt;
++  const { commitSha } = await commitFiles({
++    token: env.GITHUB_TOKEN,
++    owner,
++    repo,
++    branch: "main",
++    message: `dashboard prompt: ${messageSummary}`,
++    files: changed.map((e) => ({ path: e.path, content: e.content, encoding: "utf-8" as const })),
++  });
++
++  return Response.json({
++    ok: true,
++    commitSha,
++    filesChanged: changed.map((e) => e.path),
++    modelUsage: {
++      inputTokens: claude.usage.inputTokens,
++      outputTokens: claude.usage.outputTokens,
++      cacheReadInputTokens: claude.usage.cacheReadInputTokens,
++    },
++  } satisfies CustomPromptResult);
++}
+diff --git a/src/index.ts b/src/index.ts
+index aad242d..123ca06 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -1,4 +1,5 @@
+ import { PipelineWorkflow, type Env, type PipelineParams } from "./pipeline";
++import { handleCustomPrompt } from "./custom-prompt";
+ 
+ export { PipelineWorkflow };
+ export type { Env, PipelineParams };
+@@ -79,6 +80,20 @@ export default {
+       }
+     }
+ 
++    // Dashboard-driven site edits. See custom-prompt.ts + the meta repo
++    // docs/custom-prompt.md. Same shared-secret gate as /trigger.
++    if (url.pathname === "/custom-prompt" && request.method === "POST") {
++      if (!authorized) return new Response("Unauthorized", { status: 401 });
++      try {
++        return await handleCustomPrompt(request, env);
++      } catch (err) {
++        return Response.json(
++          { ok: false, error: err instanceof Error ? err.message : String(err) },
++          { status: 502 },
++        );
++      }
++    }
++
+     return new Response("Not Found", { status: 404 });
+   },
+ };
+diff --git a/tests/custom-prompt.test.ts b/tests/custom-prompt.test.ts
+new file mode 100644
+index 0000000..9ed96f5
+--- /dev/null
++++ b/tests/custom-prompt.test.ts
+@@ -0,0 +1,27 @@
++import { describe, it, expect } from "vitest";
++import { pathAllowed } from "../src/custom-prompt";
++
++describe("custom-prompt pathAllowed", () => {
++  it("content scope: articoli + pages markdown only", () => {
++    expect(pathAllowed("src/content/articoli/foo.md", "content")).toBe(true);
++    expect(pathAllowed("src/content/pages/home.md", "content")).toBe(true);
++    expect(pathAllowed("src/site.config.ts", "content")).toBe(false);
++    expect(pathAllowed("extra-redirects.txt", "content")).toBe(false);
++    expect(pathAllowed("src/content/articoli/sub/x.md", "content")).toBe(false);
++    expect(pathAllowed("src/content/articoli/x.txt", "content")).toBe(false);
++    expect(pathAllowed("../etc/passwd", "content")).toBe(false);
++  });
++  it("config scope: only site.config.ts", () => {
++    expect(pathAllowed("src/site.config.ts", "config")).toBe(true);
++    expect(pathAllowed("src/content/articoli/x.md", "config")).toBe(false);
++    expect(pathAllowed("extra-redirects.txt", "config")).toBe(false);
++  });
++  it("all scope: content + config + redirects", () => {
++    expect(pathAllowed("src/content/articoli/x.md", "all")).toBe(true);
++    expect(pathAllowed("src/content/pages/about.md", "all")).toBe(true);
++    expect(pathAllowed("src/site.config.ts", "all")).toBe(true);
++    expect(pathAllowed("extra-redirects.txt", "all")).toBe(true);
++    expect(pathAllowed("package.json", "all")).toBe(false);
++    expect(pathAllowed("src/layouts/BaseLayout.astro", "all")).toBe(false);
++  });
++});
+-- 
+2.43.0
+

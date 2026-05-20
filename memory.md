@@ -159,17 +159,21 @@ from here. Until then, per-site delivery stays the
   per facilitare il debug — vanno ripristinati a `private` su GitHub.
   **Da controllare periodicamente** che restino privati (richiesta utente
   esplicita 2026-05-19).
-- **Dashboard end-to-end site creation** (`app.innotofuture.com`) — utente
-  vuole poter creare un sito dall'inizio alla fine dalla dashboard. Il
-  codice del dashboard vive in `andreabbo/elite-saas` (private, **out of
-  scope** da sessione cloud per accesso scrittura). La pipeline backend
-  (`andreabbo/elite-pipeline-workflow`) è anch'essa fuori scope. Quindi:
-  non posso modificarli direttamente da qui. Per sbloccare richiede o
-  (a) zip del repo elite-saas caricato nella sessione (vedi
-  Plan-C workflow), o (b) credenziali/scope esteso. La via "auto-deploy +
-  /custom-prompt da dashboard" è già nel design (vedi
-  `docs/custom-prompt.md`, `docs/site-template-deploy.md`); rimane il
-  wiring UI Wizard 11-step → /api/builds/start → pipeline worker.
+- **Dashboard end-to-end site creation** (`app.innotofuture.com`):
+  CREAZIONE — verificata in codice (Plan-C zip 2026-05-19): wizard
+  11-step completo (`src/components/wizard/Step1-11.tsx`), route
+  `/api/builds/start` + `triggerPipeline` + worker `/trigger` tutti
+  wired correttamente. Se l'utente riporta errori nel wizard, servono
+  i log specifici.
+  EDIT da dashboard — **gap critico chiuso 2026-05-19**:
+  `docs/custom-prompt.md` diceva "shipped" ma l'endpoint **non esisteva**
+  né nel worker né nel saas. Implementato via Plan-C — vedi
+  `patches/dashboard-edit-flow/` (worker `/custom-prompt` handler +
+  saas `/api/sites/[domain]/prompt` proxy route). `pnpm tsc --noEmit`
+  pulito, 70/70 vitest, includendo 3 nuovi test per `pathAllowed`.
+  Il proprietario applica le 2 patch ai repo on-prem (`andreabbo/*`,
+  out-of-scope da qui). UI button `prompt ↗` sulla `/sites` row resta
+  da aggiungere come piccolo follow-up.
 
 ## CF Pages deploy was failing — ROOT CAUSE (2026-05-19)
 

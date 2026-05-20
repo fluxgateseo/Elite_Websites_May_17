@@ -157,6 +157,19 @@ from here. Until then, per-site delivery stays the
   `site-modoristorante`) appena finito di sbloccare il deploy CF Pages. Il
   proprietario li aveva resi pubblici temporaneamente in questa sessione
   per facilitare il debug — vanno ripristinati a `private` su GitHub.
+  **Da controllare periodicamente** che restino privati (richiesta utente
+  esplicita 2026-05-19).
+- **Dashboard end-to-end site creation** (`app.innotofuture.com`) — utente
+  vuole poter creare un sito dall'inizio alla fine dalla dashboard. Il
+  codice del dashboard vive in `andreabbo/elite-saas` (private, **out of
+  scope** da sessione cloud per accesso scrittura). La pipeline backend
+  (`andreabbo/elite-pipeline-workflow`) è anch'essa fuori scope. Quindi:
+  non posso modificarli direttamente da qui. Per sbloccare richiede o
+  (a) zip del repo elite-saas caricato nella sessione (vedi
+  Plan-C workflow), o (b) credenziali/scope esteso. La via "auto-deploy +
+  /custom-prompt da dashboard" è già nel design (vedi
+  `docs/custom-prompt.md`, `docs/site-template-deploy.md`); rimane il
+  wiring UI Wizard 11-step → /api/builds/start → pipeline worker.
 
 ## CF Pages deploy was failing — ROOT CAUSE (2026-05-19)
 

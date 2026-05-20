@@ -1,10 +1,11 @@
-From f04a6d911c10ce1c750ad82d74c22c8ce2dd94c8 Mon Sep 17 00:00:00 2001
+From bdc33ebee2173786fb720fdb2022047a03c2e824 Mon Sep 17 00:00:00 2001
 From: c <c@l>
-Date: Wed, 20 May 2026 14:06:07 +0000
-Subject: [PATCH] Elite polish + CF deploy fix (.npmrc + .nvmrc) + expanded
- articles + AI covers + galleria
+Date: Wed, 20 May 2026 14:54:04 +0000
+Subject: [PATCH] Elite polish + working CF Pages auto-deploy
+ (.npmrc/.nvmrc/deploy.yml) + expanded articles + AI covers + galleria
 
 ---
+ .github/workflows/deploy.yml                  |   20 +-
  .npmrc                                        |    1 +
  .nvmrc                                        |    1 +
  package-lock.json                             | 5897 +++++++++++++++++
@@ -30,7 +31,7 @@ Subject: [PATCH] Elite polish + CF deploy fix (.npmrc + .nvmrc) + expanded
  src/layouts/BaseLayout.astro                  |    3 +
  src/pages/galleria.astro                      |   10 +-
  src/site.config.ts                            |    6 +-
- 25 files changed, 6916 insertions(+), 186 deletions(-)
+ 26 files changed, 6927 insertions(+), 195 deletions(-)
  create mode 100644 .npmrc
  create mode 100644 .nvmrc
  create mode 100644 package-lock.json
@@ -40,6 +41,47 @@ Subject: [PATCH] Elite polish + CF deploy fix (.npmrc + .nvmrc) + expanded
  create mode 100644 public/img/cat-scienza.png
  create mode 100644 public/img/cat-tecnologia.png
 
+diff --git a/.github/workflows/deploy.yml b/.github/workflows/deploy.yml
+index 336448c..e7b4f83 100644
+--- a/.github/workflows/deploy.yml
++++ b/.github/workflows/deploy.yml
+@@ -4,25 +4,27 @@ on:
+     branches: [main]
+   pull_request:
+   workflow_dispatch:
++
++permissions:
++  contents: read
++  deployments: write
++
+ jobs:
+   build:
+     runs-on: ubuntu-latest
+     steps:
+       - uses: actions/checkout@v4
+-      - uses: pnpm/action-setup@v4
+-        with:
+-          version: 9
+       - uses: actions/setup-node@v4
+         with:
+-          node-version: 22
+-          cache: pnpm
+-      - run: pnpm install --frozen-lockfile
+-      - run: pnpm run build
+-      - run: pnpm tsc --noEmit
++          node-version-file: .nvmrc
++          cache: npm
++      - run: npm ci
++      - run: npm run build
++      - run: npx tsc --noEmit
+       # Deploy to Cloudflare Pages on push to main, only when the pipeline has
+       # already created the Pages project and populated the repo variable.
+       # During Stage 5a (template generate) the variable is unset, so this step
+-      # is skipped; once Stage 6 sets it, the next push (Stage 5b overlay)
++      # is skipped; once Stage 6c sets it, the next push (Stage 5b overlay)
+       # triggers the actual deploy.
+       - name: Deploy to Cloudflare Pages
+         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.PAGES_PROJECT_NAME != ''
 diff --git a/.npmrc b/.npmrc
 new file mode 100644
 index 0000000..521a9f7

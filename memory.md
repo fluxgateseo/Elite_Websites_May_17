@@ -192,6 +192,73 @@ it will never deploy.
 
 ## How to resume
 
+**FIRST READ THIS BLOCK on session resume — then go to standard steps below.**
+
+### Session 2026-05-19/20/21 — what's done + where to start tomorrow
+
+LIVE: `agilescienceapp.it` and `modoristorante.it` are correct in
+prod (AI editorial covers, full gallery + `/galleria`, "Articoli
+correlati", contrast, expanded articles ≥500w with ≥5 internal + ≥1
+authoritative link). Their CF Pages projects are **Direct Upload**
+type, not Git-connected — current state was published via manual
+`dist.zip` upload (their GitHub Actions deploy was failing because the
+template's `deploy.yml` used `pnpm install --frozen-lockfile` without
+a `pnpm-lock.yaml`; root cause documented in `docs/site-template-deploy.md`).
+
+WORKER: `andreabbo/elite-pipeline-workflow` updated and deployed to
+**both** accounts on 2026-05-21:
+- IT (Brianzadigitale) `https://elite-pipeline-workflow.brianzadigitale.workers.dev` — version `7716735d-f9c9-455a-a803-5c0e575005f2`
+- EN (Fluxgateseo) `https://elite-pipeline-workflow.scissorssister.workers.dev` — version `aadb91dd-c291-4846-b2b2-1b60c12b1ce5`
+Both now expose `POST /custom-prompt` (gated by `x-pipeline-secret`).
+
+SAAS: `andreabbo/elite-saas` PR #2 merged into `main` adding
+`src/app/api/sites/[domain]/prompt/route.ts`. Deploy command (run
+locally — owner machine):
+```
+cd ~/elite-saas && source ~/.elite/secrets.env
+pnpm dlx @opennextjs/cloudflare build
+CLOUDFLARE_ACCOUNT_ID=ece36bd94db00aa348390f1f2b1f545d pnpm wrangler deploy --env=""
+CLOUDFLARE_ACCOUNT_ID=06b37563e983e04bd56debd113fe3be5 pnpm wrangler deploy --env en
+```
+*Owner reported "done" on 21 May — verify next session by hitting
+`POST https://app.innotofuture.com/api/sites/agilescienceapp.it/prompt`
+with a logged-in cookie; if the route 404s, the saas deploy didn't
+land.*
+
+### Tomorrow — start here, in this order
+
+1. **Smoke-test the dashboard edit flow end-to-end.**
+   Hit the worker directly first (no auth on the route, just the
+   pipeline secret):
+   ```
+   curl -i -X POST https://elite-pipeline-workflow.scissorssister.workers.dev/custom-prompt \
+     -H "x-pipeline-secret: $PIPELINE_SHARED_SECRET" \
+     -H "content-type: application/json" \
+     -d '{"domain":"agilescienceapp.it","prompt":"hello","scope":"content"}'
+   ```
+   Expect a 200 with `{ok:true, commitSha, filesChanged, modelUsage}` or
+   a 200 with `filesChanged:[]` if Claude judged the prompt a no-op.
+   404 means saas not deployed (saas only — worker is verified).
+2. **Add the UI surface**: `PromptButton.tsx` on `/sites` (Radix
+   Dialog + textarea + scope select, POSTs to
+   `/api/sites/[domain]/prompt`). Spec in `docs/custom-prompt.md`
+   "Canned prompts surfaced in the UI" section.
+3. **Fix the site auto-deploy properly** so future sites and
+   the existing two stop needing manual `dist.zip` uploads. Patch
+   ready: `patches/template-elite-fixes.patch` (npm-based deploy.yml +
+   .npmrc + .nvmrc + galleria/interlink/contrast fixes). Apply ONCE to
+   `fluxgateseo/elite-astro-template` (owner action — out of MCP scope
+   from cloud session) and every future generated site is auto-deploy +
+   correct by construction. Also re-apply per-site to
+   `site-agilescienceapp` and `site-modoristorante` so they stop being
+   stuck on Direct Upload.
+4. **Re-verify the two site repos are private** (`memory.md` TODO):
+   `gh repo view fluxgateseo/site-agilescienceapp --json visibility -q .visibility`
+   should print `PRIVATE`. Same for `site-modoristorante`. Verified
+   private on 2026-05-19; recheck periodically.
+
+### Standard resume steps (unchanged)
+
 1. `git fetch origin claude/setup-github-architecture` and fast-forward —
    commits may have been pushed from other sessions.
 2. Re-read `docs/` if anything there changed.

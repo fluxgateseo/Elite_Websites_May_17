@@ -1,0 +1,1025 @@
+From 1e4e489573d4f95a1ad9d2b806311331da8a6fee Mon Sep 17 00:00:00 2001
+From: c <c@c>
+Date: Fri, 22 May 2026 02:19:14 +0000
+Subject: [PATCH] Dashboard: noindex (meta+header+robots.txt) + IT-primary i18n
+ with flag switcher across /sites and /builds
+
+---
+ src/app/(dashboard)/builds/page.tsx |  19 ++--
+ src/app/(dashboard)/layout.tsx      |   4 +-
+ src/app/(dashboard)/sites/page.tsx  |  22 +++--
+ src/app/layout.tsx                  |   6 ++
+ src/app/robots.ts                   |   8 ++
+ src/components/AccountFilter.tsx    |  12 ++-
+ src/components/LanguageSwitcher.tsx |  35 +++++--
+ src/components/LayoutShell.tsx      |  36 ++++---
+ src/components/PipelineProgress.tsx |  10 +-
+ src/components/PromptButton.tsx     |  39 ++++----
+ src/components/ResetBuildButton.tsx |  16 ++--
+ src/components/Sidebar.tsx          |  20 ++--
+ src/components/SitesTable.tsx       |  45 +++++----
+ src/components/SpendWidget.tsx      |  10 +-
+ src/components/StartBuildButton.tsx |  14 +--
+ src/lib/i18n.ts                     | 140 ++++++++++++++++++++++++++++
+ src/middleware.ts                   |  15 ++-
+ 17 files changed, 334 insertions(+), 117 deletions(-)
+ create mode 100644 src/app/robots.ts
+
+diff --git a/src/app/(dashboard)/builds/page.tsx b/src/app/(dashboard)/builds/page.tsx
+index 60993ea..848af63 100644
+--- a/src/app/(dashboard)/builds/page.tsx
++++ b/src/app/(dashboard)/builds/page.tsx
+@@ -3,6 +3,8 @@ import { getDb } from "@/lib/db";
+ import { eliteSites } from "@/lib/schema";
+ import { SitesTable } from "@/components/SitesTable";
+ import { AccountFilter } from "@/components/AccountFilter";
++import { getLang } from "@/lib/i18n-server";
++import { makeT } from "@/lib/i18n";
+ 
+ export const dynamic = "force-dynamic";
+ 
+@@ -11,6 +13,8 @@ const IN_PROGRESS_STATUSES = ["draft", "building", "error"];
+ export default async function Page({ searchParams }: { searchParams: Promise<{ account?: string }> }) {
+   const params = await searchParams;
+   const account = params.account === "IT" || params.account === "EN" ? params.account : null;
++  const lang = await getLang();
++  const t = makeT(lang);
+ 
+   const db = getDb();
+   const all = await db
+@@ -29,20 +33,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ a
+ 
+   return (
+     <div className="space-y-4">
+-      <h1 className="text-2xl font-semibold">Build in corso</h1>
+-      <p className="text-zinc-500 text-sm">
+-        Siti in stato <code className="font-mono text-xs">draft</code>,{" "}
+-        <code className="font-mono text-xs">building</code> o{" "}
+-        <code className="font-mono text-xs">error</code>. Premi <strong>Avvia build</strong> per
+-        far partire la pipeline. Spunta <em>dry-run</em> per saltare lo scaffold del repo +
+-        il deploy su CF Pages (solo Stage 1-4 + 7).
+-      </p>
++      <h1 className="text-2xl font-semibold">{t("builds.title")}</h1>
++      <p className="text-zinc-500 text-sm">{t("builds.desc")}</p>
+ 
+-      <AccountFilter counts={counts} />
++      <AccountFilter counts={counts} lang={lang} />
+ 
+       <SitesTable
+         sites={rows}
+-        emptyMessage="Nessun build in corso. Le bozze del wizard appariranno qui."
++        emptyMessage={t("builds.empty")}
++        lang={lang}
+       />
+     </div>
+   );
+diff --git a/src/app/(dashboard)/layout.tsx b/src/app/(dashboard)/layout.tsx
+index c496125..2798273 100644
+--- a/src/app/(dashboard)/layout.tsx
++++ b/src/app/(dashboard)/layout.tsx
+@@ -1,8 +1,10 @@
+ import { LayoutShell } from "@/components/LayoutShell";
+ import { getCurrentUser } from "@/lib/auth";
++import { getLang } from "@/lib/i18n-server";
+ 
+ export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+   const user = await getCurrentUser();
++  const lang = await getLang();
+   const userSummary = user ? { email: user.email, role: user.role } : null;
+-  return <LayoutShell user={userSummary}>{children}</LayoutShell>;
++  return <LayoutShell user={userSummary} lang={lang}>{children}</LayoutShell>;
+ }
+diff --git a/src/app/(dashboard)/sites/page.tsx b/src/app/(dashboard)/sites/page.tsx
+index 7748097..6edd4b1 100644
+--- a/src/app/(dashboard)/sites/page.tsx
++++ b/src/app/(dashboard)/sites/page.tsx
+@@ -7,6 +7,8 @@ import { AccountFilter } from "@/components/AccountFilter";
+ import { SpendWidget } from "@/components/SpendWidget";
+ import { getCurrentUser } from "@/lib/auth";
+ import { getMonthlySpend } from "@/lib/spend";
++import { getLang } from "@/lib/i18n-server";
++import { makeT } from "@/lib/i18n";
+ 
+ export const dynamic = "force-dynamic";
+ 
+@@ -14,6 +16,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ a
+   const params = await searchParams;
+   const account = params.account === "IT" || params.account === "EN" ? params.account : null;
+   const user = await getCurrentUser();
++  const lang = await getLang();
++  const t = makeT(lang);
+ 
+   const db = getDb();
+   const all = await db.select().from(eliteSites).orderBy(desc(eliteSites.updatedAt)).all();
+@@ -35,28 +39,28 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ a
+   return (
+     <div className="space-y-4">
+       <div className="flex items-baseline justify-between">
+-        <h1 className="text-2xl font-semibold">Siti</h1>
++        <h1 className="text-2xl font-semibold">{t("sites.title")}</h1>
+         <Link
+           href="/nuovo-sito"
+           className="text-xs px-3 py-1.5 rounded bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 transition-colors"
+         >
+-          + Nuovo Sito
++          {t("nav.newSite")}
+         </Link>
+       </div>
+ 
+       <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-500">
+-        <AccountFilter counts={counts} />
+-        <span>{view.total} {view.total === 1 ? "sito" : "siti"}</span>
+-        <span><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1" />{view.live} live</span>
+-        <span><span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1" />{view.building} in build</span>
++        <AccountFilter counts={counts} lang={lang} />
++        <span>{view.total} {view.total === 1 ? t("sites.siteOne") : t("sites.siteOther")}</span>
++        <span><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1" />{view.live} {t("sites.live")}</span>
++        <span><span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1" />{view.building} {t("sites.building")}</span>
+         {view.error > 0 && (
+-          <span><span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1" />{view.error} errore</span>
++          <span><span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1" />{view.error} {t("sites.error")}</span>
+         )}
+       </div>
+ 
+-      {spend && <SpendWidget spend={spend} />}
++      {spend && <SpendWidget spend={spend} lang={lang} />}
+ 
+-      <SitesTable sites={rows} emptyMessage="Nessun sito ancora. Inizia dal wizard." />
++      <SitesTable sites={rows} emptyMessage={t("sites.empty")} lang={lang} />
+     </div>
+   );
+ }
+diff --git a/src/app/layout.tsx b/src/app/layout.tsx
+index 4b6010a..6014db8 100644
+--- a/src/app/layout.tsx
++++ b/src/app/layout.tsx
+@@ -4,6 +4,12 @@ import "./globals.css";
+ export const metadata: Metadata = {
+   title: "Elite Pipeline",
+   description: "Genera siti SEO-ottimizzati per domini scaduti italiani.",
++  robots: {
++    index: false,
++    follow: false,
++    nocache: true,
++    googleBot: { index: false, follow: false },
++  },
+ };
+ 
+ export default function RootLayout({ children }: { children: React.ReactNode }) {
+diff --git a/src/app/robots.ts b/src/app/robots.ts
+new file mode 100644
+index 0000000..c23af24
+--- /dev/null
++++ b/src/app/robots.ts
+@@ -0,0 +1,8 @@
++import type { MetadataRoute } from "next";
++
++// Admin dashboard — must never be indexed. Disallow all crawlers.
++export default function robots(): MetadataRoute.Robots {
++  return {
++    rules: [{ userAgent: "*", disallow: "/" }],
++  };
++}
+diff --git a/src/components/AccountFilter.tsx b/src/components/AccountFilter.tsx
+index c87d31d..984c4e8 100644
+--- a/src/components/AccountFilter.tsx
++++ b/src/components/AccountFilter.tsx
+@@ -1,19 +1,21 @@
+ "use client";
+ 
+ import { useRouter, useSearchParams, usePathname } from "next/navigation";
++import { makeT, type Lang } from "@/lib/i18n";
+ 
+ const OPTIONS = [
+-  { value: "all", label: "All" },
+-  { value: "IT", label: "IT" },
+-  { value: "EN", label: "EN" },
++  { value: "all", labelKey: "filter.all" },
++  { value: "IT", labelKey: null },
++  { value: "EN", labelKey: null },
+ ] as const;
+ 
+-export function AccountFilter({ counts }: { counts?: { all: number; IT: number; EN: number } }) {
++export function AccountFilter({ counts, lang }: { counts?: { all: number; IT: number; EN: number }; lang: Lang }) {
+   const router = useRouter();
+   const pathname = usePathname();
+   const params = useSearchParams();
+   const current = params.get("account");
+   const active = current === "IT" || current === "EN" ? current : "all";
++  const t = makeT(lang);
+ 
+   function set(value: "all" | "IT" | "EN") {
+     const next = new URLSearchParams(params.toString());
+@@ -37,7 +39,7 @@ export function AccountFilter({ counts }: { counts?: { all: number; IT: number;
+               : "bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400")
+           }
+         >
+-          {o.label}
++          {o.labelKey ? t(o.labelKey) : o.value}
+           {counts ? <span className="ml-1 text-zinc-500">({counts[o.value]})</span> : null}
+         </button>
+       ))}
+diff --git a/src/components/LanguageSwitcher.tsx b/src/components/LanguageSwitcher.tsx
+index 7faad39..971168e 100644
+--- a/src/components/LanguageSwitcher.tsx
++++ b/src/components/LanguageSwitcher.tsx
+@@ -2,29 +2,52 @@
+ 
+ import type { Lang } from "@/lib/i18n";
+ 
+-export function LanguageSwitcher({ current }: { current: Lang }) {
++const FLAG: Record<Lang, string> = { it: "🇮🇹", en: "🇬🇧" };
++const LABEL: Record<Lang, string> = { it: "Italiano", en: "English" };
++
++// variant "floating" → absolute top-right (auth pages); "inline" → flows in
++// a header/toolbar (dashboard).
++export function LanguageSwitcher({
++  current,
++  variant = "floating",
++}: {
++  current: Lang;
++  variant?: "floating" | "inline";
++}) {
+   function setLang(lang: Lang) {
+     if (lang === current) return;
+     document.cookie = `lang=${lang}; path=/; max-age=31536000; samesite=lax`;
+     window.location.reload();
+   }
+ 
++  const wrap =
++    variant === "floating"
++      ? "elite-lang-switch absolute top-4 right-4 z-10 "
++      : "elite-lang-switch ";
++
+   return (
+-    <div className="elite-lang-switch absolute top-4 right-4 z-10 inline-flex rounded border border-zinc-300 dark:border-zinc-700 overflow-hidden text-[11px] bg-white/80 dark:bg-zinc-900/80 backdrop-blur">
++    <div
++      className={
++        wrap +
++        "inline-flex rounded border border-zinc-300 dark:border-zinc-700 overflow-hidden text-sm bg-white/80 dark:bg-zinc-900/80 backdrop-blur"
++      }
++    >
+       {(["it", "en"] as const).map((l) => (
+         <button
+           key={l}
+           type="button"
+           onClick={() => setLang(l)}
+           aria-current={current === l ? "true" : undefined}
++          aria-label={LABEL[l]}
++          title={LABEL[l]}
+           className={
+-            "px-2 py-1 transition-colors uppercase tracking-wide " +
++            "px-2 py-1 leading-none transition-colors " +
+             (current === l
+-              ? "bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900"
+-              : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800")
++              ? "bg-zinc-200 dark:bg-zinc-700 grayscale-0 opacity-100"
++              : "opacity-50 grayscale hover:opacity-100 hover:grayscale-0")
+           }
+         >
+-          {l}
++          <span aria-hidden>{FLAG[l]}</span>
+         </button>
+       ))}
+     </div>
+diff --git a/src/components/LayoutShell.tsx b/src/components/LayoutShell.tsx
+index 5edad15..e39a7f0 100644
+--- a/src/components/LayoutShell.tsx
++++ b/src/components/LayoutShell.tsx
+@@ -1,33 +1,47 @@
+ import { Sidebar } from "./Sidebar";
++import { LanguageSwitcher } from "./LanguageSwitcher";
++import { makeT, type Lang } from "@/lib/i18n";
+ 
+ interface UserSummary {
+   email: string;
+   role: "admin" | "member" | "free";
+ }
+ 
+-export function LayoutShell({ children, user }: { children: React.ReactNode; user: UserSummary | null }) {
++export function LayoutShell({
++  children,
++  user,
++  lang,
++}: {
++  children: React.ReactNode;
++  user: UserSummary | null;
++  lang: Lang;
++}) {
++  const t = makeT(lang);
+   return (
+     <div className="flex h-screen">
+-      <Sidebar />
++      <Sidebar lang={lang} />
+       <div className="flex-1 flex flex-col">
+         <header className="border-b border-zinc-200 dark:border-zinc-800 px-6 py-3 text-xs text-zinc-500 flex items-center justify-between">
+           <div className="flex items-center gap-2">
+             {user ? (
+               <>
+-                <span>Logged in as <span className="font-mono">{user.email}</span></span>
++                <span>{t("shell.loggedInAs")} <span className="font-mono">{user.email}</span></span>
+                 <span className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[10px] uppercase tracking-wide font-medium">{user.role}</span>
+               </>
+             ) : (
+-              <span>Not authenticated</span>
++              <span>{t("shell.notAuth")}</span>
++            )}
++          </div>
++          <div className="flex items-center gap-3">
++            <LanguageSwitcher current={lang} variant="inline" />
++            {user && (
++              <form action="/api/auth/logout" method="POST">
++                <button type="submit" className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 underline">
++                  {t("shell.logout")}
++                </button>
++              </form>
+             )}
+           </div>
+-          {user && (
+-            <form action="/api/auth/logout" method="POST">
+-              <button type="submit" className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 underline">
+-                Logout
+-              </button>
+-            </form>
+-          )}
+         </header>
+         <main className="flex-1 p-6 overflow-auto">{children}</main>
+       </div>
+diff --git a/src/components/PipelineProgress.tsx b/src/components/PipelineProgress.tsx
+index ad0f475..9b46152 100644
+--- a/src/components/PipelineProgress.tsx
++++ b/src/components/PipelineProgress.tsx
+@@ -1,6 +1,7 @@
+ "use client";
+ 
+ import { useEffect, useState } from "react";
++import { makeT, type Lang } from "@/lib/i18n";
+ 
+ type StageStatus = {
+   stage: string;
+@@ -33,9 +34,10 @@ const STAGE_LABELS: Record<string, string> = {
+   verify: "Verify",
+ };
+ 
+-export function PipelineProgress({ domain, polling = true }: { domain: string; polling?: boolean }) {
++export function PipelineProgress({ domain, polling = true, lang }: { domain: string; polling?: boolean; lang: Lang }) {
+   const [data, setData] = useState<StatusResponse | null>(null);
+   const [open, setOpen] = useState(false);
++  const t = makeT(lang);
+ 
+   useEffect(() => {
+     let mounted = true;
+@@ -71,16 +73,16 @@ export function PipelineProgress({ domain, polling = true }: { domain: string; p
+         onClick={() => setOpen(true)}
+         className="text-[10px] text-blue-500 hover:underline"
+       >
+-        progress
++        {t("progress.show")}
+       </button>
+     );
+   }
+ 
+   if (!data || !data.ok) {
+-    return <span className="text-[10px] text-zinc-500">loading…</span>;
++    return <span className="text-[10px] text-zinc-500">{t("progress.loading")}</span>;
+   }
+   if (!data.job) {
+-    return <span className="text-[10px] text-zinc-500">no job</span>;
++    return <span className="text-[10px] text-zinc-500">{t("progress.noJob")}</span>;
+   }
+ 
+   return (
+diff --git a/src/components/PromptButton.tsx b/src/components/PromptButton.tsx
+index 8a3cd20..f47e200 100644
+--- a/src/components/PromptButton.tsx
++++ b/src/components/PromptButton.tsx
+@@ -1,6 +1,7 @@
+ "use client";
+ 
+ import { useState } from "react";
++import { makeT, type Lang } from "@/lib/i18n";
+ 
+ type Scope = "content" | "config" | "all";
+ 
+@@ -8,18 +9,22 @@ type PromptResult =
+   | { ok: true; commitSha: string; filesChanged: string[]; modelUsage?: unknown }
+   | { ok: false; error: string };
+ 
+-const CANNED: { label: string; scope: Scope; prompt: string }[] = [
+-  { label: "Audit & fix 404", scope: "content", prompt: "Controlla che tutti i link interni negli articoli e nelle pagine risolvano a pagine esistenti del sito; correggi quelli rotti mantenendo l'ancora coerente." },
+-  { label: "Riscrivi hero", scope: "content", prompt: "Riscrivi il primo paragrafo della home (hero) in modo più incisivo e orientato alla conversione, mantenendo tono e lingua del sito." },
+-  { label: "Tono più formale", scope: "content", prompt: "Alza la formalità del testo a un registro professionale (4-5 su 5) su tutte le pagine, senza cambiare i contenuti." },
++// Canned prompt bodies stay Italian on purpose: the generated sites are
++// Italian, so the instruction sent to Claude must match the site language.
++// Only the button labels are translated via the i18n dictionary.
++const CANNED: { labelKey: string; scope: Scope; prompt: string }[] = [
++  { labelKey: "prompt.cannedAudit", scope: "content", prompt: "Controlla che tutti i link interni negli articoli e nelle pagine risolvano a pagine esistenti del sito; correggi quelli rotti mantenendo l'ancora coerente." },
++  { labelKey: "prompt.cannedHero", scope: "content", prompt: "Riscrivi il primo paragrafo della home (hero) in modo più incisivo e orientato alla conversione, mantenendo tono e lingua del sito." },
++  { labelKey: "prompt.cannedFormal", scope: "content", prompt: "Alza la formalità del testo a un registro professionale (4-5 su 5) su tutte le pagine, senza cambiare i contenuti." },
+ ];
+ 
+-export function PromptButton({ domain, status }: { domain: string; status: string }) {
++export function PromptButton({ domain, status, lang }: { domain: string; status: string; lang: Lang }) {
+   const [open, setOpen] = useState(false);
+   const [prompt, setPrompt] = useState("");
+   const [scope, setScope] = useState<Scope>("all");
+   const [busy, setBusy] = useState(false);
+   const [result, setResult] = useState<PromptResult | null>(null);
++  const t = makeT(lang);
+ 
+   if (status !== "live") return null;
+ 
+@@ -47,9 +52,9 @@ export function PromptButton({ domain, status }: { domain: string; status: strin
+         type="button"
+         onClick={() => setOpen(true)}
+         className="text-blue-500 hover:underline"
+-        title="Modifica il sito con un'istruzione in linguaggio naturale"
++        title={`${t("prompt.titlePrefix")} ${domain}`}
+       >
+-        prompt ↗
++        {t("prompt.open")} ↗
+       </button>
+ 
+       {open && (
+@@ -62,19 +67,19 @@ export function PromptButton({ domain, status }: { domain: string; status: strin
+             onClick={(e) => e.stopPropagation()}
+           >
+             <div className="flex items-baseline justify-between">
+-              <h2 className="text-sm font-semibold">Modifica <span className="font-mono">{domain}</span></h2>
++              <h2 className="text-sm font-semibold">{t("prompt.titlePrefix")} <span className="font-mono">{domain}</span></h2>
+               <button type="button" onClick={() => !busy && setOpen(false)} className="text-zinc-400 hover:text-zinc-600 text-lg leading-none">×</button>
+             </div>
+ 
+             <div className="flex flex-wrap gap-1.5">
+               {CANNED.map((c) => (
+                 <button
+-                  key={c.label}
++                  key={c.labelKey}
+                   type="button"
+                   onClick={() => { setPrompt(c.prompt); setScope(c.scope); }}
+                   className="text-[10px] px-2 py-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                 >
+-                  {c.label}
++                  {t(c.labelKey)}
+                 </button>
+               ))}
+             </div>
+@@ -83,13 +88,13 @@ export function PromptButton({ domain, status }: { domain: string; status: strin
+               value={prompt}
+               onChange={(e) => setPrompt(e.target.value.slice(0, 2000))}
+               rows={5}
+-              placeholder="Es: aggiungi una sezione FAQ alla home con 4 domande sul servizio…"
++              placeholder={t("prompt.placeholder")}
+               className="w-full text-sm rounded border border-zinc-300 dark:border-zinc-700 bg-transparent p-2 resize-y"
+             />
+ 
+             <div className="flex items-center justify-between gap-3">
+               <label className="text-xs text-zinc-500 inline-flex items-center gap-2">
+-                Scope
++                {t("prompt.scope")}
+                 <select
+                   value={scope}
+                   onChange={(e) => setScope(e.target.value as Scope)}
+@@ -104,14 +109,14 @@ export function PromptButton({ domain, status }: { domain: string; status: strin
+             </div>
+ 
+             <div className="flex items-center justify-end gap-2">
+-              <button type="button" onClick={() => !busy && setOpen(false)} className="text-xs px-3 py-1.5 rounded text-zinc-500 hover:text-zinc-700">Annulla</button>
++              <button type="button" onClick={() => !busy && setOpen(false)} className="text-xs px-3 py-1.5 rounded text-zinc-500 hover:text-zinc-700">{t("prompt.cancel")}</button>
+               <button
+                 type="button"
+                 onClick={submit}
+                 disabled={busy || prompt.trim().length === 0}
+                 className="text-xs px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+               >
+-                {busy ? "Applico…" : "Applica modifica"}
++                {busy ? t("prompt.applying") : t("prompt.apply")}
+               </button>
+             </div>
+ 
+@@ -119,17 +124,17 @@ export function PromptButton({ domain, status }: { domain: string; status: strin
+               <div className="text-xs rounded border p-3 border-zinc-200 dark:border-zinc-700">
+                 {result.ok ? (
+                   result.filesChanged.length === 0 ? (
+-                    <p className="text-amber-600 dark:text-amber-400">Nessuna modifica applicata (l'istruzione non ha prodotto cambiamenti nello scope).</p>
++                    <p className="text-amber-600 dark:text-amber-400">{t("prompt.noChange")}</p>
+                   ) : (
+                     <div className="space-y-1">
+-                      <p className="text-emerald-600 dark:text-emerald-400">✓ Applicato — commit <span className="font-mono">{result.commitSha.slice(0, 7)}</span>. Il deploy parte in automatico.</p>
++                      <p className="text-emerald-600 dark:text-emerald-400">{t("prompt.appliedPrefix")} <span className="font-mono">{result.commitSha.slice(0, 7)}</span>{t("prompt.appliedSuffix")}</p>
+                       <ul className="list-disc list-inside text-zinc-500">
+                         {result.filesChanged.map((f) => <li key={f} className="font-mono text-[10px]">{f}</li>)}
+                       </ul>
+                     </div>
+                   )
+                 ) : (
+-                  <p className="text-red-600 dark:text-red-400">Errore: {result.error}</p>
++                  <p className="text-red-600 dark:text-red-400">{t("prompt.errorPrefix")} {result.error}</p>
+                 )}
+               </div>
+             )}
+diff --git a/src/components/ResetBuildButton.tsx b/src/components/ResetBuildButton.tsx
+index 072c8c9..1776a04 100644
+--- a/src/components/ResetBuildButton.tsx
++++ b/src/components/ResetBuildButton.tsx
+@@ -1,15 +1,17 @@
+ "use client";
+ 
+ import { useState } from "react";
++import { makeT, type Lang } from "@/lib/i18n";
+ 
+-export function ResetBuildButton({ domain, status }: { domain: string; status: string }) {
++export function ResetBuildButton({ domain, status, lang }: { domain: string; status: string; lang: Lang }) {
+   const [busy, setBusy] = useState(false);
+   const [msg, setMsg] = useState<string | null>(null);
++  const t = makeT(lang);
+ 
+   if (status !== "building" && status !== "error") return null;
+ 
+   async function reset() {
+-    if (!confirm(`Reset ${domain} to draft? This cancels any running pipeline jobs.`)) return;
++    if (!confirm(t("reset.confirm").replace("{domain}", domain))) return;
+     setBusy(true);
+     setMsg(null);
+     try {
+@@ -20,13 +22,13 @@ export function ResetBuildButton({ domain, status }: { domain: string; status: s
+       });
+       const json = (await res.json()) as { ok: boolean; error?: string };
+       if (!res.ok || !json.ok) {
+-        setMsg(`Errore: ${json.error ?? res.statusText}`);
++        setMsg(`${t("build.errorPrefix")} ${json.error ?? res.statusText}`);
+       } else {
+-        setMsg("✓ resettato");
++        setMsg(t("reset.done"));
+         setTimeout(() => window.location.reload(), 800);
+       }
+     } catch (err) {
+-      setMsg(`Errore: ${err instanceof Error ? err.message : "unknown"}`);
++      setMsg(`${t("build.errorPrefix")} ${err instanceof Error ? err.message : "unknown"}`);
+     } finally {
+       setBusy(false);
+     }
+@@ -39,9 +41,9 @@ export function ResetBuildButton({ domain, status }: { domain: string; status: s
+         disabled={busy}
+         className="text-[10px] px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50"
+         type="button"
+-        title="Cancella job in corso e riporta sito a draft"
++        title={t("reset.title")}
+       >
+-        {busy ? "..." : "reset"}
++        {busy ? "..." : t("reset.label")}
+       </button>
+       {msg && <span className="text-[10px] text-zinc-500">{msg}</span>}
+     </span>
+diff --git a/src/components/Sidebar.tsx b/src/components/Sidebar.tsx
+index 6fb8dfd..b59e451 100644
+--- a/src/components/Sidebar.tsx
++++ b/src/components/Sidebar.tsx
+@@ -1,24 +1,26 @@
+ import Link from "next/link";
++import { makeT, type Lang } from "@/lib/i18n";
+ 
+ const NAV = [
+-  { href: "/sites", label: "Siti" },
+-  { href: "/nuovo-sito", label: "+ Nuovo Sito" },
+-  { href: "/builds", label: "Build in corso" },
+-  { href: "/lead-inbox", label: "Lead Inbox" },
+-  { href: "/settings", label: "Settings" },
+-];
++  { href: "/sites", key: "nav.sites" },
++  { href: "/nuovo-sito", key: "nav.newSite" },
++  { href: "/builds", key: "nav.builds" },
++  { href: "/lead-inbox", key: "nav.leadInbox" },
++  { href: "/settings", key: "nav.settings" },
++] as const;
+ 
+-export function Sidebar() {
++export function Sidebar({ lang }: { lang: Lang }) {
++  const t = makeT(lang);
+   return (
+     <nav className="w-60 border-r border-zinc-200 dark:border-zinc-800 p-4 flex flex-col gap-1">
+-      <div className="text-sm font-semibold text-zinc-500 px-2 py-2">Elite Pipeline</div>
++      <div className="text-sm font-semibold text-zinc-500 px-2 py-2">{t("nav.brand")}</div>
+       {NAV.map((item) => (
+         <Link
+           key={item.href}
+           href={item.href}
+           className="px-2 py-1.5 rounded text-sm hover:bg-zinc-100 dark:hover:bg-zinc-900"
+         >
+-          {item.label}
++          {t(item.key)}
+         </Link>
+       ))}
+     </nav>
+diff --git a/src/components/SitesTable.tsx b/src/components/SitesTable.tsx
+index bbcf44a..87a329a 100644
+--- a/src/components/SitesTable.tsx
++++ b/src/components/SitesTable.tsx
+@@ -3,6 +3,7 @@ import { StartBuildButton } from "./StartBuildButton";
+ import { ResetBuildButton } from "./ResetBuildButton";
+ import { PipelineProgress } from "./PipelineProgress";
+ import { PromptButton } from "./PromptButton";
++import { makeT, type Lang } from "@/lib/i18n";
+ 
+ export interface SiteRow {
+   domain: string;
+@@ -23,16 +24,8 @@ const STATUS_STYLE: Record<string, string> = {
+   paused: "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300",
+ };
+ 
+-const STATUS_LABEL: Record<string, string> = {
+-  draft: "bozza",
+-  building: "in build",
+-  live: "live",
+-  error: "errore",
+-  paused: "in pausa",
+-};
+-
+-function formatDate(ts: number): string {
+-  return new Date(ts).toLocaleDateString("it-IT", {
++function formatDate(ts: number, lang: Lang): string {
++  return new Date(ts).toLocaleDateString(lang === "en" ? "en-GB" : "it-IT", {
+     day: "2-digit",
+     month: "short",
+     year: "numeric",
+@@ -42,10 +35,14 @@ function formatDate(ts: number): string {
+ export function SitesTable({
+   sites,
+   emptyMessage,
++  lang,
+ }: {
+   sites: SiteRow[];
+   emptyMessage: string;
++  lang: Lang;
+ }) {
++  const t = makeT(lang);
++
+   if (sites.length === 0) {
+     return (
+       <div className="rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 px-6 py-10 text-center">
+@@ -54,7 +51,7 @@ export function SitesTable({
+           href="/nuovo-sito"
+           className="inline-block mt-3 text-xs text-blue-500 hover:underline"
+         >
+-          + Crea il primo sito
++          {t("sites.createFirst")}
+         </Link>
+       </div>
+     );
+@@ -65,18 +62,18 @@ export function SitesTable({
+       <table className="w-full text-sm">
+         <thead className="bg-zinc-50 dark:bg-zinc-900 text-xs uppercase text-zinc-500">
+           <tr>
+-            <th className="px-3 py-2 text-left">Status</th>
+-            <th className="px-3 py-2 text-left">Acc</th>
+-            <th className="px-3 py-2 text-left">Dominio</th>
+-            <th className="px-3 py-2 text-left">Business</th>
+-            <th className="px-3 py-2 text-left">Aggiornato</th>
+-            <th className="px-3 py-2 text-left">Risorse</th>
++            <th className="px-3 py-2 text-left">{t("table.status")}</th>
++            <th className="px-3 py-2 text-left">{t("table.acc")}</th>
++            <th className="px-3 py-2 text-left">{t("table.domain")}</th>
++            <th className="px-3 py-2 text-left">{t("table.business")}</th>
++            <th className="px-3 py-2 text-left">{t("table.updated")}</th>
++            <th className="px-3 py-2 text-left">{t("table.resources")}</th>
+           </tr>
+         </thead>
+         <tbody>
+           {sites.map((s) => {
+             const cls = STATUS_STYLE[s.status] ?? STATUS_STYLE.draft;
+-            const label = STATUS_LABEL[s.status] ?? s.status;
++            const label = t(`status.${s.status}`);
+             return (
+               <tr key={s.domain} className="border-t border-zinc-200 dark:border-zinc-800">
+                 <td className="px-3 py-2">
+@@ -92,7 +89,7 @@ export function SitesTable({
+                         ? "bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300"
+                         : "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300")
+                     }
+-                    title={s.account === "EN" ? "fluxgateseo CF account" : "Brianzadigitale CF account"}
++                    title={s.account === "EN" ? t("acc.enTitle") : t("acc.itTitle")}
+                   >
+                     {s.account}
+                   </span>
+@@ -112,7 +109,7 @@ export function SitesTable({
+                   )}
+                 </td>
+                 <td className="px-3 py-2">{s.businessName}</td>
+-                <td className="px-3 py-2 text-xs text-zinc-500">{formatDate(s.updatedAt)}</td>
++                <td className="px-3 py-2 text-xs text-zinc-500">{formatDate(s.updatedAt, lang)}</td>
+                 <td className="px-3 py-2 text-xs space-x-2">
+                   {s.githubRepo && (
+                     <a
+@@ -134,11 +131,11 @@ export function SitesTable({
+                       pages ↗
+                     </a>
+                   )}
+-                  <StartBuildButton domain={s.domain} status={s.status} />
+-                  <ResetBuildButton domain={s.domain} status={s.status} />
+-                  <PromptButton domain={s.domain} status={s.status} />
++                  <StartBuildButton domain={s.domain} status={s.status} lang={lang} />
++                  <ResetBuildButton domain={s.domain} status={s.status} lang={lang} />
++                  <PromptButton domain={s.domain} status={s.status} lang={lang} />
+                   {(s.status === "building" || s.status === "error") && (
+-                    <PipelineProgress domain={s.domain} polling={s.status === "building"} />
++                    <PipelineProgress domain={s.domain} polling={s.status === "building"} lang={lang} />
+                   )}
+                 </td>
+               </tr>
+diff --git a/src/components/SpendWidget.tsx b/src/components/SpendWidget.tsx
+index 63c3c26..29b36a0 100644
+--- a/src/components/SpendWidget.tsx
++++ b/src/components/SpendWidget.tsx
+@@ -1,6 +1,8 @@
+ import { formatCents, formatTokens, type MonthlySpend } from "@/lib/spend";
++import { makeT, type Lang } from "@/lib/i18n";
+ 
+-export function SpendWidget({ spend }: { spend: MonthlySpend }) {
++export function SpendWidget({ spend, lang }: { spend: MonthlySpend; lang: Lang }) {
++  const t = makeT(lang);
+   const noActivity =
+     spend.anthropicInputTokens === 0 &&
+     spend.anthropicOutputTokens === 0 &&
+@@ -9,10 +11,10 @@ export function SpendWidget({ spend }: { spend: MonthlySpend }) {
+   return (
+     <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+       <div className="text-zinc-500 font-medium">
+-        Spesa {spend.yearMonth}
++        {t("spend.label")} {spend.yearMonth}
+       </div>
+       {noActivity ? (
+-        <span className="text-zinc-500">— nessuna attività questo mese</span>
++        <span className="text-zinc-500">{t("spend.noActivity")}</span>
+       ) : (
+         <>
+           <div className="flex items-baseline gap-1">
+@@ -29,7 +31,7 @@ export function SpendWidget({ spend }: { spend: MonthlySpend }) {
+             <span className="font-mono font-semibold text-zinc-900 dark:text-zinc-100">
+               {spend.dataforseoCalls}
+             </span>
+-            <span className="text-[10px] text-zinc-400">chiamate</span>
++            <span className="text-[10px] text-zinc-400">{t("spend.calls")}</span>
+           </div>
+           {(spend.freepikCalls > 0 || spend.unsplashCalls > 0) && (
+             <div className="flex items-baseline gap-2 text-zinc-500">
+diff --git a/src/components/StartBuildButton.tsx b/src/components/StartBuildButton.tsx
+index 9725672..838f7ed 100644
+--- a/src/components/StartBuildButton.tsx
++++ b/src/components/StartBuildButton.tsx
+@@ -1,11 +1,13 @@
+ "use client";
+ 
+ import { useState } from "react";
++import { makeT, type Lang } from "@/lib/i18n";
+ 
+-export function StartBuildButton({ domain, status, dryRunDefault = false }: { domain: string; status: string; dryRunDefault?: boolean }) {
++export function StartBuildButton({ domain, status, lang, dryRunDefault = false }: { domain: string; status: string; lang: Lang; dryRunDefault?: boolean }) {
+   const [busy, setBusy] = useState(false);
+   const [msg, setMsg] = useState<string | null>(null);
+   const [dryRun, setDryRun] = useState(dryRunDefault);
++  const t = makeT(lang);
+ 
+   if (status !== "draft" && status !== "error") return null;
+ 
+@@ -20,13 +22,13 @@ export function StartBuildButton({ domain, status, dryRunDefault = false }: { do
+       });
+       const json = (await res.json()) as { ok: boolean; jobId?: string; instanceId?: string; error?: string };
+       if (!res.ok || !json.ok) {
+-        setMsg(`Errore: ${json.error ?? res.statusText}`);
++        setMsg(`${t("build.errorPrefix")} ${json.error ?? res.statusText}`);
+       } else {
+-        setMsg(`✓ Avviato (job ${json.jobId?.slice(0, 8)}…). Refresh per vedere stato.`);
++        setMsg(`${t("build.startedPrefix")} ${json.jobId?.slice(0, 8)}${t("build.startedSuffix")}`);
+         setTimeout(() => window.location.reload(), 1200);
+       }
+     } catch (err) {
+-      setMsg(`Errore: ${err instanceof Error ? err.message : "unknown"}`);
++      setMsg(`${t("build.errorPrefix")} ${err instanceof Error ? err.message : "unknown"}`);
+     } finally {
+       setBusy(false);
+     }
+@@ -35,7 +37,7 @@ export function StartBuildButton({ domain, status, dryRunDefault = false }: { do
+   return (
+     <span className="inline-flex items-center gap-2">
+       <label className="text-[10px] text-zinc-500 inline-flex items-center gap-1 select-none">
+-        <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} className="h-3 w-3" /> dry-run
++        <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} className="h-3 w-3" /> {t("build.dryRun")}
+       </label>
+       <button
+         onClick={start}
+@@ -43,7 +45,7 @@ export function StartBuildButton({ domain, status, dryRunDefault = false }: { do
+         className="text-xs px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+         type="button"
+       >
+-        {busy ? "..." : "Avvia build"}
++        {busy ? "..." : t("build.start")}
+       </button>
+       {msg && <span className="text-[10px] text-zinc-500">{msg}</span>}
+     </span>
+diff --git a/src/lib/i18n.ts b/src/lib/i18n.ts
+index 8b9f206..9a23ac0 100644
+--- a/src/lib/i18n.ts
++++ b/src/lib/i18n.ts
+@@ -53,6 +53,76 @@ const it: Dict = {
+   "error.oauth_exchange_failed": "Login con Google fallito. Riprova.",
+   "error.email_not_verified": "Email Google non verificata.",
+   "error.forbidden": "Non hai accesso a questa pagina.",
++  // dashboard nav / shell
++  "nav.brand": "Elite Pipeline",
++  "nav.sites": "Siti",
++  "nav.newSite": "+ Nuovo Sito",
++  "nav.builds": "Build in corso",
++  "nav.leadInbox": "Lead Inbox",
++  "nav.settings": "Impostazioni",
++  "shell.loggedInAs": "Accesso come",
++  "shell.notAuth": "Non autenticato",
++  "shell.logout": "Esci",
++  // sites page
++  "sites.title": "Siti",
++  "sites.siteOne": "sito",
++  "sites.siteOther": "siti",
++  "sites.live": "live",
++  "sites.building": "in build",
++  "sites.error": "errore",
++  "sites.empty": "Nessun sito ancora. Inizia dal wizard.",
++  "sites.createFirst": "+ Crea il primo sito",
++  // sites table
++  "table.status": "Status",
++  "table.acc": "Acc",
++  "table.domain": "Dominio",
++  "table.business": "Business",
++  "table.updated": "Aggiornato",
++  "table.resources": "Risorse",
++  "status.draft": "bozza",
++  "status.building": "in build",
++  "status.live": "live",
++  "status.error": "errore",
++  "status.paused": "in pausa",
++  "acc.itTitle": "Account CF Brianzadigitale",
++  "acc.enTitle": "Account CF fluxgateseo",
++  "filter.all": "Tutti",
++  // build buttons
++  "build.start": "Avvia build",
++  "build.dryRun": "dry-run",
++  "build.startedPrefix": "✓ Avviato (job",
++  "build.startedSuffix": "…). Aggiorna per lo stato.",
++  "build.errorPrefix": "Errore:",
++  "reset.label": "reset",
++  "reset.confirm": "Resettare {domain} a bozza? Annulla i job pipeline in corso.",
++  "reset.done": "✓ resettato",
++  "reset.title": "Annulla job in corso e riporta il sito a bozza",
++  "progress.show": "progress",
++  "progress.loading": "caricamento…",
++  "progress.noJob": "nessun job",
++  // spend
++  "spend.label": "Spesa",
++  "spend.noActivity": "— nessuna attività questo mese",
++  "spend.calls": "chiamate",
++  // prompt button
++  "prompt.open": "prompt",
++  "prompt.titlePrefix": "Modifica",
++  "prompt.cannedAudit": "Audit & fix 404",
++  "prompt.cannedHero": "Riscrivi hero",
++  "prompt.cannedFormal": "Tono più formale",
++  "prompt.placeholder": "Es: aggiungi una sezione FAQ alla home con 4 domande sul servizio…",
++  "prompt.scope": "Scope",
++  "prompt.cancel": "Annulla",
++  "prompt.apply": "Applica modifica",
++  "prompt.applying": "Applico…",
++  "prompt.noChange": "Nessuna modifica applicata (l'istruzione non ha prodotto cambiamenti nello scope).",
++  "prompt.appliedPrefix": "✓ Applicato — commit",
++  "prompt.appliedSuffix": ". Il deploy parte in automatico.",
++  "prompt.errorPrefix": "Errore:",
++  // builds page
++  "builds.title": "Build in corso",
++  "builds.desc": "Siti in stato draft, building o error. Premi «Avvia build» per far partire la pipeline. Spunta dry-run per saltare lo scaffold del repo e il deploy su CF Pages (solo Stage 1-4 + 7).",
++  "builds.empty": "Nessun build in corso. Le bozze del wizard appariranno qui.",
+ };
+ 
+ const en: Dict = {
+@@ -95,6 +165,76 @@ const en: Dict = {
+   "error.oauth_exchange_failed": "Google login failed. Try again.",
+   "error.email_not_verified": "Google email not verified.",
+   "error.forbidden": "You don't have access to this page.",
++  // dashboard nav / shell
++  "nav.brand": "Elite Pipeline",
++  "nav.sites": "Sites",
++  "nav.newSite": "+ New Site",
++  "nav.builds": "Builds",
++  "nav.leadInbox": "Lead Inbox",
++  "nav.settings": "Settings",
++  "shell.loggedInAs": "Logged in as",
++  "shell.notAuth": "Not authenticated",
++  "shell.logout": "Logout",
++  // sites page
++  "sites.title": "Sites",
++  "sites.siteOne": "site",
++  "sites.siteOther": "sites",
++  "sites.live": "live",
++  "sites.building": "building",
++  "sites.error": "error",
++  "sites.empty": "No sites yet. Start from the wizard.",
++  "sites.createFirst": "+ Create the first site",
++  // sites table
++  "table.status": "Status",
++  "table.acc": "Acc",
++  "table.domain": "Domain",
++  "table.business": "Business",
++  "table.updated": "Updated",
++  "table.resources": "Resources",
++  "status.draft": "draft",
++  "status.building": "building",
++  "status.live": "live",
++  "status.error": "error",
++  "status.paused": "paused",
++  "acc.itTitle": "Brianzadigitale CF account",
++  "acc.enTitle": "fluxgateseo CF account",
++  "filter.all": "All",
++  // build buttons
++  "build.start": "Start build",
++  "build.dryRun": "dry-run",
++  "build.startedPrefix": "✓ Started (job",
++  "build.startedSuffix": "…). Refresh for status.",
++  "build.errorPrefix": "Error:",
++  "reset.label": "reset",
++  "reset.confirm": "Reset {domain} to draft? This cancels any running pipeline jobs.",
++  "reset.done": "✓ reset",
++  "reset.title": "Cancel running jobs and reset the site to draft",
++  "progress.show": "progress",
++  "progress.loading": "loading…",
++  "progress.noJob": "no job",
++  // spend
++  "spend.label": "Spend",
++  "spend.noActivity": "— no activity this month",
++  "spend.calls": "calls",
++  // prompt button
++  "prompt.open": "prompt",
++  "prompt.titlePrefix": "Edit",
++  "prompt.cannedAudit": "Audit & fix 404",
++  "prompt.cannedHero": "Rewrite hero",
++  "prompt.cannedFormal": "More formal tone",
++  "prompt.placeholder": "E.g.: add an FAQ section to the home with 4 questions about the service…",
++  "prompt.scope": "Scope",
++  "prompt.cancel": "Cancel",
++  "prompt.apply": "Apply change",
++  "prompt.applying": "Applying…",
++  "prompt.noChange": "No change applied (the instruction produced no changes in scope).",
++  "prompt.appliedPrefix": "✓ Applied — commit",
++  "prompt.appliedSuffix": ". Deploy starts automatically.",
++  "prompt.errorPrefix": "Error:",
++  // builds page
++  "builds.title": "Builds",
++  "builds.desc": "Sites in draft, building or error state. Hit «Start build» to run the pipeline. Tick dry-run to skip the repo scaffold and the CF Pages deploy (Stages 1-4 + 7 only).",
++  "builds.empty": "No builds in progress. Wizard drafts will appear here.",
+ };
+ 
+ const dictionaries: Record<Lang, Dict> = { it, en };
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 3592d58..7c47381 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -12,6 +12,13 @@ const PUBLIC_PATHS = [
+   "/favicon.ico",
+ ];
+ 
++// Admin dashboard: never indexable. Stamp X-Robots-Tag on every response
++// (covers pages, API, redirects — stronger than the meta tag alone).
++function noIndex(res: NextResponse): NextResponse {
++  res.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
++  return res;
++}
++
+ export function middleware(req: NextRequest) {
+   const { pathname, search } = req.nextUrl;
+ 
+@@ -21,12 +28,12 @@ export function middleware(req: NextRequest) {
+   const cutoverHost = process.env.CUTOVER_REDIRECT_HOST;
+   if (cutoverHost) {
+     const target = `https://${cutoverHost}${pathname}${search}`;
+-    return NextResponse.redirect(target, 301);
++    return noIndex(NextResponse.redirect(target, 301));
+   }
+ 
+   // Allow public paths and static assets
+   if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+-    return NextResponse.next();
++    return noIndex(NextResponse.next());
+   }
+ 
+   // For everything else, require the session cookie to exist (presence check only;
+@@ -36,10 +43,10 @@ export function middleware(req: NextRequest) {
+     const url = req.nextUrl.clone();
+     url.pathname = "/login";
+     url.searchParams.set("returnTo", pathname);
+-    return NextResponse.redirect(url);
++    return noIndex(NextResponse.redirect(url));
+   }
+ 
+-  return NextResponse.next();
++  return noIndex(NextResponse.next());
+ }
+ 
+ export const config = {
+-- 
+2.43.0
+

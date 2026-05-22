@@ -1,0 +1,164 @@
+From b632d2c9bd68cd4a03e9ba5ed8a28858021e017f Mon Sep 17 00:00:00 2001
+From: c <c@c>
+Date: Fri, 22 May 2026 02:45:42 +0000
+Subject: [PATCH] Build guard: block 'Avvia build' without a complete brief;
+ redirect to wizard prefilled with the domain
+
+---
+ src/app/(dashboard)/nuovo-sito/page.tsx   |  5 ++--
+ src/app/api/builds/start/route.ts         | 33 +++++++++++++++++++++++
+ src/components/StartBuildButton.tsx       |  9 ++++++-
+ src/components/wizard/WizardContainer.tsx | 13 ++++++---
+ src/lib/i18n.ts                           |  2 ++
+ 5 files changed, 56 insertions(+), 6 deletions(-)
+
+diff --git a/src/app/(dashboard)/nuovo-sito/page.tsx b/src/app/(dashboard)/nuovo-sito/page.tsx
+index 7db46c7..c1d1326 100644
+--- a/src/app/(dashboard)/nuovo-sito/page.tsx
++++ b/src/app/(dashboard)/nuovo-sito/page.tsx
+@@ -1,7 +1,8 @@
+ import { WizardContainer } from "@/components/wizard/WizardContainer";
+ import { getSecretStatuses } from "@/lib/secret-status";
+ 
+-export default async function NuovoSitoPage() {
++export default async function NuovoSitoPage({ searchParams }: { searchParams: Promise<{ domain?: string }> }) {
++  const { domain } = await searchParams;
+   const secretStatuses = await getSecretStatuses();
+-  return <WizardContainer secretStatuses={secretStatuses} />;
++  return <WizardContainer secretStatuses={secretStatuses} initialDomain={domain ?? null} />;
+ }
+diff --git a/src/app/api/builds/start/route.ts b/src/app/api/builds/start/route.ts
+index de69869..d454793 100644
+--- a/src/app/api/builds/start/route.ts
++++ b/src/app/api/builds/start/route.ts
+@@ -5,9 +5,28 @@ import { getDb } from "@/lib/db";
+ import { eliteSites, eliteJobs } from "@/lib/schema";
+ import { getCurrentUser } from "@/lib/auth";
+ import { triggerPipeline } from "@/lib/pipeline-trigger";
++import type { WizardState } from "@/lib/wizard-types";
+ 
+ export const dynamic = "force-dynamic";
+ 
++// A build can only run if the wizard brief has the same minimum the wizard
++// submit enforces: domain (step1) + business name (step4) + scenario (step3).
++// Without it the pipeline has nothing to generate, so we send the operator
++// back into the wizard instead of starting an empty build.
++function briefComplete(briefJson: string | null): boolean {
++  if (!briefJson) return false;
++  try {
++    const s = JSON.parse(briefJson) as Partial<WizardState>;
++    return Boolean(
++      s?.step1?.domain &&
++        s?.step4?.businessName?.trim() &&
++        s?.step3?.scenario,
++    );
++  } catch {
++    return false;
++  }
++}
++
+ export async function POST(req: NextRequest) {
+   const user = await getCurrentUser();
+   if (!user) {
+@@ -47,6 +66,20 @@ export async function POST(req: NextRequest) {
+     return NextResponse.json({ ok: false, error: `${domain} already building` }, { status: 409 });
+   }
+ 
++  // Guard: no build without a complete brief — guide the operator into the
++  // wizard (prefilled with the domain) to collect the site info first.
++  if (!briefComplete(site.briefJson)) {
++    return NextResponse.json(
++      {
++        ok: false,
++        needsBrief: true,
++        wizardUrl: `/nuovo-sito?domain=${encodeURIComponent(domain)}`,
++        error: `${domain} non ha un brief completo. Completa il wizard prima di avviare la build.`,
++      },
++      { status: 422 },
++    );
++  }
++
+   const jobId = ulid();
+   const briefId = ulid();
+   const now = Date.now();
+diff --git a/src/components/StartBuildButton.tsx b/src/components/StartBuildButton.tsx
+index 838f7ed..dacec5b 100644
+--- a/src/components/StartBuildButton.tsx
++++ b/src/components/StartBuildButton.tsx
+@@ -20,7 +20,14 @@ export function StartBuildButton({ domain, status, lang, dryRunDefault = false }
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({ domain, dryRun }),
+       });
+-      const json = (await res.json()) as { ok: boolean; jobId?: string; instanceId?: string; error?: string };
++      const json = (await res.json()) as { ok: boolean; jobId?: string; instanceId?: string; error?: string; needsBrief?: boolean; wizardUrl?: string };
++      if (json.needsBrief && json.wizardUrl) {
++        // No brief yet → guide the operator into the wizard to collect the
++        // site info before any build runs.
++        setMsg(t("build.needsBrief"));
++        window.location.href = json.wizardUrl;
++        return;
++      }
+       if (!res.ok || !json.ok) {
+         setMsg(`${t("build.errorPrefix")} ${json.error ?? res.statusText}`);
+       } else {
+diff --git a/src/components/wizard/WizardContainer.tsx b/src/components/wizard/WizardContainer.tsx
+index c7257ea..47d8a1f 100644
+--- a/src/components/wizard/WizardContainer.tsx
++++ b/src/components/wizard/WizardContainer.tsx
+@@ -20,6 +20,7 @@ import { Step11Review } from "./Step11Review";
+ 
+ interface WizardContainerProps {
+   secretStatuses: Record<string, "set" | "missing" | "placeholder">;
++  initialDomain?: string | null;
+ }
+ 
+ const STEP_LABELS = [
+@@ -36,16 +37,22 @@ const STEP_LABELS = [
+   "Riepilogo",
+ ];
+ 
+-export function WizardContainer({ secretStatuses }: WizardContainerProps) {
++export function WizardContainer({ secretStatuses, initialDomain }: WizardContainerProps) {
+   const [state, setState] = useState<WizardState>(defaultWizardState);
+   const [hydrated, setHydrated] = useState(false);
+ 
+-  // Load from localStorage on mount
++  // Load from localStorage on mount. If we arrived from "Avvia build" with a
++  // ?domain= (brief-missing guard), prefill it — but only when the saved
++  // draft has no domain yet, so we never clobber an in-progress wizard.
+   useEffect(() => {
+     const saved = loadWizardState();
++    if (initialDomain && !saved.step1.domain) {
++      saved.step1 = { ...saved.step1, domain: initialDomain };
++      saved.currentStep = 1;
++    }
+     setState(saved);
+     setHydrated(true);
+-  }, []);
++  }, [initialDomain]);
+ 
+   // Save on every state change
+   useEffect(() => {
+diff --git a/src/lib/i18n.ts b/src/lib/i18n.ts
+index 9a23ac0..fbd147e 100644
+--- a/src/lib/i18n.ts
++++ b/src/lib/i18n.ts
+@@ -93,6 +93,7 @@ const it: Dict = {
+   "build.startedPrefix": "✓ Avviato (job",
+   "build.startedSuffix": "…). Aggiorna per lo stato.",
+   "build.errorPrefix": "Errore:",
++  "build.needsBrief": "Brief mancante — apro il wizard…",
+   "reset.label": "reset",
+   "reset.confirm": "Resettare {domain} a bozza? Annulla i job pipeline in corso.",
+   "reset.done": "✓ resettato",
+@@ -205,6 +206,7 @@ const en: Dict = {
+   "build.startedPrefix": "✓ Started (job",
+   "build.startedSuffix": "…). Refresh for status.",
+   "build.errorPrefix": "Error:",
++  "build.needsBrief": "Brief missing — opening the wizard…",
+   "reset.label": "reset",
+   "reset.confirm": "Reset {domain} to draft? This cancels any running pipeline jobs.",
+   "reset.done": "✓ reset",
+-- 
+2.43.0
+

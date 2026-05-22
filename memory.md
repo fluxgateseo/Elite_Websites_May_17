@@ -239,11 +239,16 @@ land.*
    Expect a 200 with `{ok:true, commitSha, filesChanged, modelUsage}` or
    a 200 with `filesChanged:[]` if Claude judged the prompt a no-op.
    404 means saas not deployed (saas only — worker is verified).
-2. **Add the UI surface**: `PromptButton.tsx` on `/sites` (Radix
-   Dialog + textarea + scope select, POSTs to
-   `/api/sites/[domain]/prompt`). Spec in `docs/custom-prompt.md`
-   "Canned prompts surfaced in the UI" section.
-3. **Fix the site auto-deploy properly** so future sites and
+2. **UI surface — BUILT 2026-05-22** (Plan-C): `PromptButton.tsx` +
+   `SitesTable` wiring (modal, scope select, 3 canned prompts, no Radix
+   dep). `tsc` clean. Patch: `patches/dashboard-edit-flow/saas-prompt-button.patch`.
+   Owner applies to `andreabbo/elite-saas` + redeploy (same flow as PR #2).
+3. **Auto-deploy — VERIFIED READY 2026-05-22.** `patches/template-elite-fixes.patch`
+   applies clean to live `fluxgateseo/elite-astro-template` HEAD (13eec05);
+   `npm ci` exit 0 + `npm run build` Complete! confirmed in a clone. Owner
+   applies once (commands handed over). Original note below.
+
+   Fix the site auto-deploy properly so future sites and
    the existing two stop needing manual `dist.zip` uploads. Patch
    ready: `patches/template-elite-fixes.patch` (npm-based deploy.yml +
    .npmrc + .nvmrc + galleria/interlink/contrast fixes). Apply ONCE to

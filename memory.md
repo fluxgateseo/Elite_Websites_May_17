@@ -190,6 +190,29 @@ Complete!) on both sites. This is **template-level** — folded into
 `patches/template-elite-fixes.patch`; every generated site needs it or
 it will never deploy.
 
+## Dashboard deploy resolved (2026-05-22)
+
+elite-saas dashboard: PromptButton + noindex + IT-primary i18n flag
+switcher + build-brief guard are **LIVE** on `app.innotofuture.com`
+(verified externally: `x-robots-tag: noindex, nofollow, noarchive,
+nosnippet` present on the EN worker AND the custom domain). Consolidated
+patch: `patches/dashboard-edit-flow/saas-dashboard-all.patch`.
+
+**Recurring blocker + lesson:** every "still old after deploy" was the
+same root cause — `gh pr merge` was NOT landing the commits on `main`
+(branches created but never merged), so each `wrangler deploy` shipped
+stale code. Fix that finally worked: `git apply --3way` the consolidated
+patch **directly on main** → `git add -A && git commit && git push
+origin main` → verify with `grep -c "X-Robots-Tag" src/middleware.ts`
+(must be ≥1) → `rm -rf .next .open-next` → `pnpm dlx
+@opennextjs/cloudflare build` → `wrangler deploy --env en` (+ top-level).
+**Always verify the commit is on `origin/main` before deploying** — the
+PR-merge step was the silent failure point throughout.
+app.innotofuture.com is served by the **EN** worker
+`elite-saas.scissorssister.workers.dev`. Minor: `/robots.txt` body comes
+back empty under OpenNext, but the `X-Robots-Tag` header is the
+authoritative noindex signal and is working.
+
 ## How to resume
 
 **FIRST READ THIS BLOCK on session resume — then go to standard steps below.**

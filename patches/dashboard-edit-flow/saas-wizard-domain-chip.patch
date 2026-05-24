@@ -1,0 +1,36 @@
+From 961ba19bb7758139748a12c7feada709cad5f1fd Mon Sep 17 00:00:00 2001
+From: c <c@c>
+Date: Sun, 24 May 2026 09:03:08 +0000
+Subject: [PATCH] Wizard: show the working domain as a chip in the step header
+ on every step
+
+---
+ src/components/wizard/WizardContainer.tsx | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/src/components/wizard/WizardContainer.tsx b/src/components/wizard/WizardContainer.tsx
+index 47d8a1f..528a903 100644
+--- a/src/components/wizard/WizardContainer.tsx
++++ b/src/components/wizard/WizardContainer.tsx
+@@ -167,8 +167,16 @@ export function WizardContainer({ secretStatuses, initialDomain }: WizardContain
+             );
+           })}
+         </div>
+-        <div className="text-xs text-zinc-400">
+-          Step {currentDisplayIdx} di {totalSteps} — {STEP_LABELS[currentStep - 1]}
++        <div className="text-xs text-zinc-400 flex items-center gap-2 flex-wrap">
++          <span>Step {currentDisplayIdx} di {totalSteps} — {STEP_LABELS[currentStep - 1]}</span>
++          {state.step1.domain && (
++            <span
++              className="font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
++              title="Sito su cui stai lavorando"
++            >
++              {state.step1.domain}
++            </span>
++          )}
+         </div>
+       </div>
+ 
+-- 
+2.43.0
+

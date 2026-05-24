@@ -1,0 +1,200 @@
+From 13d92042d13a8f3e34d928df03bcb63baa143b98 Mon Sep 17 00:00:00 2001
+From: c <c@c>
+Date: Sun, 24 May 2026 09:06:59 +0000
+Subject: [PATCH] Wizard brief: 'Ricerca automatica' button (web research
+ auto-fill + suggested categories) via /api/wizard/research
+
+---
+ src/app/api/wizard/research/route.ts | 58 +++++++++++++++++
+ src/components/wizard/Step4Brief.tsx | 93 +++++++++++++++++++++++++++-
+ 2 files changed, 150 insertions(+), 1 deletion(-)
+ create mode 100644 src/app/api/wizard/research/route.ts
+
+diff --git a/src/app/api/wizard/research/route.ts b/src/app/api/wizard/research/route.ts
+new file mode 100644
+index 0000000..7353cb4
+--- /dev/null
++++ b/src/app/api/wizard/research/route.ts
+@@ -0,0 +1,58 @@
++import { NextRequest, NextResponse } from "next/server";
++import { getCurrentUser } from "@/lib/auth";
++
++export const dynamic = "force-dynamic";
++
++type Body = { domain?: string; businessName?: string };
++
++// Proxies wizard auto-fill research to the pipeline worker's /research
++// (which holds the Anthropic key + runs Claude web search). Forwards the
++// shared secret server-side so it's never exposed to the browser.
++export async function POST(req: NextRequest) {
++  const user = await getCurrentUser();
++  if (!user) {
++    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
++  }
++
++  let body: Body;
++  try {
++    body = (await req.json()) as Body;
++  } catch {
++    return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 });
++  }
++  const domain = (body.domain ?? "").trim().toLowerCase();
++  const businessName = (body.businessName ?? "").trim();
++  if (!domain && !businessName) {
++    return NextResponse.json({ ok: false, error: "Domain or business name required" }, { status: 400 });
++  }
++
++  const workflowUrl = process.env.PIPELINE_WORKFLOW_URL;
++  const sharedSecret = process.env.PIPELINE_SHARED_SECRET;
++  if (!workflowUrl || !sharedSecret) {
++    return NextResponse.json(
++      { ok: false, error: "PIPELINE_WORKFLOW_URL or PIPELINE_SHARED_SECRET not configured" },
++      { status: 500 },
++    );
++  }
++
++  const res = await fetch(`${workflowUrl.replace(/\/$/, "")}/research`, {
++    method: "POST",
++    headers: {
++      "Content-Type": "application/json",
++      "x-pipeline-secret": sharedSecret,
++    },
++    body: JSON.stringify({ domain, businessName }),
++  });
++
++  const text = await res.text();
++  let parsed: unknown;
++  try {
++    parsed = JSON.parse(text);
++  } catch {
++    return NextResponse.json(
++      { ok: false, error: `worker non-JSON ${res.status}: ${text.slice(0, 300)}` },
++      { status: 502 },
++    );
++  }
++  return NextResponse.json(parsed, { status: res.status });
++}
+diff --git a/src/components/wizard/Step4Brief.tsx b/src/components/wizard/Step4Brief.tsx
+index cdd699d..22f4cd4 100644
+--- a/src/components/wizard/Step4Brief.tsx
++++ b/src/components/wizard/Step4Brief.tsx
+@@ -1,8 +1,23 @@
+ "use client";
+ 
++import { useState } from "react";
+ import { WizardState, Industry } from "@/lib/wizard-types";
+ import { StepNav } from "./StepNav";
+ 
++type ResearchSuggestions = {
++  businessName?: string;
++  industry?: string;
++  subCategory?: string;
++  city?: string;
++  address?: string;
++  phone?: string;
++  description?: string;
++  usp?: string;
++  suggestedCategories?: string[];
++  confidence?: "high" | "medium" | "low";
++  notes?: string;
++};
++
+ interface Props {
+   state: WizardState;
+   onChange: (patch: Partial<WizardState>) => void;
+@@ -54,15 +69,91 @@ export function Step4Brief({ state, onChange, onNext, onBack }: Props) {
+     onChange({ step4: { ...s, ...fields } });
+   }
+ 
++  const [researching, setResearching] = useState(false);
++  const [researchMsg, setResearchMsg] = useState<string | null>(null);
++  const [suggestedCats, setSuggestedCats] = useState<string[]>([]);
++
++  async function research() {
++    setResearching(true);
++    setResearchMsg(null);
++    try {
++      const res = await fetch("/api/wizard/research", {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({ domain: state.step1.domain, businessName: s.businessName }),
++      });
++      const json = (await res.json()) as { ok: boolean; suggestions?: ResearchSuggestions; error?: string };
++      if (!res.ok || !json.ok || !json.suggestions) {
++        setResearchMsg(`Errore: ${json.error ?? res.statusText}`);
++        return;
++      }
++      const g = json.suggestions;
++      const industryOk = INDUSTRIES.includes(g.industry as Industry) ? (g.industry as Industry) : s.industry;
++      // Auto-fill: keep what the user already typed, fill the rest from research.
++      patch({
++        businessName: s.businessName || g.businessName || "",
++        industry: s.industry || industryOk,
++        subCategory: s.subCategory || g.subCategory || "",
++        city: s.city || g.city || "",
++        address: s.address || g.address || "",
++        phone: s.phone || g.phone || "",
++        description: s.description || g.description || "",
++        usp: s.usp || g.usp || "",
++      });
++      setSuggestedCats(g.suggestedCategories ?? []);
++      const conf = g.confidence ? ` · affidabilità: ${g.confidence}` : "";
++      setResearchMsg(`✓ Compilato dai dati trovati${conf}.${g.notes ? " " + g.notes : ""}`);
++    } catch (err) {
++      setResearchMsg(`Errore: ${err instanceof Error ? err.message : "unknown"}`);
++    } finally {
++      setResearching(false);
++    }
++  }
++
+   const canProceed = !!s.businessName.trim() && !!s.industry && !!s.city.trim();
+ 
+   return (
+     <div>
+       <h1 className="text-2xl font-semibold">Parlaci del business</h1>
+-      <p className="text-zinc-500 mt-1 mb-6 text-sm">
++      <p className="text-zinc-500 mt-1 mb-4 text-sm">
+         Inserisci le informazioni principali del sito. Potrai modificarle dopo.
+       </p>
+ 
++      <div className="max-w-lg mb-6 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 p-4 space-y-2">
++        <div className="flex items-center justify-between gap-3">
++          <div className="text-sm">
++            <span className="font-medium">Ricerca automatica</span>
++            <p className="text-xs text-zinc-500">Cerchiamo sul web info sull&apos;attività di <span className="font-mono">{state.step1.domain || "questo dominio"}</span> e compiliamo il brief.</p>
++          </div>
++          <button
++            type="button"
++            onClick={research}
++            disabled={researching || (!state.step1.domain && !s.businessName.trim())}
++            className="shrink-0 text-xs px-3 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
++          >
++            {researching ? "Ricerco…" : "🔍 Ricerca automatica"}
++          </button>
++        </div>
++        {researchMsg && <p className="text-xs text-zinc-500">{researchMsg}</p>}
++        {suggestedCats.length > 0 && (
++          <div className="pt-1">
++            <p className="text-xs text-zinc-500 mb-1">Categorie suggerite (clic per usarla come sotto-categoria):</p>
++            <div className="flex flex-wrap gap-1.5">
++              {suggestedCats.map((c) => (
++                <button
++                  key={c}
++                  type="button"
++                  onClick={() => patch({ subCategory: c })}
++                  className="text-[11px] px-2 py-1 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-blue-600 hover:text-white"
++                >
++                  {c}
++                </button>
++              ))}
++            </div>
++          </div>
++        )}
++      </div>
++
+       <div className="max-w-lg space-y-5">
+         <Field label="Nome del business" required>
+           <input
+-- 
+2.43.0
+

@@ -1,0 +1,177 @@
+From 2efc27fc6d78f54bdae4d360e8987c636fff6137 Mon Sep 17 00:00:00 2001
+From: c <c@c>
+Date: Sun, 24 May 2026 09:06:59 +0000
+Subject: [PATCH] Add /research endpoint: Claude web-search auto-fill for the
+ wizard brief (suggests fields + content categories)
+
+---
+ src/index.ts    |  14 ++++++
+ src/research.ts | 125 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 139 insertions(+)
+ create mode 100644 src/research.ts
+
+diff --git a/src/index.ts b/src/index.ts
+index 123ca06..3555980 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -1,5 +1,6 @@
+ import { PipelineWorkflow, type Env, type PipelineParams } from "./pipeline";
+ import { handleCustomPrompt } from "./custom-prompt";
++import { handleResearch } from "./research";
+ 
+ export { PipelineWorkflow };
+ export type { Env, PipelineParams };
+@@ -80,6 +81,19 @@ export default {
+       }
+     }
+ 
++    // Wizard auto-fill: research a domain/business via Claude web search.
++    if (url.pathname === "/research" && request.method === "POST") {
++      if (!authorized) return new Response("Unauthorized", { status: 401 });
++      try {
++        return await handleResearch(request, env);
++      } catch (err) {
++        return Response.json(
++          { ok: false, error: err instanceof Error ? err.message : String(err) },
++          { status: 502 },
++        );
++      }
++    }
++
+     // Dashboard-driven site edits. See custom-prompt.ts + the meta repo
+     // docs/custom-prompt.md. Same shared-secret gate as /trigger.
+     if (url.pathname === "/custom-prompt" && request.method === "POST") {
+diff --git a/src/research.ts b/src/research.ts
+new file mode 100644
+index 0000000..4987db0
+--- /dev/null
++++ b/src/research.ts
+@@ -0,0 +1,125 @@
++// /research — wizard auto-fill. Given a domain (and optional business name),
++// uses Claude with the server-side web_search tool to research the business
++// (incl. expired-domain history) and return structured brief suggestions.
++
++import type { Env } from "./pipeline";
++
++const INDUSTRIES = [
++  "Ristorazione",
++  "Beauty/Wellness",
++  "Tech/SaaS",
++  "Servizi professionali",
++  "E-commerce",
++  "Turismo",
++  "Salute",
++  "Educazione",
++  "Altro",
++] as const;
++
++export type ResearchBody = { domain?: string; businessName?: string };
++
++export type ResearchSuggestions = {
++  businessName?: string;
++  industry?: string;
++  subCategory?: string;
++  city?: string;
++  address?: string;
++  phone?: string;
++  description?: string;
++  usp?: string;
++  suggestedCategories?: string[];
++  confidence?: "high" | "medium" | "low";
++  notes?: string;
++};
++
++type AnthropicContentBlock = { type: string; text?: string };
++type AnthropicResponse = { content?: AnthropicContentBlock[] };
++
++function stripFence(s: string): string {
++  const m = s.trim().match(/^```(?:json)?\s*\n([\s\S]+?)\n```$/);
++  return (m ? m[1] : s).trim();
++}
++
++export async function handleResearch(request: Request, env: Env): Promise<Response> {
++  let body: ResearchBody;
++  try {
++    body = (await request.json()) as ResearchBody;
++  } catch {
++    return Response.json({ ok: false, error: "Bad JSON" }, { status: 400 });
++  }
++  const domain = (body.domain ?? "").trim().toLowerCase();
++  const businessName = (body.businessName ?? "").trim();
++  if (!domain && !businessName) {
++    return Response.json({ ok: false, error: "domain or businessName required" }, { status: 400 });
++  }
++  if (!env.ANTHROPIC_API_KEY) {
++    return Response.json({ ok: false, error: "ANTHROPIC_API_KEY not configured" }, { status: 500 });
++  }
++
++  const system = [
++    "Sei un ricercatore per un'agenzia che ricostruisce siti su domini (spesso scaduti).",
++    "Cerca sul web informazioni reali sull'attività associata al dominio e/o al nome dato:",
++    "sito attuale, versioni archiviate (Wayback), Google Maps, social, directory locali, recensioni.",
++    "Obiettivo: ricostruire un brief plausibile e suggerire categorie di contenuto per il sito.",
++    "",
++    "Rispondi SOLO con JSON valido, nessun testo fuori dal JSON, in italiano:",
++    "{",
++    '  "businessName": string,',
++    `  "industry": uno tra ${JSON.stringify(INDUSTRIES)},`,
++    '  "subCategory": string,        // es. "Fine dining", "Spa & massaggi"',
++    '  "city": string,               // città / zona',
++    '  "address": string,            // se trovato, altrimenti ""',
++    '  "phone": string,              // se trovato, altrimenti ""',
++    '  "description": string,        // max 500 caratteri',
++    '  "usp": string,                // max 300 caratteri, cosa lo distingue',
++    '  "suggestedCategories": string[],  // 3-6 categorie/sezioni adatte (es. "Menu","Eventi","Recensioni")',
++    '  "confidence": "high" | "medium" | "low",  // quanto sono reali i dati trovati',
++    '  "notes": string               // breve nota sulle fonti o sulle ipotesi fatte',
++    "}",
++    "Se non trovi dati reali, fai ipotesi plausibili dal nome del dominio e metti confidence='low'.",
++  ].join("\n");
++
++  const userMsg = `Dominio: ${domain || "(non fornito)"}. Nome attività (se noto): ${businessName || "(non noto)"}. Ricerca e compila il brief.`;
++
++  const res = await fetch("https://api.anthropic.com/v1/messages", {
++    method: "POST",
++    headers: {
++      "Content-Type": "application/json",
++      "x-api-key": env.ANTHROPIC_API_KEY,
++      "anthropic-version": "2023-06-01",
++    },
++    body: JSON.stringify({
++      model: "claude-sonnet-4-6",
++      max_tokens: 2000,
++      system,
++      messages: [{ role: "user", content: userMsg }],
++      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }],
++    }),
++  });
++
++  if (!res.ok) {
++    const errText = (await res.text()).slice(0, 400);
++    return Response.json({ ok: false, error: `Anthropic ${res.status}: ${errText}` }, { status: 502 });
++  }
++
++  const data = (await res.json()) as AnthropicResponse;
++  const text = (data.content ?? [])
++    .filter((b) => b.type === "text" && typeof b.text === "string")
++    .map((b) => b.text as string)
++    .join("\n")
++    .trim();
++
++  let suggestions: ResearchSuggestions;
++  try {
++    suggestions = JSON.parse(stripFence(text)) as ResearchSuggestions;
++  } catch {
++    return Response.json({ ok: false, error: "Could not parse research result", raw: text.slice(0, 500) }, { status: 502 });
++  }
++
++  // Coerce industry to an allowed value (or drop it).
++  if (suggestions.industry && !(INDUSTRIES as readonly string[]).includes(suggestions.industry)) {
++    suggestions.industry = undefined;
++  }
++
++  return Response.json({ ok: true, suggestions });
++}
+-- 
+2.43.0
+

@@ -1,0 +1,31 @@
+From 66e8a58d57e2467533e63c38e6471d4430920174 Mon Sep 17 00:00:00 2001
+From: c <c@c>
+Date: Sun, 24 May 2026 09:10:24 +0000
+Subject: [PATCH] Research: always generate non-empty description + USP
+ marketing copy
+
+---
+ src/research.ts | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/src/research.ts b/src/research.ts
+index 4987db0..01fb35e 100644
+--- a/src/research.ts
++++ b/src/research.ts
+@@ -77,6 +77,13 @@ export async function handleResearch(request: Request, env: Env): Promise<Respon
+     '  "notes": string               // breve nota sulle fonti o sulle ipotesi fatte',
+     "}",
+     "Se non trovi dati reali, fai ipotesi plausibili dal nome del dominio e metti confidence='low'.",
++    "",
++    "IMPORTANTE: 'description' e 'usp' NON devono mai essere vuoti. Scrivi copy",
++    "marketing pronto all'uso, in italiano, convincente e specifico:",
++    "- description: 2-3 frasi su cosa offre l'attività, per chi, il valore (max 500).",
++    "- usp: una frase incisiva su cosa la rende unica (max 300).",
++    "Se i dati sono scarsi, basa il copy sul tipo di attività + località dedotti",
++    "dal nome del dominio, mantenendo un tono credibile (non inventare premi/numeri falsi).",
+   ].join("\n");
+ 
+   const userMsg = `Dominio: ${domain || "(non fornito)"}. Nome attività (se noto): ${businessName || "(non noto)"}. Ricerca e compila il brief.`;
+-- 
+2.43.0
+

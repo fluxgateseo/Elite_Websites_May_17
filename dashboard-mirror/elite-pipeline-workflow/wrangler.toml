@@ -1,0 +1,39 @@
+name = "elite-pipeline-workflow"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Top-level = IT account (Brianzadigitale@gmail.com). Default deploy target during migration.
+[[workflows]]
+name = "pipeline-workflow"
+binding = "PIPELINE"
+class_name = "PipelineWorkflow"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "elite-saas"
+database_id = "e85aeadf-bffd-4028-890d-f99b6da1e38c"
+
+# Stage 1 (intel) reads uploaded CSVs from this bucket if step6 sources include "csv".
+[[r2_buckets]]
+binding = "ASSETS_R2"
+bucket_name = "elite-saas-assets"
+
+# EN account (fluxgateseo@gmail.com). Target post-migration. Deploy with: wrangler deploy --env en
+[env.en]
+name = "elite-pipeline-workflow"
+account_id = "06b37563e983e04bd56debd113fe3be5"
+
+[[env.en.workflows]]
+name = "pipeline-workflow"
+binding = "PIPELINE"
+class_name = "PipelineWorkflow"
+
+[[env.en.d1_databases]]
+binding = "DB"
+database_name = "elite-saas"
+database_id = "3444ad57-ccbc-4254-848d-5b8987ad69c1"
+
+[[env.en.r2_buckets]]
+binding = "ASSETS_R2"
+bucket_name = "elite-saas-assets"

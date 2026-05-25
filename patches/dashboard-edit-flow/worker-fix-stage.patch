@@ -1,0 +1,511 @@
+From caf3ea1a997065f30424fbb184a3c4d917c41923 Mon Sep 17 00:00:00 2001
+From: c <c@l>
+Date: Mon, 25 May 2026 09:01:30 +0000
+Subject: [PATCH] Worker /fix-stage: diagnose + auto-fix failed builds
+
+POST /fix-stage (x-pipeline-secret gated). action=diagnose probes the
+site + GHA run + CF Pages deployment and returns rootCause + evidence +
+proposedFixes; action=confirm:<fixId> applies the fix (re-run deploy,
+commit .npmrc/.nvmrc, bind Pages custom domain + DNS, Always Use HTTPS +
+www->apex 301) then re-runs Verify and flips to live if green.
+
+- src/fix-stage.ts            handler + pure classifyVerify (unit-tested)
+- src/lib/cf-api.ts           +listDnsRecords, getPagesProject,
+                              setAlwaysUseHttps, upsertWwwApexRedirect
+- src/lib/github.ts           +getLatestWorkflowRun, rerunWorkflowRun
+- src/index.ts                route wiring
+- tests/fix-stage.test.ts     5 cases
+
+Companion to /custom-prompt. Spec: meta docs/dashboard-fix-stage-chat.md.
+---
+ src/fix-stage.ts        | 270 ++++++++++++++++++++++++++++++++++++++++
+ src/index.ts            |  15 +++
+ src/lib/cf-api.ts       |  62 +++++++++
+ src/lib/github.ts       |  35 ++++++
+ tests/fix-stage.test.ts |  52 ++++++++
+ 5 files changed, 434 insertions(+)
+ create mode 100644 src/fix-stage.ts
+ create mode 100644 tests/fix-stage.test.ts
+
+diff --git a/src/fix-stage.ts b/src/fix-stage.ts
+new file mode 100644
+index 0000000..5511f32
+--- /dev/null
++++ b/src/fix-stage.ts
+@@ -0,0 +1,270 @@
++// /fix-stage — dashboard-driven diagnosis + auto-fix of failed builds.
++// Companion to /custom-prompt (content edits). Same x-pipeline-secret gate.
++// See docs/dashboard-fix-stage-chat.md (meta repo) for the contract.
++//
++// action="diagnose"        → read-only: probe the site + GHA + CF Pages,
++//                            return rootCause + evidence + proposedFixes[].
++// action="confirm:<fixId>" → apply the named fix (mutates CF/GitHub), then
++//                            re-run the Verify smoke checks and, if green,
++//                            flip the site to "live".
++
++import { smokeFetch } from "./lib/lighthouse";
++import { getDb, loadSiteByDomain, setSiteStatus } from "./lib/db";
++import { cfAccountForDomain, type CfAccountLabel } from "./lib/cf-account";
++import {
++  findZone,
++  attachPagesCustomDomain,
++  upsertCnameRecord,
++  listDnsRecords,
++  getPagesProject,
++  setAlwaysUseHttps,
++  upsertWwwApexRedirect,
++} from "./lib/cf-api";
++import { getLatestWorkflowRun, rerunWorkflowRun, commitFiles } from "./lib/github";
++import type { Env } from "./pipeline";
++
++export type FixId = "redeploy" | "apply-deploy-fix" | "bind-domain" | "canonical-redirects" | "mark-verify";
++
++export type Fix = { id: FixId; label: string; destructive?: boolean };
++
++export type Diagnosis = { rootCause: string; fixes: Fix[] };
++
++const FIXES: Record<FixId, Fix> = {
++  "apply-deploy-fix": { id: "apply-deploy-fix", label: "Sblocca il deploy: aggiungi .npmrc/.nvmrc al repo e ri-deploya" },
++  redeploy: { id: "redeploy", label: "Rilancia il deploy (re-run dell'ultimo workflow GitHub Actions)" },
++  "bind-domain": { id: "bind-domain", label: "Collega il dominio a Pages (custom domain + DNS, rimuove record A obsoleti)", destructive: true },
++  "canonical-redirects": { id: "canonical-redirects", label: "Canonical: Always Use HTTPS + 301 www→apex" },
++  "mark-verify": { id: "mark-verify", label: "Ri-verifica e segna 'live' se i path rispondono" },
++};
++
++export type VerifyProbe = {
++  apexOk: boolean;
++  pagesOk: boolean;
++  sitemapOk: boolean;
++  galleriaOk: boolean;
++  ghaConclusion: string | null;
++  pagesHasDeployment: boolean;
++};
++
++// Pure classifier (no IO) so it can be unit-tested. Maps the probe results to
++// a root cause + the ordered fixes that address it.
++export function classifyVerify(p: VerifyProbe): Diagnosis {
++  if (!p.apexOk && !p.pagesOk) {
++    const fixes: Fix[] = [];
++    if (p.ghaConclusion === "failure" || !p.pagesHasDeployment) fixes.push(FIXES["apply-deploy-fix"]);
++    fixes.push(FIXES.redeploy);
++    return {
++      rootCause:
++        "Nessun deployment Pages sano: anche l'URL *.pages.dev non risponde. Il build di deploy non ha prodotto una versione servibile (tipicamente npm ci fallito).",
++      fixes,
++    };
++  }
++  if (!p.apexOk && p.pagesOk) {
++    return {
++      rootCause:
++        "Il deployment è sano su *.pages.dev ma il dominio custom non instrada a Pages: binding del custom domain mancante o DNS che punta a un origin sbagliato.",
++      fixes: [FIXES["bind-domain"]],
++    };
++  }
++  // apex serves
++  if (!p.sitemapOk || !p.galleriaOk) {
++    return {
++      rootCause:
++        "Il sito risponde sulla home ma alcuni path falliscono (sitemap/galleria): problema di contenuto/build, non di routing.",
++      fixes: [FIXES.redeploy, FIXES["mark-verify"]],
++    };
++  }
++  return {
++    rootCause:
++      "Il sito risponde su tutti i path: verify probabilmente transiente, oppure manca solo la canonicalizzazione www/http.",
++    fixes: [FIXES["canonical-redirects"], FIXES["mark-verify"]],
++  };
++}
++
++type FixBody = { domain?: string; jobId?: string; action?: string; note?: string };
++
++const DEFAULT_PATHS = ["/", "/sitemap.xml", "/robots.txt"];
++
++export async function handleFixStage(request: Request, env: Env): Promise<Response> {
++  let body: FixBody;
++  try {
++    body = (await request.json()) as FixBody;
++  } catch {
++    return Response.json({ ok: false, error: "Bad JSON" }, { status: 400 });
++  }
++  const domain = (body.domain ?? "").trim().toLowerCase().replace(/^www\./, "");
++  const action = (body.action ?? "diagnose").trim() || "diagnose";
++  if (!domain) return Response.json({ ok: false, error: "domain required" }, { status: 400 });
++
++  const db = getDb(env.DB);
++  const site = await loadSiteByDomain(db, domain);
++  if (!site) return Response.json({ ok: false, error: `site ${domain} not found` }, { status: 404 });
++
++  const label: CfAccountLabel = site.account === "EN" ? "EN" : "IT";
++  const slug = domain.split(".")[0];
++  const projectName = site.cloudflarePagesProject ?? `site-${slug}`;
++  const cfEnv = env as unknown as Record<string, string | undefined>;
++
++  if (action.startsWith("confirm:")) {
++    const fixId = action.slice("confirm:".length) as FixId;
++    if (!(fixId in FIXES)) return Response.json({ ok: false, error: `unknown fix ${fixId}` }, { status: 400 });
++    return applyFix(fixId, { env, db, domain, label, projectName, githubRepo: site.githubRepo, cfEnv });
++  }
++
++  // diagnose (read-only)
++  const base = `https://${domain}`;
++  const [apex, sitemap, robots, galleria] = await Promise.all([
++    smokeFetch(`${base}/`),
++    smokeFetch(`${base}/sitemap.xml`),
++    smokeFetch(`${base}/robots.txt`),
++    smokeFetch(`${base}/galleria`),
++  ]);
++
++  let projectSubdomain = `${projectName}.pages.dev`;
++  let pagesHasDeployment = false;
++  try {
++    const cf = cfAccountForDomain(cfEnv, domain, label);
++    const proj = await getPagesProject(cf, projectName);
++    projectSubdomain = proj.subdomain || projectSubdomain;
++    pagesHasDeployment = proj.hasDeployment;
++  } catch {
++    /* project missing or CF token absent — left as defaults */
++  }
++  const pagesDev = await smokeFetch(`https://${projectSubdomain}/`);
++
++  let ghaConclusion: string | null = null;
++  if (site.githubRepo && env.GITHUB_TOKEN) {
++    const [owner, repo] = site.githubRepo.split("/");
++    try {
++      const run = await getLatestWorkflowRun({ token: env.GITHUB_TOKEN, owner, repo });
++      ghaConclusion = run?.conclusion ?? null;
++    } catch {
++      /* ignore */
++    }
++  }
++
++  let apexDns: string | null = null;
++  try {
++    const cf = cfAccountForDomain(cfEnv, domain, label);
++    const zone = await findZone(cf, domain);
++    if (zone) {
++      const recs = await listDnsRecords(cf, zone.id, domain);
++      apexDns = recs.map((r) => `${r.type}${r.proxied ? "(proxied)" : ""}→${r.content}`).join(", ") || null;
++    }
++  } catch {
++    /* ignore */
++  }
++
++  const { rootCause, fixes } = classifyVerify({
++    apexOk: apex.ok,
++    pagesOk: pagesDev.ok,
++    sitemapOk: sitemap.ok,
++    galleriaOk: galleria.ok,
++    ghaConclusion,
++    pagesHasDeployment,
++  });
++
++  return Response.json({
++    ok: true,
++    stage: "verify",
++    rootCause,
++    evidence: {
++      "/": apex.status,
++      "/sitemap.xml": sitemap.status,
++      "/robots.txt": robots.status,
++      "/galleria": galleria.status,
++      [`${projectSubdomain}`]: pagesDev.status,
++      gha: ghaConclusion ?? "n/a",
++      pagesDeployment: pagesHasDeployment ? "present" : "none",
++      apexDns: apexDns ?? "n/a",
++    },
++    proposedFixes: fixes,
++  });
++}
++
++async function applyFix(
++  fixId: FixId,
++  ctx: {
++    env: Env;
++    db: ReturnType<typeof getDb>;
++    domain: string;
++    label: CfAccountLabel;
++    projectName: string;
++    githubRepo: string | null;
++    cfEnv: Record<string, string | undefined>;
++  },
++): Promise<Response> {
++  const { env, db, domain, label, projectName, githubRepo, cfEnv } = ctx;
++  let applied = "";
++  try {
++    switch (fixId) {
++      case "redeploy": {
++        if (!githubRepo || !env.GITHUB_TOKEN) throw new Error("githubRepo or GITHUB_TOKEN missing");
++        const [owner, repo] = githubRepo.split("/");
++        const run = await getLatestWorkflowRun({ token: env.GITHUB_TOKEN, owner, repo });
++        if (!run) throw new Error("no workflow run to re-run");
++        await rerunWorkflowRun({ token: env.GITHUB_TOKEN, owner, repo, runId: run.id });
++        applied = `re-run ${run.name} (${run.htmlUrl})`;
++        break;
++      }
++      case "apply-deploy-fix": {
++        if (!githubRepo || !env.GITHUB_TOKEN) throw new Error("githubRepo or GITHUB_TOKEN missing");
++        const [owner, repo] = githubRepo.split("/");
++        const { commitSha } = await commitFiles({
++          token: env.GITHUB_TOKEN,
++          owner,
++          repo,
++          branch: "main",
++          message: "fix-stage: unblock CF Pages deploy (.npmrc legacy-peer-deps + .nvmrc)",
++          files: [
++            { path: ".npmrc", content: "legacy-peer-deps=true\n", encoding: "utf-8" },
++            { path: ".nvmrc", content: "22.12.0\n", encoding: "utf-8" },
++          ],
++        });
++        applied = `commit ${commitSha.slice(0, 7)} (triggers deploy)`;
++        break;
++      }
++      case "bind-domain": {
++        const cf = cfAccountForDomain(cfEnv, domain, label);
++        const zone = await findZone(cf, domain);
++        if (!zone) throw new Error(`zone ${domain} not found on account ${label}`);
++        const proj = await getPagesProject(cf, projectName);
++        const subdomain = proj.subdomain || `${projectName}.pages.dev`;
++        try {
++          await attachPagesCustomDomain(cf, { projectName, domain });
++        } catch (err) {
++          const msg = err instanceof Error ? err.message : String(err);
++          if (!/already exists|already added|409|8000018/i.test(msg)) throw err;
++        }
++        await upsertCnameRecord(cf, { zoneId: zone.id, name: domain, content: subdomain, proxied: true });
++        applied = `bound ${domain} → ${subdomain}`;
++        break;
++      }
++      case "canonical-redirects": {
++        const cf = cfAccountForDomain(cfEnv, domain, label);
++        const zone = await findZone(cf, domain);
++        if (!zone) throw new Error(`zone ${domain} not found on account ${label}`);
++        await setAlwaysUseHttps(cf, zone.id);
++        const r = await upsertWwwApexRedirect(cf, zone.id, domain);
++        applied = `Always Use HTTPS on; www→apex 301 ${r.added ? "created" : "already present"}`;
++        break;
++      }
++      case "mark-verify": {
++        applied = "re-verify";
++        break;
++      }
++    }
++  } catch (err) {
++    return Response.json({ ok: false, error: err instanceof Error ? err.message : String(err) }, { status: 502 });
++  }
++
++  // Re-run the Verify smoke checks; flip to live if green.
++  const base = `https://${domain}`;
++  const checks = await Promise.all(DEFAULT_PATHS.map((p) => smokeFetch(base + p)));
++  const verify: Record<string, number> = {};
++  DEFAULT_PATHS.forEach((p, i) => (verify[p] = checks[i].status));
++  const verifyOk = checks.every((c) => c.ok);
++  if (verifyOk) await setSiteStatus(db, domain, "live");
++
++  return Response.json({ ok: true, applied, verify, status: verifyOk ? "live" : "error" });
++}
+diff --git a/src/index.ts b/src/index.ts
+index 123ca06..2f173a8 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -1,5 +1,6 @@
+ import { PipelineWorkflow, type Env, type PipelineParams } from "./pipeline";
+ import { handleCustomPrompt } from "./custom-prompt";
++import { handleFixStage } from "./fix-stage";
+ 
+ export { PipelineWorkflow };
+ export type { Env, PipelineParams };
+@@ -94,6 +95,20 @@ export default {
+       }
+     }
+ 
++    // Dashboard-driven diagnosis + auto-fix of failed builds. See
++    // fix-stage.ts + the meta repo docs/dashboard-fix-stage-chat.md.
++    if (url.pathname === "/fix-stage" && request.method === "POST") {
++      if (!authorized) return new Response("Unauthorized", { status: 401 });
++      try {
++        return await handleFixStage(request, env);
++      } catch (err) {
++        return Response.json(
++          { ok: false, error: err instanceof Error ? err.message : String(err) },
++          { status: 502 },
++        );
++      }
++    }
++
+     return new Response("Not Found", { status: 404 });
+   },
+ };
+diff --git a/src/lib/cf-api.ts b/src/lib/cf-api.ts
+index edb3c22..8d382fa 100644
+--- a/src/lib/cf-api.ts
++++ b/src/lib/cf-api.ts
+@@ -117,3 +117,65 @@ export async function upsertCnameRecord(account: CfAccount, args: { zoneId: stri
+     }, args.fetcher);
+   }
+ }
++
++// --- fix-stage helpers ---------------------------------------------------
++
++export async function listDnsRecords(account: CfAccount, zoneId: string, name: string, fetcher?: typeof fetch): Promise<{ type: string; content: string; proxied: boolean }[]> {
++  const result = (await cfFetch(account, `/zones/${zoneId}/dns_records?name=${encodeURIComponent(name)}`, undefined, fetcher)) as { type: string; content: string; proxied?: boolean }[];
++  return result.map((r) => ({ type: r.type, content: r.content, proxied: r.proxied ?? false }));
++}
++
++export async function getPagesProject(account: CfAccount, projectName: string, fetcher?: typeof fetch): Promise<{ subdomain: string; hasDeployment: boolean; deployState: string | null }> {
++  const result = (await cfFetch(account, `/accounts/${account.accountId}/pages/projects/${encodeURIComponent(projectName)}`, undefined, fetcher)) as {
++    subdomain?: string;
++    latest_deployment?: { latest_stage?: { status?: string } } | null;
++  };
++  const ld = result.latest_deployment ?? null;
++  return {
++    subdomain: result.subdomain ?? `${projectName}.pages.dev`,
++    hasDeployment: ld !== null,
++    deployState: ld?.latest_stage?.status ?? null,
++  };
++}
++
++export async function setAlwaysUseHttps(account: CfAccount, zoneId: string, fetcher?: typeof fetch): Promise<void> {
++  await cfFetch(account, `/zones/${zoneId}/settings/always_use_https`, {
++    method: "PATCH",
++    body: JSON.stringify({ value: "on" }),
++  }, fetcher);
++}
++
++// Idempotent www→apex 301 via the dynamic-redirect ruleset. Preserves any
++// existing redirect rules; adds ours only if not already present (matched by
++// description). target = https://<apex><path>, query string preserved.
++export async function upsertWwwApexRedirect(account: CfAccount, zoneId: string, apex: string, fetcher?: typeof fetch): Promise<{ added: boolean }> {
++  const phase = "http_request_dynamic_redirect";
++  const description = `www->apex 301 (elite fix-stage) ${apex}`;
++  type Rule = { description?: string; [k: string]: unknown };
++  let existing: Rule[] = [];
++  try {
++    const ep = (await cfFetch(account, `/zones/${zoneId}/rulesets/phases/${phase}/entrypoint`, undefined, fetcher)) as { rules?: Rule[] };
++    existing = ep.rules ?? [];
++  } catch {
++    existing = [];
++  }
++  if (existing.some((r) => r.description === description)) return { added: false };
++  const rule = {
++    action: "redirect",
++    action_parameters: {
++      from_value: {
++        status_code: 301,
++        target_url: { expression: `concat("https://${apex}", http.request.uri.path)` },
++        preserve_query_string: true,
++      },
++    },
++    expression: `(http.host eq "www.${apex}")`,
++    description,
++    enabled: true,
++  };
++  await cfFetch(account, `/zones/${zoneId}/rulesets/phases/${phase}/entrypoint`, {
++    method: "PUT",
++    body: JSON.stringify({ rules: [...existing, rule] }),
++  }, fetcher);
++  return { added: true };
++}
+diff --git a/src/lib/github.ts b/src/lib/github.ts
+index 42dc7e1..5f5492d 100644
+--- a/src/lib/github.ts
++++ b/src/lib/github.ts
+@@ -259,3 +259,38 @@ export async function fetchTemplateRepoFiles(args: { token: string; owner: strin
+   }
+   return out;
+ }
++
++const GH_HEADERS = (token: string) => ({
++  Authorization: `Bearer ${token}`,
++  Accept: "application/vnd.github+json",
++  "X-GitHub-Api-Version": "2022-11-28",
++  "User-Agent": "elite-pipeline-workflow",
++});
++
++export async function getLatestWorkflowRun(args: { token: string; owner: string; repo: string; branch?: string; fetcher?: typeof fetch }): Promise<
++  { id: number; status: string | null; conclusion: string | null; htmlUrl: string; name: string } | null
++> {
++  const fetcher = args.fetcher ?? fetch;
++  const branch = args.branch ?? "main";
++  const res = await fetcher(
++    `https://api.github.com/repos/${args.owner}/${args.repo}/actions/runs?branch=${encodeURIComponent(branch)}&per_page=1`,
++    { headers: GH_HEADERS(args.token) },
++  );
++  if (!res.ok) throw new Error(`GitHub runs ${res.status}: ${(await res.text()).slice(0, 300)}`);
++  const json = (await res.json()) as {
++    workflow_runs?: { id: number; status: string | null; conclusion: string | null; html_url: string; name: string }[];
++  };
++  const run = json.workflow_runs?.[0];
++  return run ? { id: run.id, status: run.status, conclusion: run.conclusion, htmlUrl: run.html_url, name: run.name } : null;
++}
++
++export async function rerunWorkflowRun(args: { token: string; owner: string; repo: string; runId: number; fetcher?: typeof fetch }): Promise<void> {
++  const fetcher = args.fetcher ?? fetch;
++  const res = await fetcher(
++    `https://api.github.com/repos/${args.owner}/${args.repo}/actions/runs/${args.runId}/rerun`,
++    { method: "POST", headers: GH_HEADERS(args.token) },
++  );
++  if (!res.ok && res.status !== 201) {
++    throw new Error(`GitHub rerun ${res.status}: ${(await res.text()).slice(0, 300)}`);
++  }
++}
+diff --git a/tests/fix-stage.test.ts b/tests/fix-stage.test.ts
+new file mode 100644
+index 0000000..0172a5e
+--- /dev/null
++++ b/tests/fix-stage.test.ts
+@@ -0,0 +1,52 @@
++import { describe, it, expect } from "vitest";
++import { classifyVerify, type VerifyProbe } from "../src/fix-stage";
++
++const base: VerifyProbe = {
++  apexOk: false,
++  pagesOk: false,
++  sitemapOk: false,
++  galleriaOk: false,
++  ghaConclusion: null,
++  pagesHasDeployment: false,
++};
++
++describe("fix-stage classifyVerify", () => {
++  it("apex + pages.dev both down → no healthy deployment; offers deploy fixes", () => {
++    const d = classifyVerify({ ...base, ghaConclusion: "failure" });
++    expect(d.rootCause).toMatch(/Nessun deployment/i);
++    const ids = d.fixes.map((f) => f.id);
++    expect(ids).toContain("apply-deploy-fix");
++    expect(ids).toContain("redeploy");
++    // apply-deploy-fix first (the documented root cause)
++    expect(ids[0]).toBe("apply-deploy-fix");
++  });
++
++  it("no deployment present (even without GHA failure) still offers apply-deploy-fix", () => {
++    const d = classifyVerify({ ...base, ghaConclusion: "success", pagesHasDeployment: false });
++    expect(d.fixes.map((f) => f.id)).toContain("apply-deploy-fix");
++  });
++
++  it("pages.dev healthy but apex down → bind-domain (DNS/binding)", () => {
++    const d = classifyVerify({ ...base, pagesOk: true, pagesHasDeployment: true });
++    expect(d.rootCause).toMatch(/custom/i);
++    expect(d.fixes.map((f) => f.id)).toEqual(["bind-domain"]);
++    expect(d.fixes[0].destructive).toBe(true);
++  });
++
++  it("apex serves but sitemap/galleria fail → content/build, redeploy + re-verify", () => {
++    const d = classifyVerify({ ...base, apexOk: true, pagesOk: true, pagesHasDeployment: true, sitemapOk: false, galleriaOk: false });
++    expect(d.fixes.map((f) => f.id)).toEqual(["redeploy", "mark-verify"]);
++  });
++
++  it("everything serves → canonical/transient, offers canonical-redirects + re-verify", () => {
++    const d = classifyVerify({
++      apexOk: true,
++      pagesOk: true,
++      sitemapOk: true,
++      galleriaOk: true,
++      ghaConclusion: "success",
++      pagesHasDeployment: true,
++    });
++    expect(d.fixes.map((f) => f.id)).toEqual(["canonical-redirects", "mark-verify"]);
++  });
++});
+-- 
+2.43.0
+

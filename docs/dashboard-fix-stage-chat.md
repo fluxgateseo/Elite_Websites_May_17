@@ -100,11 +100,18 @@ Body:
   wiring, it/en i18n. `tsc --noEmit` clean, 48/48 vitest, `git am --3way`
   applies clean on the `elite-saas-main` upload. Owner applies +
   redeploys (same flow as the other dashboard patches).
-- **worker side — TODO**: `POST /fix-stage` on
-  `andreabbo/elite-pipeline-workflow` (the diagnosis engine + fix catalog
-  below). Needs the CF API token scopes listed under "Credentials". The
-  saas route proxies to it; until it ships, the panel surfaces the
-  worker's error.
+- **worker side — DONE**, delivered as
+  `patches/dashboard-edit-flow/worker-fix-stage.patch` (5 files, +434):
+  `POST /fix-stage` (x-pipeline-secret gated) with `diagnose` (probes
+  site + GHA run + CF Pages deployment) and `confirm:<fixId>` (re-run
+  deploy, commit `.npmrc`/`.nvmrc`, bind custom domain + DNS, Always Use
+  HTTPS + www→apex 301), then re-runs Verify and flips to `live` if green.
+  Pure `classifyVerify` is unit-tested. `tsc` clean, 75/75 vitest,
+  `git apply --3way` clean on the upload. Also mirrored at
+  `dashboard-mirror/elite-pipeline-workflow/`.
+  **Owner action before it works:** the IT+EN CF API tokens need the
+  scopes under "Credentials" (Pages Edit, Zone Settings Edit, Account
+  Rulesets Edit, DNS Edit), and `GITHUB_TOKEN` needs Actions: write.
 
 ## Worked example — elgusto.it (live case 2026-05-25)
 

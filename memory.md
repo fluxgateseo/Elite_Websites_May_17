@@ -185,10 +185,14 @@ worker `POST /fix-stage`) → out of push-scope → patch flow / new session.
 **saas UI side DELIVERED** as
 `patches/dashboard-edit-flow/saas-fix-stage-chat.patch` (4 files +321,
 `tsc` clean, 48/48 vitest, `git am --3way` verified on the upload). Owner
-applies + redeploys. **Worker `POST /fix-stage` still TODO** (needs its
-own zip / a session with `andreabbo` scope) — the saas panel proxies to
-it. CF API token for the worker needs DNS+Pages+Zone-Settings+Rulesets
-edit per account.
+applies + redeploys. **Worker `POST /fix-stage` DELIVERED** too
+(`patches/dashboard-edit-flow/worker-fix-stage.patch`, 5 files +434, tsc
+clean, 75/75 vitest, `git apply --3way` verified). Both sides mirrored at
+`dashboard-mirror/elite-saas/` and `dashboard-mirror/elite-pipeline-workflow/`.
+Owner action before it works end-to-end: IT+EN CF API tokens need
+Pages+Zone-Settings+Rulesets+DNS edit scopes; `GITHUB_TOKEN` needs
+Actions:write. Then apply both patches + redeploy worker (IT and EN) and
+saas.
 
 ## ⚠ TODO — open reminders
 

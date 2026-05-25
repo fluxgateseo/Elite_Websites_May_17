@@ -1,0 +1,21 @@
+{
+  "name": "elite-pipeline-workflow",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250424.0",
+    "@types/node": "^20.10.6",
+    "typescript": "^5.3.3",
+    "vitest": "^1.0.4",
+    "wrangler": "^4.75.0"
+  },
+  "dependencies": {
+    "cloudflare": "^1.0.0",
+    "drizzle-orm": "~0.45.2",
+    "zod": "^4.4.3"
+  }
+}

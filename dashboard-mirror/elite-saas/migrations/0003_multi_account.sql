@@ -1,0 +1,1 @@
+ALTER TABLE elite_sites ADD COLUMN account TEXT NOT NULL DEFAULT 'IT';

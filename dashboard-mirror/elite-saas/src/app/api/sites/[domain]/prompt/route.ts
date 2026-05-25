@@ -1,0 +1,92 @@
+import { NextRequest, NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
+import { getDb } from "@/lib/db";
+import { eliteSites } from "@/lib/schema";
+import { getCurrentUser } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
+
+type ProxyBody = {
+  prompt?: string;
+  scope?: "content" | "config" | "all";
+};
+
+// Proxies dashboard prompts to the pipeline worker's /custom-prompt.
+// Auth: signed-in user only. Forwards x-pipeline-secret server-side so
+// the secret is never exposed to the browser.
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ domain: string }> },
+) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { domain: rawDomain } = await params;
+  const domain = (rawDomain ?? "").trim().toLowerCase();
+  if (!domain) {
+    return NextResponse.json({ ok: false, error: "Domain required" }, { status: 400 });
+  }
+
+  let body: ProxyBody;
+  try {
+    body = (await req.json()) as ProxyBody;
+  } catch {
+    return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 });
+  }
+  const prompt = (body.prompt ?? "").trim();
+  const scope = body.scope === "content" || body.scope === "config" ? body.scope : "all";
+  if (!prompt) {
+    return NextResponse.json({ ok: false, error: "Prompt required" }, { status: 400 });
+  }
+  if (prompt.length > 2000) {
+    return NextResponse.json({ ok: false, error: "Prompt > 2000 chars" }, { status: 400 });
+  }
+
+  const db = getDb();
+  const sites = await db
+    .select()
+    .from(eliteSites)
+    .where(eq(eliteSites.domain, domain))
+    .limit(1);
+  if (sites.length === 0) {
+    return NextResponse.json({ ok: false, error: `Site ${domain} not found` }, { status: 404 });
+  }
+  if (sites[0].status !== "live") {
+    return NextResponse.json(
+      { ok: false, error: `Site ${domain} is ${sites[0].status}, must be live to edit` },
+      { status: 409 },
+    );
+  }
+
+  const workflowUrl = process.env.PIPELINE_WORKFLOW_URL;
+  const sharedSecret = process.env.PIPELINE_SHARED_SECRET;
+  if (!workflowUrl || !sharedSecret) {
+    return NextResponse.json(
+      { ok: false, error: "PIPELINE_WORKFLOW_URL or PIPELINE_SHARED_SECRET not configured" },
+      { status: 500 },
+    );
+  }
+
+  const res = await fetch(`${workflowUrl.replace(/\/$/, "")}/custom-prompt`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-pipeline-secret": sharedSecret,
+    },
+    body: JSON.stringify({ domain, prompt, scope }),
+  });
+
+  const text = await res.text();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: `worker non-JSON ${res.status}: ${text.slice(0, 300)}` },
+      { status: 502 },
+    );
+  }
+  return NextResponse.json(parsed, { status: res.status });
+}

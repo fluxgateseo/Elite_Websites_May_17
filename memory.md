@@ -55,7 +55,7 @@ No PR opened (user has not requested one).
 |------|------|
 | `fluxgateseo/Elite_Websites_May_17` | ✅ full read + push (only repo in MCP scope) |
 | `fluxgateseo/elite-astro-template` | ✅ **public** — clone read-only via direct https; no push |
-| `andreabbo/elite-saas` | ❌ private, out of scope — MCP/git-proxy/https all denied |
+| `andreabbo/elite-saas` | ❌ private, out of scope — MCP/git-proxy/https all denied. **Working copy mirrored at `dashboard-mirror/elite-saas/`** (owner request 2026-05-25) so dashboard work doesn't need a re-upload each session. Not source of truth — sync changes back. |
 | `andreabbo/elite-pipeline-workflow` | ❌ private, denied |
 | `andreabbo/elite-leads-worker` | ❌ private, denied |
 | `andreabbo/site-paginemarxiste` | ❌ private, denied; also `scope: external` DO NOT EDIT |

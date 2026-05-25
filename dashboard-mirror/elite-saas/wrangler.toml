@@ -1,0 +1,37 @@
+name = "elite-saas"
+compatibility_date = "2026-04-01"
+compatibility_flags = ["nodejs_compat"]
+main = ".open-next/worker.js"
+assets = { directory = ".open-next/assets", binding = "ASSETS" }
+
+# Top-level = IT account (Brianzadigitale@gmail.com). Default deploy target during migration.
+[[d1_databases]]
+binding = "DB"
+database_name = "elite-saas"
+database_id = "e85aeadf-bffd-4028-890d-f99b6da1e38c"
+
+[[r2_buckets]]
+binding = "ASSETS_R2"
+bucket_name = "elite-saas-assets"
+
+[[kv_namespaces]]
+binding = "ALLOWED_ORIGINS"
+id = "17529cc4682f41168b4adce423c25ca0"
+
+# EN account (fluxgateseo@gmail.com). Target post-migration. Deploy with: wrangler deploy --env en
+[env.en]
+name = "elite-saas"
+account_id = "06b37563e983e04bd56debd113fe3be5"
+
+[[env.en.d1_databases]]
+binding = "DB"
+database_name = "elite-saas"
+database_id = "3444ad57-ccbc-4254-848d-5b8987ad69c1"
+
+[[env.en.r2_buckets]]
+binding = "ASSETS_R2"
+bucket_name = "elite-saas-assets"
+
+[[env.en.kv_namespaces]]
+binding = "ALLOWED_ORIGINS"
+id = "5ddcea95e3c447ad9b0cadaec3733278"

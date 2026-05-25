@@ -91,6 +91,21 @@ Body:
   per account (IT + EN). `/custom-prompt` only needed GitHub.
 - GitHub token with **Actions: write** (re-run / dispatch `deploy.yml`).
 
+## Delivery status (2026-05-25)
+
+- **saas UI side — DONE**, delivered as
+  `patches/dashboard-edit-flow/saas-fix-stage-chat.patch` (4 files, +321):
+  `api/builds/fix-stage` admin proxy, `FixStageButton` (diagnose →
+  proposed fixes → confirm + post-fix Verify readout), `SitesTable`
+  wiring, it/en i18n. `tsc --noEmit` clean, 48/48 vitest, `git am --3way`
+  applies clean on the `elite-saas-main` upload. Owner applies +
+  redeploys (same flow as the other dashboard patches).
+- **worker side — TODO**: `POST /fix-stage` on
+  `andreabbo/elite-pipeline-workflow` (the diagnosis engine + fix catalog
+  below). Needs the CF API token scopes listed under "Credentials". The
+  saas route proxies to it; until it ships, the panel surfaces the
+  worker's error.
+
 ## Worked example — elgusto.it (live case 2026-05-25)
 
 Diagnose returned: `/`+`/sitemap.xml` = 522, `/robots.txt` = 200 (CF

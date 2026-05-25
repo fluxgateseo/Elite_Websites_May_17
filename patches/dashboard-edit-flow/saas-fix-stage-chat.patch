@@ -1,0 +1,398 @@
+From 496713577ce1d366fb58533b2cd66610c90b299b Mon Sep 17 00:00:00 2001
+From: c <c@l>
+Date: Mon, 25 May 2026 08:27:12 +0000
+Subject: [PATCH] Dashboard fix-stage chat: diagnose + auto-fix failed builds
+
+Adds an operator-driven panel on /builds error+building rows that calls
+the pipeline worker's /fix-stage to diagnose a failed stage and apply the
+proposed fix with confirm. Companion to the /custom-prompt edit flow.
+
+- src/app/api/builds/fix-stage/route.ts  admin-only proxy, forwards
+  x-pipeline-secret server-side, pins latest jobId
+- src/components/FixStageButton.tsx       diagnose -> proposed fixes ->
+  confirm, with evidence + post-fix Verify readout
+- SitesTable wiring + it/en i18n keys
+
+Worker /fix-stage endpoint is the andreabbo/elite-pipeline-workflow side
+(separate patch). Spec: docs/dashboard-fix-stage-chat.md (meta-repo).
+---
+ src/app/api/builds/fix-stage/route.ts | 101 ++++++++++++++
+ src/components/FixStageButton.tsx     | 184 ++++++++++++++++++++++++++
+ src/components/SitesTable.tsx         |   2 +
+ src/lib/i18n.ts                       |  34 +++++
+ 4 files changed, 321 insertions(+)
+ create mode 100644 src/app/api/builds/fix-stage/route.ts
+ create mode 100644 src/components/FixStageButton.tsx
+
+diff --git a/src/app/api/builds/fix-stage/route.ts b/src/app/api/builds/fix-stage/route.ts
+new file mode 100644
+index 0000000..56902eb
+--- /dev/null
++++ b/src/app/api/builds/fix-stage/route.ts
+@@ -0,0 +1,101 @@
++import { NextRequest, NextResponse } from "next/server";
++import { eq, desc } from "drizzle-orm";
++import { getDb } from "@/lib/db";
++import { eliteSites, eliteJobs } from "@/lib/schema";
++import { getCurrentUser } from "@/lib/auth";
++
++export const dynamic = "force-dynamic";
++
++type FixBody = {
++  domain?: string;
++  // "diagnose" (read-only) | "<fixId>" | "confirm:<fixId>"
++  action?: string;
++  note?: string;
++};
++
++// Proxies the dashboard fix-stage chat to the pipeline worker's /fix-stage.
++// Diagnosis is read-only; any "confirm:<fixId>" mutates CF/GitHub, so the
++// route is admin-only and the x-pipeline-secret is forwarded server-side
++// (never exposed to the browser). See docs/dashboard-fix-stage-chat.md.
++export async function POST(req: NextRequest) {
++  const user = await getCurrentUser();
++  if (!user) {
++    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
++  }
++  if (user.role !== "admin") {
++    return NextResponse.json({ ok: false, error: "Admin only" }, { status: 403 });
++  }
++
++  let body: FixBody;
++  try {
++    body = (await req.json()) as FixBody;
++  } catch {
++    return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 });
++  }
++
++  const domain = (body.domain ?? "").trim().toLowerCase();
++  if (!domain) {
++    return NextResponse.json({ ok: false, error: "Domain required" }, { status: 400 });
++  }
++
++  const action = (body.action ?? "diagnose").trim() || "diagnose";
++  if (!/^[a-z0-9:_-]{1,100}$/i.test(action)) {
++    return NextResponse.json({ ok: false, error: "Invalid action" }, { status: 400 });
++  }
++  const note = (body.note ?? "").trim().slice(0, 500);
++
++  const db = getDb();
++  const sites = await db
++    .select()
++    .from(eliteSites)
++    .where(eq(eliteSites.domain, domain))
++    .limit(1);
++  if (sites.length === 0) {
++    return NextResponse.json({ ok: false, error: `Site ${domain} not found` }, { status: 404 });
++  }
++  if (sites[0].status !== "error" && sites[0].status !== "building") {
++    return NextResponse.json(
++      { ok: false, error: `Site ${domain} is ${sites[0].status}; fix-stage applies to error/building builds` },
++      { status: 409 },
++    );
++  }
++
++  // Latest job for the domain (the worker defaults to this, but pin it).
++  const jobs = await db
++    .select({ id: eliteJobs.id })
++    .from(eliteJobs)
++    .where(eq(eliteJobs.domain, domain))
++    .orderBy(desc(eliteJobs.createdAt))
++    .limit(1);
++  const jobId = jobs[0]?.id ?? null;
++
++  const workflowUrl = process.env.PIPELINE_WORKFLOW_URL;
++  const sharedSecret = process.env.PIPELINE_SHARED_SECRET;
++  if (!workflowUrl || !sharedSecret) {
++    return NextResponse.json(
++      { ok: false, error: "PIPELINE_WORKFLOW_URL or PIPELINE_SHARED_SECRET not configured" },
++      { status: 500 },
++    );
++  }
++
++  const res = await fetch(`${workflowUrl.replace(/\/$/, "")}/fix-stage`, {
++    method: "POST",
++    headers: {
++      "Content-Type": "application/json",
++      "x-pipeline-secret": sharedSecret,
++    },
++    body: JSON.stringify({ domain, jobId, action, note }),
++  });
++
++  const text = await res.text();
++  let parsed: unknown;
++  try {
++    parsed = JSON.parse(text);
++  } catch {
++    return NextResponse.json(
++      { ok: false, error: `worker non-JSON ${res.status}: ${text.slice(0, 300)}` },
++      { status: 502 },
++    );
++  }
++  return NextResponse.json(parsed, { status: res.status });
++}
+diff --git a/src/components/FixStageButton.tsx b/src/components/FixStageButton.tsx
+new file mode 100644
+index 0000000..3e7a473
+--- /dev/null
++++ b/src/components/FixStageButton.tsx
+@@ -0,0 +1,184 @@
++"use client";
++
++import { useState } from "react";
++import { makeT, type Lang } from "@/lib/i18n";
++
++type Fix = { id: string; label: string; destructive?: boolean };
++
++type DiagnoseResult =
++  | { ok: true; stage?: string; rootCause: string; evidence?: Record<string, unknown>; proposedFixes?: Fix[] }
++  | { ok: false; error: string };
++
++type ApplyResult =
++  | { ok: true; applied: string; verify?: Record<string, unknown>; status?: string }
++  | { ok: false; error: string };
++
++async function call(domain: string, action: string, note: string) {
++  const res = await fetch(`/api/builds/fix-stage`, {
++    method: "POST",
++    headers: { "Content-Type": "application/json" },
++    body: JSON.stringify({ domain, action, note: note.trim() || undefined }),
++  });
++  return (await res.json()) as DiagnoseResult & ApplyResult;
++}
++
++function Evidence({ evidence, label }: { evidence: Record<string, unknown>; label: string }) {
++  const entries = Object.entries(evidence);
++  if (entries.length === 0) return null;
++  return (
++    <div className="space-y-0.5">
++      <p className="text-[10px] uppercase tracking-wide text-zinc-400">{label}</p>
++      <ul className="list-none p-0 m-0 space-y-0.5">
++        {entries.map(([k, v]) => (
++          <li key={k} className="font-mono text-[10px] text-zinc-500">
++            {k}: {typeof v === "string" ? v : JSON.stringify(v)}
++          </li>
++        ))}
++      </ul>
++    </div>
++  );
++}
++
++export function FixStageButton({ domain, status, lang }: { domain: string; status: string; lang: Lang }) {
++  const [open, setOpen] = useState(false);
++  const [busy, setBusy] = useState(false);
++  const [note, setNote] = useState("");
++  const [diag, setDiag] = useState<DiagnoseResult | null>(null);
++  const [applied, setApplied] = useState<ApplyResult | null>(null);
++  const t = makeT(lang);
++
++  if (status !== "error" && status !== "building") return null;
++
++  async function diagnose() {
++    setBusy(true);
++    setApplied(null);
++    setDiag(null);
++    try {
++      setDiag(await call(domain, "diagnose", note));
++    } catch (err) {
++      setDiag({ ok: false, error: err instanceof Error ? err.message : "unknown" });
++    } finally {
++      setBusy(false);
++    }
++  }
++
++  async function confirmFix(fixId: string) {
++    setBusy(true);
++    setApplied(null);
++    try {
++      setApplied(await call(domain, `confirm:${fixId}`, note));
++    } catch (err) {
++      setApplied({ ok: false, error: err instanceof Error ? err.message : "unknown" });
++    } finally {
++      setBusy(false);
++    }
++  }
++
++  function openPanel() {
++    setOpen(true);
++    void diagnose();
++  }
++
++  return (
++    <>
++      <button
++        type="button"
++        onClick={openPanel}
++        className="text-[10px] text-red-500 hover:underline"
++        title={`${t("fix.title")} ${domain}`}
++      >
++        {t("fix.open")} ↗
++      </button>
++
++      {open && (
++        <div
++          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
++          onClick={() => !busy && setOpen(false)}
++        >
++          <div
++            className="w-full max-w-lg rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 shadow-xl p-5 space-y-4 max-h-[85vh] overflow-y-auto"
++            onClick={(e) => e.stopPropagation()}
++          >
++            <div className="flex items-baseline justify-between">
++              <h2 className="text-sm font-semibold">{t("fix.title")} <span className="font-mono">{domain}</span></h2>
++              <button type="button" onClick={() => !busy && setOpen(false)} className="text-zinc-400 hover:text-zinc-600 text-lg leading-none">×</button>
++            </div>
++
++            {busy && !diag && <p className="text-xs text-zinc-500">{t("fix.diagnosing")}</p>}
++
++            {diag && (diag.ok ? (
++              <div className="space-y-3">
++                <div className="text-xs rounded border p-3 border-zinc-200 dark:border-zinc-700 space-y-2">
++                  <div>
++                    <span className="text-[10px] uppercase tracking-wide text-zinc-400">{t("fix.rootCause")}{diag.stage ? ` · ${diag.stage}` : ""}</span>
++                    <p className="text-zinc-700 dark:text-zinc-200">{diag.rootCause}</p>
++                  </div>
++                  {diag.evidence && <Evidence evidence={diag.evidence} label={t("fix.evidence")} />}
++                </div>
++
++                <div className="space-y-1.5">
++                  <p className="text-[10px] uppercase tracking-wide text-zinc-400">{t("fix.proposedFixes")}</p>
++                  {(diag.proposedFixes ?? []).length === 0 ? (
++                    <p className="text-xs text-amber-600 dark:text-amber-400">{t("fix.noFixes")}</p>
++                  ) : (
++                    (diag.proposedFixes ?? []).map((f) => (
++                      <div key={f.id} className="flex items-center justify-between gap-2 rounded border border-zinc-200 dark:border-zinc-700 px-2.5 py-1.5">
++                        <span className="text-xs text-zinc-700 dark:text-zinc-200">
++                          {f.label}
++                          {f.destructive && <span className="ml-1.5 text-[9px] px-1 py-0.5 rounded bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-300 uppercase">{t("fix.destructive")}</span>}
++                        </span>
++                        <button
++                          type="button"
++                          onClick={() => confirmFix(f.id)}
++                          disabled={busy}
++                          className={`text-[11px] px-2.5 py-1 rounded text-white disabled:opacity-50 disabled:cursor-not-allowed ${f.destructive ? "bg-red-600 hover:bg-red-500" : "bg-blue-600 hover:bg-blue-500"}`}
++                        >
++                          {busy ? t("fix.applying") : t("fix.confirm")}
++                        </button>
++                      </div>
++                    ))
++                  )}
++                </div>
++              </div>
++            ) : (
++              <p className="text-xs text-red-600 dark:text-red-400">{t("fix.errorPrefix")} {diag.error}</p>
++            ))}
++
++            {applied && (
++              <div className="text-xs rounded border p-3 border-zinc-200 dark:border-zinc-700">
++                {applied.ok ? (
++                  <div className="space-y-1">
++                    <p className="text-emerald-600 dark:text-emerald-400">{t("fix.appliedPrefix")} <span className="font-mono">{applied.applied}</span>{applied.status ? ` → ${applied.status}` : ""}</p>
++                    {applied.verify && <Evidence evidence={applied.verify} label={t("fix.verifyAfter")} />}
++                  </div>
++                ) : (
++                  <p className="text-red-600 dark:text-red-400">{t("fix.errorPrefix")} {applied.error}</p>
++                )}
++              </div>
++            )}
++
++            <textarea
++              value={note}
++              onChange={(e) => setNote(e.target.value.slice(0, 500))}
++              rows={2}
++              placeholder={t("fix.notePlaceholder")}
++              className="w-full text-xs rounded border border-zinc-300 dark:border-zinc-700 bg-transparent p-2 resize-y"
++            />
++
++            <div className="flex items-center justify-end gap-2">
++              <button type="button" onClick={() => !busy && setOpen(false)} className="text-xs px-3 py-1.5 rounded text-zinc-500 hover:text-zinc-700">{t("fix.cancel")}</button>
++              <button
++                type="button"
++                onClick={diagnose}
++                disabled={busy}
++                className="text-xs px-3 py-1.5 rounded bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 disabled:opacity-50"
++              >
++                {busy ? t("fix.diagnosing") : t("fix.rediagnose")}
++              </button>
++            </div>
++          </div>
++        </div>
++      )}
++    </>
++  );
++}
+diff --git a/src/components/SitesTable.tsx b/src/components/SitesTable.tsx
+index 87a329a..656c440 100644
+--- a/src/components/SitesTable.tsx
++++ b/src/components/SitesTable.tsx
+@@ -3,6 +3,7 @@ import { StartBuildButton } from "./StartBuildButton";
+ import { ResetBuildButton } from "./ResetBuildButton";
+ import { PipelineProgress } from "./PipelineProgress";
+ import { PromptButton } from "./PromptButton";
++import { FixStageButton } from "./FixStageButton";
+ import { makeT, type Lang } from "@/lib/i18n";
+ 
+ export interface SiteRow {
+@@ -134,6 +135,7 @@ export function SitesTable({
+                   <StartBuildButton domain={s.domain} status={s.status} lang={lang} />
+                   <ResetBuildButton domain={s.domain} status={s.status} lang={lang} />
+                   <PromptButton domain={s.domain} status={s.status} lang={lang} />
++                  <FixStageButton domain={s.domain} status={s.status} lang={lang} />
+                   {(s.status === "building" || s.status === "error") && (
+                     <PipelineProgress domain={s.domain} polling={s.status === "building"} lang={lang} />
+                   )}
+diff --git a/src/lib/i18n.ts b/src/lib/i18n.ts
+index fbd147e..0c65f62 100644
+--- a/src/lib/i18n.ts
++++ b/src/lib/i18n.ts
+@@ -120,6 +120,23 @@ const it: Dict = {
+   "prompt.appliedPrefix": "✓ Applicato — commit",
+   "prompt.appliedSuffix": ". Il deploy parte in automatico.",
+   "prompt.errorPrefix": "Errore:",
++  // fix-stage chat
++  "fix.open": "diagnostica & fix",
++  "fix.title": "Diagnostica & fix",
++  "fix.diagnosing": "Diagnosi in corso…",
++  "fix.rootCause": "Causa",
++  "fix.evidence": "Evidenze",
++  "fix.proposedFixes": "Fix proposti",
++  "fix.noFixes": "Nessun fix automatico disponibile — vedi la diagnosi.",
++  "fix.confirm": "Conferma",
++  "fix.applying": "Applico…",
++  "fix.destructive": "distruttivo",
++  "fix.appliedPrefix": "✓ Applicato:",
++  "fix.verifyAfter": "Verify dopo il fix",
++  "fix.rediagnose": "Ridiagnostica",
++  "fix.cancel": "Chiudi",
++  "fix.errorPrefix": "Errore:",
++  "fix.notePlaceholder": "Nota opzionale (contesto per l'agente)…",
+   // builds page
+   "builds.title": "Build in corso",
+   "builds.desc": "Siti in stato draft, building o error. Premi «Avvia build» per far partire la pipeline. Spunta dry-run per saltare lo scaffold del repo e il deploy su CF Pages (solo Stage 1-4 + 7).",
+@@ -233,6 +250,23 @@ const en: Dict = {
+   "prompt.appliedPrefix": "✓ Applied — commit",
+   "prompt.appliedSuffix": ". Deploy starts automatically.",
+   "prompt.errorPrefix": "Error:",
++  // fix-stage chat
++  "fix.open": "diagnose & fix",
++  "fix.title": "Diagnose & fix",
++  "fix.diagnosing": "Diagnosing…",
++  "fix.rootCause": "Root cause",
++  "fix.evidence": "Evidence",
++  "fix.proposedFixes": "Proposed fixes",
++  "fix.noFixes": "No automatic fix available — see the diagnosis.",
++  "fix.confirm": "Confirm",
++  "fix.applying": "Applying…",
++  "fix.destructive": "destructive",
++  "fix.appliedPrefix": "✓ Applied:",
++  "fix.verifyAfter": "Verify after the fix",
++  "fix.rediagnose": "Re-diagnose",
++  "fix.cancel": "Close",
++  "fix.errorPrefix": "Error:",
++  "fix.notePlaceholder": "Optional note (context for the agent)…",
+   // builds page
+   "builds.title": "Builds",
+   "builds.desc": "Sites in draft, building or error state. Hit «Start build» to run the pipeline. Tick dry-run to skip the repo scaffold and the CF Pages deploy (Stages 1-4 + 7 only).",
+-- 
+2.43.0
+

@@ -182,6 +182,13 @@ which does content edits). Owner requirement: drive everything from the
 dashboard, never from a Claude Code session. Behaviour chosen: diagnosis +
 automatic fix with confirm. Impl is `andreabbo/*` (elite-saas UI +
 worker `POST /fix-stage`) → out of push-scope → patch flow / new session.
+**saas UI side DELIVERED** as
+`patches/dashboard-edit-flow/saas-fix-stage-chat.patch` (4 files +321,
+`tsc` clean, 48/48 vitest, `git am --3way` verified on the upload). Owner
+applies + redeploys. **Worker `POST /fix-stage` still TODO** (needs its
+own zip / a session with `andreabbo` scope) — the saas panel proxies to
+it. CF API token for the worker needs DNS+Pages+Zone-Settings+Rulesets
+edit per account.
 
 ## ⚠ TODO — open reminders
 

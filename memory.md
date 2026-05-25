@@ -158,6 +158,31 @@ and the Stage-4 wiring are **owner one-time actions** — cannot be done
 from here. Until then, per-site delivery stays the
 `patches/*-update.patch` → `git am -3` flow.
 
+## elgusto.it build — blocked on deploy (2026-05-25)
+
+Build reached Verify then failed (`error, wf:complete`). Repo + CF Pages
+stages green = project/domain created, NOT a working deploy. Fetch proof:
+`/` + `/sitemap.xml` = **522**, `/robots.txt` = 200 (CF *managed* robots,
+not the site), and `site-elgusto.pages.dev` = **522** too. Apex resolves
+on CF zone-proxy range (104.21/172.67), Pages on 172.66 — different. Two
+root causes, both operator/out-of-scope:
+- **A** no healthy Pages deployment → check `fluxgateseo/site-elgusto`
+  Actions `deploy.yml`; if `npm ci` ERESOLVE → apply
+  `patches/template-elite-fixes.patch` + push, or upload `dist.zip`.
+- **B** apex DNS not bound to Pages → Pages project → Custom domains → add
+  `elgusto.it`; drop any stale proxied A record to the old host.
+Canonical 301s (www→apex etc.) come AFTER it serves. 301 consolidation
+plan (legacy backlinks): `/blog/ → /`, spam left to 404.
+
+## Dashboard fix-stage chat — spec written (2026-05-25)
+
+`docs/dashboard-fix-stage-chat.md`: operator diagnoses + auto-fixes failed
+pipeline stages from `app.innotofuture.com` (companion to `/custom-prompt`
+which does content edits). Owner requirement: drive everything from the
+dashboard, never from a Claude Code session. Behaviour chosen: diagnosis +
+automatic fix with confirm. Impl is `andreabbo/*` (elite-saas UI +
+worker `POST /fix-stage`) → out of push-scope → patch flow / new session.
+
 ## ⚠ TODO — open reminders
 
 - **Rendere privati di nuovo i repo dei siti** (`site-agilescienceapp`,

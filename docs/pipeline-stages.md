@@ -102,6 +102,22 @@ Attach `<domain>` as a Pages custom domain on the project. Idempotent.
 ### 6e · `pages-dns`
 Upsert a proxied CNAME from `<domain>` to `<project>.pages.dev`.
 
+### 6f · `pages-canonical-redirects`
+Enforce the one-preferred-property default (`config/defaults.json` →
+`site.canonical`): canonical is **`https://<apex>`**, every other variant
+301s to it. Host-level, so done at the zone (not `public/_redirects`):
+
+- **`http://` → `https://`**: turn on zone setting **Always Use HTTPS**.
+- **`https://www.<apex>` → `https://<apex>`**: a single-redirect / redirect
+  **rule** (Rulesets API, phase `http_request_dynamic_redirect`) that
+  301s `www` host to apex, preserving path + query. Idempotent on
+  "already exists". The `www` hostname must resolve (proxied CNAME →
+  `<project>.pages.dev`, same as 6e) for the rule to fire.
+
+Result: `http://`, `http://www.`, `https://www.` all 301 to
+`https://<apex>`; that apex is also what `site.config.ts` emits as
+canonical (5b), so on-page and edge agree.
+
 ## Stage 7 — Verify
 - Smoke-fetch `/`, `/sitemap.xml`, `/robots.txt`. All must return 2xx.
 - Best-effort PageSpeed Insights call. If PSI is rate-limited the stage

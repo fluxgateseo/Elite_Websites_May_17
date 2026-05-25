@@ -18,6 +18,25 @@ and every future site is correct by construction.
 | `src/layouts/ArticleLayout.astro` | Renders "Articoli correlati" at the bottom of every article: same-category articles, excluding self, top 3 by date. Uses `getCollection("articoli")`. |
 | `src/pages/galleria.astro` | Reads `src/data/gallery.json` (not the old hardcoded empty array placeholder) so the standalone `/galleria` page renders the same set the homepage `PhotoMosaic` shows. |
 
+## Canonical domain & redirects (default for every site)
+
+One preferred property per site: **`https://<apex>`** (https, no `www`).
+Everything else 301s to it. Default policy lives in
+`config/defaults.json` → `site.canonical`:
+
+- **Canonical** = `https://<apex>`. The generated `src/site.config.ts`
+  `siteUrl` (Stage 5b, `renderSiteConfig`) MUST be the apex over https —
+  never `www`, never `http`. This feeds `lib/seo.buildCanonical`, the
+  `<link rel="canonical">`, `og:url`, and the sitemap, so the indexed URL
+  is always the apex.
+- **301 the variants** `http://`, `http://www.`, `https://www.` → the
+  canonical. This is **host-level**, so it is NOT done in `public/_redirects`
+  (CF Pages `_redirects` matches path only). It is enforced at the zone in
+  Stage 6 — see `docs/pipeline-stages.md` 6f.
+
+Per-path legacy backlink 301s (the link-equity recovery in
+`public/_redirects`) are separate and still apply.
+
 ## Pipeline Stage 6c — repo secrets/vars (existing)
 
 `andreabbo/elite-pipeline-workflow` must set on each new `site-<slug>`:

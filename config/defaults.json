@@ -11,5 +11,13 @@
   },
   "drive": {
     "root": "Claude/Elite_Websites_May_17/"
+  },
+  "site": {
+    "canonical": {
+      "scheme": "https",
+      "host": "apex",
+      "redirectVariants": ["http://", "http://www.", "https://www."],
+      "redirectStatus": 301
+    }
   }
 }

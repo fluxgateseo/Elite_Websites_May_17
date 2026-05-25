@@ -100,6 +100,13 @@ was text-only and is fully migrated into git — do not re-migrate.
    folder (separate identity from the folder owner).
 3. (If direct dashboard edits are wanted) arrange `andreabbo` repo
    access + a new session with widened scope — see Access reality.
+4. **Canonical-domain default (NEW 2026-05-25)** — policy recorded in
+   `config/defaults.json` `site.canonical` + `docs/pipeline-stages.md` 6f +
+   `docs/site-template-deploy.md`. Enforcement is owner/out-of-scope:
+   (a) worker `renderSiteConfig` must emit `siteUrl = https://<apex>`
+   (no www/http); (b) worker Stage 6 must add the `www→apex` 301 redirect
+   rule + **Always Use HTTPS** at the zone. Until the worker ships 6f,
+   apply per-site by hand on CF (zone Redirect Rule + Always Use HTTPS).
 
 ## Open / declined items
 

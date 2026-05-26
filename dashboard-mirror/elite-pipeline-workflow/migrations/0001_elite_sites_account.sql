@@ -1,0 +1,18 @@
+-- 0001_elite_sites_account.sql
+--
+-- Adds the `account` column that src/lib/schema.ts (eliteSites.account) and
+-- the worker code (loadSiteByDomain, cf-account routing, fix-stage) expect.
+-- The live elite_sites table predates the IT/EN account split and lacked it,
+-- so any drizzle select on eliteSites failed at runtime with:
+--     SQLITE_ERROR: no such column: account
+-- Additive and safe. Default 'IT' is correct for every pre-split site (all
+-- currently on the IT / Brianzadigitale account).
+--
+-- Apply per account (SQLite has no ADD COLUMN IF NOT EXISTS, so run once each):
+--   IT (top-level): wrangler d1 execute elite-saas --remote --file=migrations/0001_elite_sites_account.sql
+--   EN:             wrangler d1 execute elite-saas --remote --env en --file=migrations/0001_elite_sites_account.sql
+--
+-- NOTE: the IT database (e85aeadf-bffd-4028-890d-f99b6da1e38c) has ALREADY had
+-- this applied (2026-05-26, via the Cloudflare API). Re-running it there will
+-- error "duplicate column name: account" — that is expected; only EN is pending.
+ALTER TABLE elite_sites ADD COLUMN account TEXT NOT NULL DEFAULT 'IT';

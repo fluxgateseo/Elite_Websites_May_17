@@ -1,0 +1,41 @@
+From 851e4646b390849680d77fbcb817d6007ee00691 Mon Sep 17 00:00:00 2001
+From: c <c@l>
+Date: Tue, 26 May 2026 06:37:28 +0000
+Subject: [PATCH] D1 migration: add elite_sites.account column
+
+The live elite_sites table predated the IT/EN split and lacked the
+account column that schema.ts + loadSiteByDomain expect, so the
+account-aware worker fails with "no such column: account". Additive
+migration, default 'IT'. IT DB already migrated live; EN pending.
+---
+ migrations/0001_elite_sites_account.sql | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+ create mode 100644 migrations/0001_elite_sites_account.sql
+
+diff --git a/migrations/0001_elite_sites_account.sql b/migrations/0001_elite_sites_account.sql
+new file mode 100644
+index 0000000..1d5ee96
+--- /dev/null
++++ b/migrations/0001_elite_sites_account.sql
+@@ -0,0 +1,18 @@
++-- 0001_elite_sites_account.sql
++--
++-- Adds the `account` column that src/lib/schema.ts (eliteSites.account) and
++-- the worker code (loadSiteByDomain, cf-account routing, fix-stage) expect.
++-- The live elite_sites table predates the IT/EN account split and lacked it,
++-- so any drizzle select on eliteSites failed at runtime with:
++--     SQLITE_ERROR: no such column: account
++-- Additive and safe. Default 'IT' is correct for every pre-split site (all
++-- currently on the IT / Brianzadigitale account).
++--
++-- Apply per account (SQLite has no ADD COLUMN IF NOT EXISTS, so run once each):
++--   IT (top-level): wrangler d1 execute elite-saas --remote --file=migrations/0001_elite_sites_account.sql
++--   EN:             wrangler d1 execute elite-saas --remote --env en --file=migrations/0001_elite_sites_account.sql
++--
++-- NOTE: the IT database (e85aeadf-bffd-4028-890d-f99b6da1e38c) has ALREADY had
++-- this applied (2026-05-26, via the Cloudflare API). Re-running it there will
++-- error "duplicate column name: account" — that is expected; only EN is pending.
++ALTER TABLE elite_sites ADD COLUMN account TEXT NOT NULL DEFAULT 'IT';
+-- 
+2.43.0
+

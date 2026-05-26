@@ -158,7 +158,37 @@ and the Stage-4 wiring are **owner one-time actions** — cannot be done
 from here. Until then, per-site delivery stays the
 `patches/*-update.patch` → `git am -3` flow.
 
-## elgusto.it build — blocked on deploy (2026-05-25)
+## elgusto.it — VERIFIED draft, never built (2026-05-26)
+
+**Corrects the 2026-05-25 block below** (which assumed a failed deploy).
+Queried the live IT D1 (`elite-saas`, `e85aeadf-…`) directly via the
+Cloudflare MCP this session: `elgusto.it` row = **status `draft`,
+`cloudflare_pages_project` NULL, `github_repo` NULL, zero `elite_jobs`**.
+The pipeline never ran for it. The 522 on both `elgusto.it` and
+`site-elgusto.pages.dev` is just an **orphan DNS zone proxied on CF with no
+origin behind it** — NOT a failed build. So `/fix-stage` (redeploy /
+bind-domain) does NOT apply here; getting it live needs a full pipeline
+`POST /trigger` (domain+briefId+jobId), which needs the worker's
+`PIPELINE_SHARED_SECRET` → **dashboard action, not doable from a CC sandbox**
+(no secret, no `andreabbo/*` GitHub push, no DNS/Pages MCP tools).
+
+IT account state (all 8 sites): only **`paginemarxiste.it` is `live`**
+(`andreabbo/site-paginemarxiste`). The other 7 (elgusto, ristorantenapolimia,
+ristoranteangels, modoristorante, bellezzalnaturale, montagnedilombardia,
+agilescienceapp) are all **draft, never built**. Site repos live under the
+**`andreabbo`** GitHub account (out of MCP scope).
+
+**Schema drift FIXED (IT):** live `elite_sites` lacked the `account` column
+that schema.ts/`loadSiteByDomain` expect → would throw `no such column:
+account` once the account-aware worker deploys. Applied
+`ALTER TABLE elite_sites ADD COLUMN account TEXT NOT NULL DEFAULT 'IT'` to
+the IT D1 live (via MCP). Versioned as
+`patches/dashboard-edit-flow/worker-d1-account-migration.patch` +
+`dashboard-mirror/elite-pipeline-workflow/migrations/0001_elite_sites_account.sql`.
+**EN D1 (`3444ad57-…`) still pending** — unreachable from this MCP (IT-only
+token); owner runs the migration there with `--env en`.
+
+## elgusto.it build — blocked on deploy (2026-05-25) — SUPERSEDED, see above
 
 Build reached Verify then failed (`error, wf:complete`). Repo + CF Pages
 stages green = project/domain created, NOT a working deploy. Fetch proof:

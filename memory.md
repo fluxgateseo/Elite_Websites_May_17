@@ -455,3 +455,46 @@ Worker repo reality (verified 2026-05-28): two local clones exist —
 the latter is the canonical working tree (per infra doc, alongside elite-saas).
 After `git pull` both are at `ca19113` (has /custom-prompt). The mirror here was
 behind, so the worker patch base was reconciled against `f41a9c1~1`.
+
+### BLOCKER — Cloudflare token rotation broke everything (2026-05-28, end of session)
+
+All Cloudflare API tokens are now **invalid** after a security rotation:
+- `~/.elite/secrets.env` `CLOUDFLARE_API_TOKEN` (len 53, `cfut_…` format) →
+  `/user/tokens/verify` returns code 1000 "Invalid API Token".
+- The MCP Cloudflare connection token is also dead now (worked earlier this
+  session — `accounts_list` showed only IT `ece36bd…`; now D1 list/query → 401).
+- Two `cfut_…` tokens the user pasted in chat are invalid too (verify → 1000).
+  (Reminder: tokens pasted in chat must be revoked.)
+
+Consequences (one root cause): the dashboard New-Site wizard Step 4 shows
+**"CF API error for dashboard/workflow: Authentication error"**, so **site
+creation is blocked**, elgusto can't be re-verified, and the workflow worker
+can't call CF. **Fix = a fresh valid CF API token** set in the dashboard
+wizard's `CLOUDFLARE_API_TOKEN` field (it pushes to worker secrets). Required
+scopes (per wizard): Account→Workers Scripts(Edit), Zone→Zone(Read); future-proof
++ Account→Cloudflare Pages(Edit), Email Routing(Edit), Account Settings(Read),
+Zone→DNS(Edit). Token should cover **all accounts** (sites span IT + EN).
+`DASHBOARD_HOSTNAME` secret also missing (OAuth callback) — set before prod.
+
+### secrets.env topology (verified 2026-05-28)
+Real var names (NOT the CF_TOKEN_IT/EN split the infra doc describes):
+`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID=ece36bd…(IT)`,
+`SAAS_D1_ID=e85aeadf…(IT)`, `D1_PIPELINE_ID=8d3b7407-d2b0-47ed-b6bd-12bbc807b358`,
+`SAAS_KV_ID`, `DASHBOARD_HOSTNAME`, plus ANTHROPIC/DATAFORSEO/FREEPIK/UNSPLASH/
+GITHUB_TOKEN/TURNSTILE/JWT/ACCESS_*. NOTE: this local secrets.env points to the
+**IT** account + IT D1 `e85aeadf` (the cold backup, stale `draft` rows /
+"El Gusto") — NOT the DB the live `innotofuture.com` dashboard reads. The live
+dashboard reads the **EN** D1 `3444ad57` ("Osteria Del Gusto"/error, "Modo Mio
+Ristorante"/live). So the elgusto ERROR→LIVE flip must target EN `3444ad57` on
+account `06b37563…` with an EN-authorized token.
+
+### Open user requests at session end
+1. **Unblock site creation** — needs the valid CF token above (in progress).
+2. **bellezzalnaturale.it** (already a `draft` row) — once unblocked, the wizard
+   "Avvia build" auto-creates git repo + Pages + secrets/vars + DNS + deploy
+   (pipeline Stages 5-7); iterate via `prompt ↗` / `/custom-prompt` (auto-commit
+   + auto-deploy). The systematic fixes already patched (gallery.json, blog
+   articoli path, 500-word rule) only apply once `worker-gallery-blog-fix.patch`
+   is applied + the worker redeployed.
+3. **elgusto ERROR→LIVE** — pending; flip EN D1 status once a valid token exists.
+   Do NOT "Avvia build" on elgusto (overwrites hand-built work).

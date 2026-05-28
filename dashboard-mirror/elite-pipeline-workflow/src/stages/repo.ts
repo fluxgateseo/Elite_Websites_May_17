@@ -89,12 +89,19 @@ export async function runRepoCommitOverlay(input: RepoCommitInput): Promise<Repo
 
   const out: GhCommitFile[] = [];
 
-  // Generated content per page
+  // Generated content per page. Blog articles go to src/content/articoli/
+  // (where the template's `articoli` collection loader reads) and have their
+  // frontmatter transformed to that collection's schema; everything else is a
+  // plain page. Writing blog posts to src/content/blog/ (the old path) left
+  // them outside any collection, so /blog stayed empty.
   for (const p of input.pages) {
     const md = input.contentBySlug.get(p.slug);
     if (!md) continue;
-    const filePath = p.type === "blog-article" ? `src/content/blog/${p.slug}.md` : `src/content/pages/${p.slug}.md`;
-    out.push({ path: filePath, content: md, encoding: "utf-8" });
+    if (p.type === "blog-article") {
+      out.push({ path: `src/content/articoli/${p.slug}.md`, content: toArticoloMarkdown(md, p, input.images), encoding: "utf-8" });
+    } else {
+      out.push({ path: `src/content/pages/${p.slug}.md`, content: md, encoding: "utf-8" });
+    }
   }
 
   // site.config.ts — uses defineSiteConfig from the template's
@@ -117,6 +124,15 @@ export async function runRepoCommitOverlay(input: RepoCommitInput): Promise<Repo
   out.push({
     path: "src/data/images.json",
     content: JSON.stringify(input.images.pages, null, 2),
+    encoding: "utf-8",
+  });
+
+  // gallery data — the template's /galleria page reads src/data/gallery.json
+  // and ships an empty [] placeholder, so without this every generated site
+  // had an empty gallery. Populate it from the Stage-4 images.
+  out.push({
+    path: "src/data/gallery.json",
+    content: buildGalleryJson(input.images, input.pages),
     encoding: "utf-8",
   });
 
@@ -244,4 +260,74 @@ import { defineSiteConfig } from "./lib/site-config";
 
 export default defineSiteConfig(${JSON.stringify(config, null, 2)});
 `;
+}
+
+// ── Gallery + blog-article helpers ────────────────────────────────────────
+
+function yamlString(s: string): string {
+  return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+type ParsedMarkdown = { data: Record<string, string>; body: string };
+
+/** Parse a content-stage markdown's flat (single-level) YAML frontmatter. */
+export function parseFrontmatter(md: string): ParsedMarkdown {
+  const m = md.match(/^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/);
+  if (!m) return { data: {}, body: md.trim() };
+  const data: Record<string, string> = {};
+  for (const line of m[1].split("\n")) {
+    const kv = line.match(/^([A-Za-z0-9_]+):\s*(.*)$/);
+    if (kv) data[kv[1]] = kv[2].trim().replace(/^["']|["']$/g, "");
+  }
+  return { data, body: m[2].trim() };
+}
+
+/**
+ * Transform a content-stage markdown (frontmatter: title/description/slug/image)
+ * into the template's `articoli` collection schema (title/date/category/excerpt
+ * + optional hero{src,alt}). Without this, blog posts fail the collection's Zod
+ * schema (date/category/excerpt are required) and break the build.
+ */
+export function toArticoloMarkdown(md: string, page: PageBlueprint, images: ImagesOutput): string {
+  const { data, body } = parseFrontmatter(md);
+  const title = data.title || page.title || page.h1;
+  const excerpt = data.description || data.excerpt || page.brief.slice(0, 160);
+  const date = new Date().toISOString().slice(0, 10);
+  const category = data.category || "Blog";
+  const heroEntry = images.pages.find((p) => p.slug === page.slug);
+  const heroUrl = heroEntry?.hero?.url;
+
+  const lines = [
+    "---",
+    `title: ${yamlString(title)}`,
+    `date: ${yamlString(date)}`,
+    `category: ${yamlString(category)}`,
+    `excerpt: ${yamlString(excerpt)}`,
+    `slug: ${yamlString(data.slug || page.slug)}`,
+  ];
+  if (heroUrl) {
+    lines.push("hero:", `  src: ${yamlString(heroUrl)}`, `  alt: ${yamlString(title)}`);
+  }
+  lines.push("---", "", body, "");
+  return lines.join("\n");
+}
+
+/**
+ * Build src/data/gallery.json from the Stage-4 images: each page's hero + body
+ * images, deduped by URL, captioned with the page's H1/title. Caps the set so a
+ * many-page site doesn't produce an unwieldy gallery.
+ */
+export function buildGalleryJson(images: ImagesOutput, pages: PageBlueprint[]): string {
+  const labelBySlug = new Map(pages.map((p) => [p.slug, p.h1 || p.title]));
+  const seen = new Set<string>();
+  const items: { src: string; alt: string; caption: string }[] = [];
+  for (const pg of images.pages) {
+    const label = labelBySlug.get(pg.slug) ?? pg.slug;
+    for (const hit of [pg.hero, ...pg.body]) {
+      if (!hit || !hit.url || seen.has(hit.url)) continue;
+      seen.add(hit.url);
+      items.push({ src: hit.url, alt: label, caption: label });
+    }
+  }
+  return JSON.stringify(items.slice(0, 24), null, 2) + "\n";
 }

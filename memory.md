@@ -374,3 +374,44 @@ land.*
 5. For dashboard work: ask the user to re-upload the `elite-saas` (and
    if needed `elite-leads-worker`) zip; resume via the patch flow unless
    the Access-reality blockers have been cleared.
+
+## elgusto.it remediation (2026-05-28)
+
+Old-template fork (`fluxgateseo/site-elgusto`, IT account) brought online +
+fixed live. **No push access to site repos from a cloud session** (MCP scope
+is meta-repo only; site repos private, no token) → every site fix delivered as
+**browser edits the owner commits** (GitHub web UI), deploy auto-runs.
+
+Done (live):
+- Online: set GH repo vars `PAGES_PROJECT_NAME=site-elgusto`,
+  `CLOUDFLARE_ACCOUNT_ID=ece36bd…` + secret `CLOUDFLARE_API_TOKEN`; deploy
+  step was gated on `vars.PAGES_PROJECT_NAME != ''` so it had always skipped.
+- Unreadable text: old BaseLayout never emitted the `--color-*` palette vars
+  → appended a `:root{}` block to `src/styles/global.css` mapping
+  fg/muted/divider/primary/accent/bg from `--primary/--accent/--background`.
+- Gallery: old `galleria.astro` had a hardcoded empty array — replaced with
+  the current-template version that reads `src/data/gallery.json`; uploaded 6
+  AI-generated Roman-dish photos to `public/gallery/` + populated gallery.json.
+  Gotcha: GH upload stripped hyphens from filenames (cacio-e-pepe→cacioepepe)
+  — match gallery.json to the actual uploaded names.
+
+Pipeline bugs found + fixed (patch, owner applies to
+`andreabbo/elite-pipeline-workflow` then redeploy worker):
+`patches/dashboard-edit-flow/worker-gallery-blog-fix.patch` (repo.ts +
+repo.test.ts, +166/-4, tsc clean, 82/82 vitest, `git apply` clean):
+1. `gallery.json` was never written by the pipeline → every site's gallery
+   empty. Now built from Stage-4 images (`buildGalleryJson`).
+2. Blog articles were committed to `src/content/blog/` (no collection) instead
+   of `src/content/articoli/`, and with the wrong frontmatter → `/blog` always
+   empty + would fail the articoli Zod schema. Now `toArticoloMarkdown` routes
+   to articoli/ and maps title/date/category/excerpt/hero.
+
+Still open for elgusto (owner chose **regenerate via pipeline** from the
+dashboard — needs the worker patch deployed first): `/menu-piatti/` (404),
+FAQ+internal-links+advanced-schema on all pages, working `/blog/` (recover the
+`webwiki.it` DR64 nofollow link), sitemap still emits `demo.example`.
+
+Backlink note (CSV 2026-05-28): real link juice is on the homepage (already
+live: comuni-italiani DR72, odp.org DR36). The ~16 `/images/uomo/woolrich-*`
++ `/ugg/*` URLs are **spam-hack artifacts** (counterfeit-goods injection) —
+do NOT recreate; disavow or leave 404. Only `/blog/` is worth recreating.

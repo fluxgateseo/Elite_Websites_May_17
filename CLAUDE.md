@@ -54,6 +54,12 @@ Build elite, customisable, modern AI-driven UX websites that rival Awwwards / Go
 7. **Motion timing:** 0.6s ease-out default. Subtle but intentional.
 8. **Mobile parity:** No video backgrounds on mobile — use high-res stills + subtle parallax.
 
+## Content Hard Rules (NEVER violate)
+1. **Blog articles ≥ 500 words** of body prose. No thin content.
+2. **Every blog article has ≥ 3 internal links** woven into the prose (`[text](/slug)`), plus **≥ 1 outbound link** to a high-authority external source (Wikipedia, institutional, trade press — never a competitor).
+3. **Every blog article emits structured data** (`BlogPosting`/`Article` JSON-LD). In the pipeline this comes from the template's `ArticleLayout`; in any hand-built blog route, render the JSON-LD explicitly.
+4. **Every generated site populates `src/data/gallery.json`** with relevant images (no empty `[]` placeholder).
+
 ## The 7-Level Workflow
 | Level | Focus |
 |-------|-------|

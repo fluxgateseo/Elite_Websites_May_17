@@ -1,3 +1,30 @@
+diff --git a/src/stages/content.ts b/src/stages/content.ts
+index af2bc1c..67890cc 100644
+--- a/src/stages/content.ts
++++ b/src/stages/content.ts
+@@ -37,16 +37,20 @@ Hard rules:
+ - No invented facts. If a detail is missing in the brief, omit rather than invent.
+ - No hyperbolic claims ("the best", "leading", etc) unless the brief explicitly states them.
+ - Internal links: when relevant, link to other pages on the same site using markdown [text](/slug).
+-- Length: target the word count specified in the user prompt.`;
++- Length: target the word count specified in the user prompt.
++- Blog articles (pageType "blog-article") are subject to a HARD RULE: a MINIMUM of 500 words of body prose; AT LEAST 3 internal links to other pages woven naturally into the prose ([text](/slug)); and AT LEAST 1 outbound link to a high-authority external source (Wikipedia, government/institutional, established trade publication — never a competitor). Use clear <h2>-style section headings (## in markdown).`;
+ }
+ 
+ function pageUserPrompt(page: PageBlueprint): string {
++  // Blog articles have a hard 500-word floor (see brandSystemPrompt).
++  const targetWords =
++    page.type === "blog-article" ? Math.max(500, page.targetWords) : page.targetWords;
+   return JSON.stringify({
+     slug: page.slug,
+     title: page.title,
+     h1: page.h1,
+     pageBrief: page.brief,
+-    targetWords: page.targetWords,
++    targetWords,
+     pageType: page.type,
+     internalLinksTo: page.internalLinksTo,
+   }, null, 2);
 diff --git a/src/stages/repo.ts b/src/stages/repo.ts
 index d668512..4e6566b 100644
 --- a/src/stages/repo.ts

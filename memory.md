@@ -406,12 +406,52 @@ repo.test.ts, +166/-4, tsc clean, 82/82 vitest, `git apply` clean):
    empty + would fail the articoli Zod schema. Now `toArticoloMarkdown` routes
    to articoli/ and maps title/date/category/excerpt/hero.
 
-Still open for elgusto (owner chose **regenerate via pipeline** from the
-dashboard — needs the worker patch deployed first): `/menu-piatti/` (404),
-FAQ+internal-links+advanced-schema on all pages, working `/blog/` (recover the
-`webwiki.it` DR64 nofollow link), sitemap still emits `demo.example`.
-
 Backlink note (CSV 2026-05-28): real link juice is on the homepage (already
 live: comuni-italiani DR72, odp.org DR36). The ~16 `/images/uomo/woolrich-*`
 + `/ugg/*` URLs are **spam-hack artifacts** (counterfeit-goods injection) —
 do NOT recreate; disavow or leave 404. Only `/blog/` is worth recreating.
+
+### elgusto.it — session-end state (2026-05-28, all delivered via browser commits)
+
+The whole site was built up by hand-editing `site-elgusto` from the browser
+(no cloud push access). All live + verified:
+- **`/menu-piatti/`** — created as a self-contained `src/pages/menu-piatti.astro`
+  (Antipasti/Primi/Secondi/Contorni/Dolci, 19 dishes). Fixed the 404s linked
+  from chi-siamo/faq/home. Site-wide re-crawl: zero internal 404s.
+- **Blog** — self-contained, no articoli collection: `src/data/blog-posts.ts`
+  (3 articles), `src/pages/blog/index.astro`, `src/pages/blog/[...slug].astro`
+  (emits `BlogPosting` JSON-LD). Articles rewritten to **583/544/531 words**,
+  each with ≥3 internal links + 1 Wikipedia outbound. Verified live (build-tested
+  in the local template first). Gotcha: the bracket file `[...slug].astro` must
+  be edited via the tree (click file → ✏️), the plain edit URL needs
+  `%5B...slug%5D.astro`.
+- **Navbar Blog** — `site.config.ts` `pages.blog: false → true`.
+- **Sitemap** — `astro.config.mjs` `site` was `https://demo.example` → set to
+  `https://elgusto.it`; sitemap now lists all real URLs.
+
+**HARD RULE added** (CLAUDE.md "Content Hard Rules" + pipeline): blog articles
+≥500 words, ≥3 internal links + ≥1 authoritative outbound, BlogPosting schema;
+every site populates gallery.json. Pipeline enforcement in the worker patch
+`patches/dashboard-edit-flow/worker-gallery-blog-fix.patch` (now also patches
+`content.ts`: 500-word floor for blog-article + internal/outbound link rule;
+template `ArticleLayout` already emits articleSchema). +172/-6, tsc clean,
+82/82 vitest, `git apply` clean. Owner applies to
+`andreabbo/elite-pipeline-workflow` then `wrangler deploy --env en`.
+
+**STILL PENDING — dashboard status:** elgusto shows **ERROR** on
+`innotofuture.com/sites` (stale from the first 522 build) though the site is
+fully live. Fix = flip `elite_sites.status` to `live` in the **EN active D1
+(3444ad57)**. The MCP Cloudflare token only has the **IT** account
+(ece36bd…, accounts_list → 1 account) so EN D1 is 403 from a cloud session.
+Owner must run locally (has EN creds in `~/.elite/secrets.env`):
+`cd <elite-saas repo>` then
+`CLOUDFLARE_API_TOKEN=$CF_TOKEN_EN CLOUDFLARE_ACCOUNT_ID=$CF_ACCOUNT_ID_EN pnpm wrangler d1 execute elite-saas --remote --env en --command "UPDATE elite_sites SET status='live' WHERE domain='elgusto.it';"`
+**Do NOT click "Start build" on the elgusto row** — it re-runs the pipeline and
+overwrites all the hand-built work. The IT D1 (e85aeadf) is the cold backup
+(all rows show stale `draft`) — not what the dashboard reads.
+
+Worker repo reality (verified 2026-05-28): two local clones exist —
+`~/elite-pipeline-workflow` and `~/Code/elite-websites/elite-pipeline-workflow`;
+the latter is the canonical working tree (per infra doc, alongside elite-saas).
+After `git pull` both are at `ca19113` (has /custom-prompt). The mirror here was
+behind, so the worker patch base was reconciled against `f41a9c1~1`.

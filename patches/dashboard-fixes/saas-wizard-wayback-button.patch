@@ -1,0 +1,47 @@
+From 1ddff8a2f818b52fe44c6d1fcc91cfc87d9d7bed Mon Sep 17 00:00:00 2001
+From: c <c@c>
+Date: Fri, 29 May 2026 03:53:11 +0000
+Subject: [PATCH] wizard Brief: add Wayback Machine button for the entered
+ domain
+
+Scenario A (expired domain) and rebuilds benefit from seeing the previous
+site while filling the brief. Adds a link on the Brief step that opens
+web.archive.org snapshots for state.step1.domain in a new tab. Shown only
+when a domain is set.
+---
+ src/components/wizard/Step4Brief.tsx | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/src/components/wizard/Step4Brief.tsx b/src/components/wizard/Step4Brief.tsx
+index cdd699d..2d0d9e2 100644
+--- a/src/components/wizard/Step4Brief.tsx
++++ b/src/components/wizard/Step4Brief.tsx
+@@ -59,10 +59,24 @@ export function Step4Brief({ state, onChange, onNext, onBack }: Props) {
+   return (
+     <div>
+       <h1 className="text-2xl font-semibold">Parlaci del business</h1>
+-      <p className="text-zinc-500 mt-1 mb-6 text-sm">
++      <p className="text-zinc-500 mt-1 mb-4 text-sm">
+         Inserisci le informazioni principali del sito. Potrai modificarle dopo.
+       </p>
+ 
++      {/* Expired/rebuild domains: let the operator peek at the old site on the
++          Wayback Machine to source the brief (business name, address, copy). */}
++      {state.step1.domain?.trim() && (
++        <a
++          href={`https://web.archive.org/web/*/${state.step1.domain.trim()}`}
++          target="_blank"
++          rel="noopener noreferrer"
++          title={`Vedi com'era ${state.step1.domain.trim()} su Wayback Machine`}
++          className="inline-flex items-center gap-1.5 mb-6 text-xs px-2.5 py-1.5 rounded border border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
++        >
++          🕰️ Com&apos;era su Wayback Machine ↗
++        </a>
++      )}
++
+       <div className="max-w-lg space-y-5">
+         <Field label="Nome del business" required>
+           <input
+-- 
+2.43.0
+

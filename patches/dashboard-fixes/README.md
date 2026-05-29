@@ -42,3 +42,15 @@ verified with esbuild transform.
 **Operator workaround (until deployed):** clear the saved draft — in the
 browser console `localStorage.removeItem("elite-wizard-draft-v1")` then
 reload, or finish/clear the existing draft before starting a new domain.
+
+### `saas-wizard-wayback-button.patch` (2026-05-29)
+
+**Request.** On the wizard Brief step, add a button to see what the site
+used to look like on the Wayback Machine — useful for Scenario A (expired
+domain) and rebuilds, where the old site is a source for the brief.
+
+**Change.** Adds a link under the Brief step heading that opens
+`https://web.archive.org/web/*/<domain>` (snapshot overview for
+`state.step1.domain`) in a new tab. Shown only when a domain is set.
+Touches only `src/components/wizard/Step4Brief.tsx`. Syntax/JSX verified
+with esbuild transform.

@@ -1,0 +1,59 @@
+From 1a0344159d82ce297693b7cf6c3fded71ef343c1 Mon Sep 17 00:00:00 2001
+From: c <c@c>
+Date: Fri, 29 May 2026 03:51:29 +0000
+Subject: [PATCH] wizard: ?domain= query param wins over a stale saved draft
+
+The Step-1 domain came from localStorage even when the URL carried an
+explicit ?domain= (e.g. opening Nuovo sito for bellezzanaturale.it showed
+the previous elgusto.it draft and ran preflight on the wrong domain). Now
+an explicit ?domain= takes precedence: prefill when no draft domain, and
+when it differs from the saved draft start a clean draft for the requested
+domain instead of mixing the old scenario/brief/preflight in.
+---
+ src/components/wizard/WizardContainer.tsx | 28 ++++++++++++++++++-----
+ 1 file changed, 22 insertions(+), 6 deletions(-)
+
+diff --git a/src/components/wizard/WizardContainer.tsx b/src/components/wizard/WizardContainer.tsx
+index 47d8a1f..e941dc9 100644
+--- a/src/components/wizard/WizardContainer.tsx
++++ b/src/components/wizard/WizardContainer.tsx
+@@ -41,14 +41,30 @@ export function WizardContainer({ secretStatuses, initialDomain }: WizardContain
+   const [state, setState] = useState<WizardState>(defaultWizardState);
+   const [hydrated, setHydrated] = useState(false);
+ 
+-  // Load from localStorage on mount. If we arrived from "Avvia build" with a
+-  // ?domain= (brief-missing guard), prefill it — but only when the saved
+-  // draft has no domain yet, so we never clobber an in-progress wizard.
++  // Load from localStorage on mount. If we arrived with an explicit ?domain=
++  // (from "Avvia build" or a fresh "Nuovo sito" link), that query param is
++  // the operator's intent and must win over whatever draft is saved.
+   useEffect(() => {
+     const saved = loadWizardState();
+-    if (initialDomain && !saved.step1.domain) {
+-      saved.step1 = { ...saved.step1, domain: initialDomain };
+-      saved.currentStep = 1;
++    const requested = initialDomain?.trim().toLowerCase() ?? "";
++    if (requested) {
++      const savedDomain = saved.step1.domain?.trim().toLowerCase() ?? "";
++      if (!savedDomain) {
++        // No draft domain yet → just prefill the requested one.
++        saved.step1 = { ...saved.step1, domain: requested };
++        saved.currentStep = 1;
++      } else if (savedDomain !== requested) {
++        // The URL asks for a DIFFERENT domain than the saved draft. Start a
++        // clean draft for it instead of showing the stale domain (or mixing
++        // the old scenario/brief/preflight into the new site).
++        const fresh = defaultWizardState();
++        fresh.step1 = { ...fresh.step1, domain: requested };
++        fresh.currentStep = 1;
++        setState(fresh);
++        setHydrated(true);
++        return;
++      }
++      // savedDomain === requested → resume the saved draft untouched.
+     }
+     setState(saved);
+     setHydrated(true);
+-- 
+2.43.0
+

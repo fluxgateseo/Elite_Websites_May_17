@@ -4,6 +4,19 @@ Operational fixes for the dashboard, delivered as `git am`-able patches
 (Plan-C: the dashboard source lives in `andreabbo/elite-saas`, not this
 meta-repo). Generated against the `elite-saas` source as of 2026-05-29.
 
+## Status — APPLIED ✅
+
+All three patches were applied to `andreabbo/elite-saas` (branch
+`wizard-i18n-fixes`, `git am -3`, zero conflicts) and are in review:
+
+- **PR:** https://github.com/andreabbo/elite-saas/pull/3 (`wizard-i18n-fixes` → `main`)
+- **CI:** green — tests ✅, deploy skipped (deploy runs only on push to `main`).
+- **Build:** `pnpm exec opennextjs-cloudflare build` (Next 16.2.4 +
+  `@opennextjs/cloudflare` 1.19.x); deploy via `cloudflare/wrangler-action@v3`
+  (`command: deploy`) on push to `main` — see `.github/workflows/deploy.yml`.
+
+Once PR #3 merges, the deploy workflow ships it automatically.
+
 ## Apply
 
 The three patches are **stacked in order** off the same baseline and apply

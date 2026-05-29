@@ -1,0 +1,2744 @@
+From 03e005f983f71a398dac5d8800112110df1d0b49 Mon Sep 17 00:00:00 2001
+From: c <c@c>
+Date: Fri, 29 May 2026 04:33:46 +0000
+Subject: [PATCH 3/3] =?UTF-8?q?wizard:=20full=20i18n=20(it/en)=20=E2=80=94?=
+ =?UTF-8?q?=20thread=20lang=20via=20context,=20translate=20all=20steps?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The Nuovo Sito wizard was never internationalized: every step hardcoded
+Italian and lang was not threaded, so selecting English still showed Italian.
+Adds a WizardI18nProvider/useT context (built from the cookie lang on the
+server page), routes lang from the page into WizardContainer, and replaces
+all hardcoded strings across the 11 steps + StepNav with i18n keys. Adds the
+wizard.* dictionaries (it + en, 344 keys each). Persisted enum values
+(industry, voice traits, palette/font ids) stay canonical; only display is
+translated. tsc --noEmit clean.
+---
+ src/app/(dashboard)/nuovo-sito/page.tsx    |   4 +-
+ src/components/wizard/Step10Deployment.tsx |  51 +-
+ src/components/wizard/Step11Review.tsx     | 130 ++--
+ src/components/wizard/Step1Domain.tsx      |  44 +-
+ src/components/wizard/Step2DnsTransfer.tsx |  43 +-
+ src/components/wizard/Step3Scenario.tsx    |  41 +-
+ src/components/wizard/Step4Brief.tsx       |  52 +-
+ src/components/wizard/Step5ApiSetup.tsx    |  52 +-
+ src/components/wizard/Step6SeoSource.tsx   |  62 +-
+ src/components/wizard/Step7Aesthetic.tsx   | 138 ++--
+ src/components/wizard/Step8Voice.tsx       |  35 +-
+ src/components/wizard/Step9Pages.tsx       |  50 +-
+ src/components/wizard/StepNav.tsx          |   9 +-
+ src/components/wizard/WizardContainer.tsx  |  47 +-
+ src/components/wizard/wizard-i18n.tsx      |  20 +
+ src/lib/i18n.ts                            | 701 ++++++++++++++++++++-
+ 16 files changed, 1081 insertions(+), 398 deletions(-)
+ create mode 100644 src/components/wizard/wizard-i18n.tsx
+
+diff --git a/src/app/(dashboard)/nuovo-sito/page.tsx b/src/app/(dashboard)/nuovo-sito/page.tsx
+index c1d1326..a2ce22a 100644
+--- a/src/app/(dashboard)/nuovo-sito/page.tsx
++++ b/src/app/(dashboard)/nuovo-sito/page.tsx
+@@ -1,8 +1,10 @@
+ import { WizardContainer } from "@/components/wizard/WizardContainer";
+ import { getSecretStatuses } from "@/lib/secret-status";
++import { getLang } from "@/lib/i18n-server";
+ 
+ export default async function NuovoSitoPage({ searchParams }: { searchParams: Promise<{ domain?: string }> }) {
+   const { domain } = await searchParams;
+   const secretStatuses = await getSecretStatuses();
+-  return <WizardContainer secretStatuses={secretStatuses} initialDomain={domain ?? null} />;
++  const lang = await getLang();
++  return <WizardContainer secretStatuses={secretStatuses} initialDomain={domain ?? null} lang={lang} />;
+ }
+diff --git a/src/components/wizard/Step10Deployment.tsx b/src/components/wizard/Step10Deployment.tsx
+index 7f2a9c0..dcf766e 100644
+--- a/src/components/wizard/Step10Deployment.tsx
++++ b/src/components/wizard/Step10Deployment.tsx
+@@ -2,6 +2,7 @@
+ 
+ import { WizardState, ApprovalMode } from "@/lib/wizard-types";
+ import { StepNav } from "./StepNav";
++import { useT } from "./wizard-i18n";
+ 
+ interface Props {
+   state: WizardState;
+@@ -11,6 +12,7 @@ interface Props {
+ }
+ 
+ export function Step10Deployment({ state, onChange, onNext, onBack }: Props) {
++  const t = useT();
+   const s = state.step10;
+   const domain = state.step1.domain;
+ 
+@@ -20,29 +22,22 @@ export function Step10Deployment({ state, onChange, onNext, onBack }: Props) {
+ 
+   const checkboxCls = "w-4 h-4 rounded border-zinc-300 accent-blue-600";
+ 
+-  const APPROVAL_OPTIONS: { id: ApprovalMode; label: string; note?: string }[] = [
+-    {
+-      id: "manual",
+-      label: "Manual — pausa su Strategy + Content per review",
+-    },
+-    {
+-      id: "auto",
+-      label: "Auto — full pipeline senza interruzioni",
+-      note: "Consigliato solo dopo aver validato pipeline su sito sandbox",
+-    },
++  const APPROVAL_OPTIONS: { id: ApprovalMode; labelKey: string; noteKey?: string }[] = [
++    { id: "manual", labelKey: "wizard.deploy.approval.manual" },
++    { id: "auto", labelKey: "wizard.deploy.approval.auto", noteKey: "wizard.deploy.approval.autoNote" },
+   ];
+ 
+   return (
+     <div>
+-      <h1 className="text-2xl font-semibold">Deploy e configurazioni finali</h1>
++      <h1 className="text-2xl font-semibold">{t("wizard.deploy.title")}</h1>
+       <p className="text-zinc-500 mt-1 mb-6 text-sm">
+-        Configura come verrà deployato il sito.
++        {t("wizard.deploy.subtitle")}
+       </p>
+ 
+       <div className="max-w-lg space-y-6">
+         {/* Hostname */}
+         <div>
+-          <label className="block text-sm font-semibold mb-2">Hostname target</label>
++          <label className="block text-sm font-semibold mb-2">{t("wizard.deploy.hostnameLabel")}</label>
+           <div className="space-y-2">
+             <label className="flex items-center gap-3 cursor-pointer">
+               <input
+@@ -53,7 +48,7 @@ export function Step10Deployment({ state, onChange, onNext, onBack }: Props) {
+                 className="w-4 h-4 accent-blue-600"
+               />
+               <span className="text-sm font-mono">{domain || "dominio.it"}</span>
+-              <span className="text-xs text-zinc-400">(root — consigliato)</span>
++              <span className="text-xs text-zinc-400">{t("wizard.deploy.rootRecommended")}</span>
+             </label>
+             <label className="flex items-center gap-3 cursor-pointer">
+               <input
+@@ -70,7 +65,7 @@ export function Step10Deployment({ state, onChange, onNext, onBack }: Props) {
+ 
+         {/* Email routing */}
+         <div>
+-          <h2 className="text-sm font-semibold mb-3">Email routing</h2>
++          <h2 className="text-sm font-semibold mb-3">{t("wizard.deploy.emailHeading")}</h2>
+           <div className="space-y-2">
+             <label className="flex items-start gap-3 cursor-pointer">
+               <input
+@@ -81,9 +76,9 @@ export function Step10Deployment({ state, onChange, onNext, onBack }: Props) {
+               />
+               <div>
+                 <div className="text-sm">
+-                  Configura <code className="font-mono text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">
++                  {t("wizard.deploy.emailConfigPre")} <code className="font-mono text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">
+                     info@{domain || "dominio.it"}
+-                  </code> → forward ad{" "}
++                  </code> {t("wizard.deploy.emailConfigMid")}{" "}
+                   <code className="font-mono text-xs bg-zinc-100 dark:bg-zinc-800 px-1 rounded">
+                     AGENCY_EMAIL
+                   </code>
+@@ -100,7 +95,7 @@ export function Step10Deployment({ state, onChange, onNext, onBack }: Props) {
+                   className={`${checkboxCls} mt-0.5`}
+                 />
+                 <div className="text-sm text-zinc-600 dark:text-zinc-400">
+-                  Catch-all: cattura anche typo (es. infpo@, info1@) → stesso forward
++                  {t("wizard.deploy.catchAll")}
+                 </div>
+               </label>
+             )}
+@@ -109,7 +104,7 @@ export function Step10Deployment({ state, onChange, onNext, onBack }: Props) {
+ 
+         {/* Other options */}
+         <div>
+-          <h2 className="text-sm font-semibold mb-3">Opzioni</h2>
++          <h2 className="text-sm font-semibold mb-3">{t("wizard.deploy.optionsHeading")}</h2>
+           <div className="space-y-3">
+             <label className="flex items-start gap-3 cursor-pointer">
+               <input
+@@ -119,8 +114,8 @@ export function Step10Deployment({ state, onChange, onNext, onBack }: Props) {
+                 className={`${checkboxCls} mt-0.5`}
+               />
+               <div>
+-                <div className="text-sm">Auto-deploy su git push</div>
+-                <div className="text-xs text-zinc-400">Cloudflare Pages deploya automaticamente ad ogni push</div>
++                <div className="text-sm">{t("wizard.deploy.autoDeployLabel")}</div>
++                <div className="text-xs text-zinc-400">{t("wizard.deploy.autoDeployNote")}</div>
+               </div>
+             </label>
+ 
+@@ -132,9 +127,9 @@ export function Step10Deployment({ state, onChange, onNext, onBack }: Props) {
+                 className={`${checkboxCls} mt-0.5`}
+               />
+               <div>
+-                <div className="text-sm">Cookie banner GDPR</div>
++                <div className="text-sm">{t("wizard.deploy.gdprLabel")}</div>
+                 <div className="text-xs text-zinc-400">
+-                  Aggiungiamo solo se attivi analytics
++                  {t("wizard.deploy.gdprNote")}
+                 </div>
+               </div>
+             </label>
+@@ -143,7 +138,7 @@ export function Step10Deployment({ state, onChange, onNext, onBack }: Props) {
+ 
+         {/* Approval mode */}
+         <div>
+-          <h2 className="text-sm font-semibold mb-3">Modalità approvazione pipeline</h2>
++          <h2 className="text-sm font-semibold mb-3">{t("wizard.deploy.approvalHeading")}</h2>
+           <div className="space-y-2">
+             {APPROVAL_OPTIONS.map((opt) => (
+               <label key={opt.id} className="flex items-start gap-3 cursor-pointer">
+@@ -156,10 +151,10 @@ export function Step10Deployment({ state, onChange, onNext, onBack }: Props) {
+                   className="w-4 h-4 accent-blue-600 mt-0.5"
+                 />
+                 <div>
+-                  <div className="text-sm">{opt.label}</div>
+-                  {opt.note && (
++                  <div className="text-sm">{t(opt.labelKey)}</div>
++                  {opt.noteKey && (
+                     <div className="text-xs text-amber-600 dark:text-amber-400">
+-                      ⚠ {opt.note}
++                      ⚠ {t(opt.noteKey)}
+                     </div>
+                   )}
+                 </div>
+@@ -169,7 +164,7 @@ export function Step10Deployment({ state, onChange, onNext, onBack }: Props) {
+         </div>
+       </div>
+ 
+-      <StepNav onBack={onBack} onNext={onNext} nextLabel="Avanti → Riepilogo" />
++      <StepNav onBack={onBack} onNext={onNext} nextLabel={t("wizard.deploy.nextReview")} />
+     </div>
+   );
+ }
+diff --git a/src/components/wizard/Step11Review.tsx b/src/components/wizard/Step11Review.tsx
+index f1e89e8..ece9b28 100644
+--- a/src/components/wizard/Step11Review.tsx
++++ b/src/components/wizard/Step11Review.tsx
+@@ -4,6 +4,7 @@ import { useState } from "react";
+ import { WizardState } from "@/lib/wizard-types";
+ import { clearWizardState } from "@/lib/wizard-state";
+ import { useRouter } from "next/navigation";
++import { useT } from "./wizard-i18n";
+ 
+ interface Props {
+   state: WizardState;
+@@ -59,6 +60,7 @@ function Row({ label, value }: { label: string; value?: string | boolean | null
+ }
+ 
+ export function Step11Review({ state, onBack, onGoToStep }: Props) {
++  const t = useT();
+   const [submitting, setSubmitting] = useState(false);
+   const [submitted, setSubmitted] = useState(false);
+   const [error, setError] = useState("");
+@@ -81,84 +83,84 @@ export function Step11Review({ state, onBack, onGoToStep }: Props) {
+           router.push("/sites");
+         }, 3000);
+       } else {
+-        setError(data.error ?? "Errore sconosciuto");
++        setError(data.error ?? t("wizard.common.unknownError"));
+       }
+     } catch {
+-      setError("Errore di rete — riprova.");
++      setError(t("wizard.common.netError"));
+     } finally {
+       setSubmitting(false);
+     }
+   }
+ 
+   const scenarioMap: Record<string, string> = {
+-    "plan-a": "A. Dominio scaduto da rivivere",
+-    "plan-b": "B. Rebuild di sito esistente",
+-    "plan-c": "C. Clone competitivo / inspirazione",
++    "plan-a": "wizard.scenario.planA.title",
++    "plan-b": "wizard.scenario.planB.title",
++    "plan-c": "wizard.scenario.planC.title",
+   };
+-  const scenarioLabel = state.step3.scenario ? (scenarioMap[state.step3.scenario] ?? "—") : "—";
++  const scenarioLabel = state.step3.scenario ? t(scenarioMap[state.step3.scenario] ?? "") || "—" : "—";
+ 
+   const pages = state.step9.pages;
+   const selectedPages = [
+-    pages.home && "Home",
+-    pages.chiSiamo && "Chi Siamo",
+-    pages.serviziMenu && (state.step4.industry === "Ristorazione" ? "Menu" : "Servizi"),
+-    pages.galleria && "Galleria",
+-    pages.eventi && "Eventi",
+-    pages.blog && `Blog (${pages.blogArticoli} articoli)`,
+-    pages.faq && "FAQ",
+-    pages.contatti && "Contatti",
++    pages.home && t("wizard.pages.home"),
++    pages.chiSiamo && t("wizard.pages.about"),
++    pages.serviziMenu && (state.step4.industry === "Ristorazione" ? t("wizard.pages.menu") : t("wizard.pages.services")),
++    pages.galleria && t("wizard.pages.gallery"),
++    pages.eventi && t("wizard.pages.events"),
++    pages.blog && `${t("wizard.pages.blog")} (${pages.blogArticoli} ${t("wizard.review.articles")})`,
++    pages.faq && t("wizard.pages.faq"),
++    pages.contatti && t("wizard.pages.contact"),
+   ].filter(Boolean).join(", ");
+ 
+   if (submitted) {
+     return (
+       <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
+         <div className="text-4xl">🚀</div>
+-        <h1 className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">Brief salvato!</h1>
++        <h1 className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">{t("wizard.review.savedTitle")}</h1>
+         <p className="text-zinc-500 text-sm">
+-          Dominio: <strong>{state.step1.domain}</strong>
++          {t("wizard.review.row.domain")}: <strong>{state.step1.domain}</strong>
+         </p>
+-        <p className="text-zinc-500 text-sm">Redirect a /sites tra 3 secondi…</p>
++        <p className="text-zinc-500 text-sm">{t("wizard.review.redirect")}</p>
+       </div>
+     );
+   }
+ 
+   return (
+     <div>
+-      <h1 className="text-2xl font-semibold">Riepilogo</h1>
++      <h1 className="text-2xl font-semibold">{t("wizard.review.title")}</h1>
+       <p className="text-zinc-500 mt-1 mb-6 text-sm">
+-        Verifica tutti i dati prima di generare il sito.
++        {t("wizard.review.subtitle")}
+       </p>
+ 
+       <div className="space-y-3 mb-6">
+-        <Section title="Step 1 — Dominio" step={1} onEdit={onGoToStep}>
+-          <Row label="Dominio" value={state.step1.domain} />
+-          <Row label="Registrar" value={state.step1.preflightResult?.whois?.registrar} />
+-          <Row label="Scade il" value={state.step1.preflightResult?.whois?.registered_until
++        <Section title={t("wizard.review.sec.domain")} step={1} onEdit={onGoToStep}>
++          <Row label={t("wizard.review.row.domain")} value={state.step1.domain} />
++          <Row label={t("wizard.review.row.registrar")} value={state.step1.preflightResult?.whois?.registrar} />
++          <Row label={t("wizard.review.row.expires")} value={state.step1.preflightResult?.whois?.registered_until
+             ? new Date(state.step1.preflightResult.whois.registered_until).toLocaleDateString("it-IT")
+             : undefined} />
+-          <Row label="Zona CF" value={state.step1.preflightResult?.cf_zone?.present ? "Presente" : "Non trovata"} />
++          <Row label={t("wizard.review.row.cfZone")} value={state.step1.preflightResult?.cf_zone?.present ? t("wizard.review.present") : t("wizard.review.notFound")} />
+         </Section>
+ 
+-        <Section title="Step 3 — Scenario" step={3} onEdit={onGoToStep}>
+-          <Row label="Scenario" value={scenarioLabel} />
+-          {state.step3.referenceUrl && <Row label="Riferimento" value={state.step3.referenceUrl} />}
++        <Section title={t("wizard.review.sec.scenario")} step={3} onEdit={onGoToStep}>
++          <Row label={t("wizard.review.row.scenario")} value={scenarioLabel} />
++          {state.step3.referenceUrl && <Row label={t("wizard.review.row.reference")} value={state.step3.referenceUrl} />}
+         </Section>
+ 
+-        <Section title="Step 4 — Brief cliente" step={4} onEdit={onGoToStep}>
+-          <Row label="Business" value={state.step4.businessName} />
+-          <Row label="Industria" value={state.step4.industry} />
+-          <Row label="Sotto-cat." value={state.step4.subCategory} />
+-          <Row label="Città" value={state.step4.city} />
+-          <Row label="Indirizzo" value={state.step4.address} />
+-          <Row label="Telefono" value={state.step4.phone} />
+-          <Row label="Email" value={state.step4.email || `info@${state.step1.domain}`} />
+-          {state.step4.description && <Row label="Descrizione" value={state.step4.description} />}
+-          {state.step4.usp && <Row label="USP" value={state.step4.usp} />}
++        <Section title={t("wizard.review.sec.brief")} step={4} onEdit={onGoToStep}>
++          <Row label={t("wizard.review.row.business")} value={state.step4.businessName} />
++          <Row label={t("wizard.review.row.industry")} value={state.step4.industry ? t("wizard.industry." + state.step4.industry) : ""} />
++          <Row label={t("wizard.review.row.subCat")} value={state.step4.subCategory} />
++          <Row label={t("wizard.review.row.city")} value={state.step4.city} />
++          <Row label={t("wizard.review.row.address")} value={state.step4.address} />
++          <Row label={t("wizard.review.row.phone")} value={state.step4.phone} />
++          <Row label={t("wizard.review.row.email")} value={state.step4.email || `info@${state.step1.domain}`} />
++          {state.step4.description && <Row label={t("wizard.review.row.description")} value={state.step4.description} />}
++          {state.step4.usp && <Row label={t("wizard.review.row.usp")} value={state.step4.usp} />}
+         </Section>
+ 
+-        <Section title="Step 6 — Sorgente SEO" step={6} onEdit={onGoToStep}>
++        <Section title={t("wizard.review.sec.seo")} step={6} onEdit={onGoToStep}>
+           <Row
+-            label="Fonte dati"
++            label={t("wizard.review.row.dataSource")}
+             value={
+               state.step6.sources.length === 0
+                 ? "—"
+@@ -170,45 +172,45 @@ export function Step11Review({ state, onBack, onGoToStep }: Props) {
+                     .join(" + ")
+             }
+           />
+-          {state.step6.csvFileName && <Row label="File CSV" value={state.step6.csvFileName} />}
++          {state.step6.csvFileName && <Row label={t("wizard.review.row.csvFile")} value={state.step6.csvFileName} />}
+         </Section>
+ 
+-        <Section title="Step 7 — Estetica" step={7} onEdit={onGoToStep}>
+-          <Row label="Stile" value={state.step7.designStyle} />
+-          <Row label="Palette" value={state.step7.palette} />
+-          <Row label="Font" value={state.step7.fontPairing} />
+-          {state.step7.references && <Row label="Riferimenti" value={state.step7.references} />}
++        <Section title={t("wizard.review.sec.aes")} step={7} onEdit={onGoToStep}>
++          <Row label={t("wizard.review.row.style")} value={state.step7.designStyle} />
++          <Row label={t("wizard.review.row.palette")} value={state.step7.palette} />
++          <Row label={t("wizard.review.row.font")} value={state.step7.fontPairing} />
++          {state.step7.references && <Row label={t("wizard.review.row.references")} value={state.step7.references} />}
+         </Section>
+ 
+-        <Section title="Step 8 — Voce brand" step={8} onEdit={onGoToStep}>
+-          <Row label="Tono" value={["Molto formale", "Formale", "Neutro", "Casual", "Molto casual"][state.step8.toneFormal - 1]} />
+-          <Row label="Tratti" value={state.step8.voiceTraits.join(", ") || "—"} />
+-          {state.step8.avoidWords && <Row label="Evitare" value={state.step8.avoidWords} />}
+-          {state.step8.brandKeywords && <Row label="Keywords" value={state.step8.brandKeywords} />}
++        <Section title={t("wizard.review.sec.voice")} step={8} onEdit={onGoToStep}>
++          <Row label={t("wizard.review.row.tone")} value={t(`wizard.voice.tone.${state.step8.toneFormal}`)} />
++          <Row label={t("wizard.review.row.traits")} value={state.step8.voiceTraits.map((tr) => t("wizard.voice.trait." + tr)).join(", ") || "—"} />
++          {state.step8.avoidWords && <Row label={t("wizard.review.row.avoid")} value={state.step8.avoidWords} />}
++          {state.step8.brandKeywords && <Row label={t("wizard.review.row.keywords")} value={state.step8.brandKeywords} />}
+         </Section>
+ 
+-        <Section title="Step 9 — Pagine" step={9} onEdit={onGoToStep}>
+-          <Row label="Pagine" value={selectedPages} />
+-          <Row label="Lead capture" value={{ form: "Solo form", phone: "Solo telefono + WA", both: "Entrambi" }[state.step9.leadCapture]} />
+-          <Row label="Lingua" value={state.step9.lingua} />
++        <Section title={t("wizard.review.sec.pages")} step={9} onEdit={onGoToStep}>
++          <Row label={t("wizard.review.row.pages")} value={selectedPages} />
++          <Row label={t("wizard.review.row.leadCapture")} value={t("wizard.review.lead." + state.step9.leadCapture)} />
++          <Row label={t("wizard.review.row.language")} value={state.step9.lingua} />
+         </Section>
+ 
+-        <Section title="Step 10 — Deploy" step={10} onEdit={onGoToStep}>
++        <Section title={t("wizard.review.sec.deploy")} step={10} onEdit={onGoToStep}>
+           <Row
+-            label="Hostname"
++            label={t("wizard.review.row.hostname")}
+             value={state.step10.hostnameWithWww ? `www.${state.step1.domain}` : state.step1.domain}
+           />
+-          <Row label="Email routing" value={state.step10.emailRouting ? "Attivo" : "No"} />
+-          <Row label="Catch-all" value={state.step10.catchAllEmail ? "Attivo" : "No"} />
+-          <Row label="GDPR banner" value={state.step10.gdprBanner ? "Sì" : "No"} />
+-          <Row label="Approvazione" value={state.step10.approvalMode === "manual" ? "Manuale" : "Automatica"} />
++          <Row label={t("wizard.review.row.emailRouting")} value={state.step10.emailRouting ? t("wizard.review.active") : t("wizard.review.no")} />
++          <Row label={t("wizard.review.row.catchAll")} value={state.step10.catchAllEmail ? t("wizard.review.active") : t("wizard.review.no")} />
++          <Row label={t("wizard.review.row.gdprBanner")} value={state.step10.gdprBanner ? t("wizard.review.yes") : t("wizard.review.no")} />
++          <Row label={t("wizard.review.row.approval")} value={state.step10.approvalMode === "manual" ? t("wizard.review.manual") : t("wizard.review.automatic")} />
+         </Section>
+       </div>
+ 
+       {/* Cost/time estimate */}
+       <div className="rounded-lg bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 px-4 py-3 mb-6 text-xs text-zinc-500 space-y-1">
+-        <div>Stima costi: ~€0.05 (Claude) + €0.02 (DataForSEO) + €0.00 (Freepik free tier)</div>
+-        <div>Stima tempo: ~5-8 min pipeline + tempo tue approvazioni</div>
++        <div>{t("wizard.review.costEstimate")}</div>
++        <div>{t("wizard.review.timeEstimate")}</div>
+       </div>
+ 
+       {error && (
+@@ -222,14 +224,14 @@ export function Step11Review({ state, onBack, onGoToStep }: Props) {
+           onClick={onBack}
+           className="px-4 py-2 text-sm rounded border border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
+         >
+-          ← Indietro
++          ← {t("wizard.nav.back")}
+         </button>
+         <button
+           onClick={handleSubmit}
+           disabled={submitting}
+           className="px-8 py-3 text-base rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold shadow-lg"
+         >
+-          {submitting ? "Salvataggio…" : "🚀 Genera Sito"}
++          {submitting ? t("wizard.review.saving") : t("wizard.review.generate")}
+         </button>
+       </div>
+     </div>
+diff --git a/src/components/wizard/Step1Domain.tsx b/src/components/wizard/Step1Domain.tsx
+index d1b2ef9..ce408bd 100644
+--- a/src/components/wizard/Step1Domain.tsx
++++ b/src/components/wizard/Step1Domain.tsx
+@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
+ import { WizardState, PreflightResult } from "@/lib/wizard-types";
+ import { inferAccountFromDomain } from "@/lib/cf-account";
+ import { StepNav } from "./StepNav";
++import { useT } from "./wizard-i18n";
+ 
+ interface Props {
+   state: WizardState;
+@@ -16,13 +17,14 @@ function isValidDomain(value: string): boolean {
+ }
+ 
+ export function Step1Domain({ state, onChange, onNext }: Props) {
++  const t = useT();
+   const [loading, setLoading] = useState(false);
+   const [error, setError] = useState("");
+   const [domainInput, setDomainInput] = useState(state.step1.domain);
+ 
+   const preflight = useCallback(async (domain: string) => {
+     if (!isValidDomain(domain)) {
+-      setError("Inserisci un dominio valido (es. ristoranteangels.it)");
++      setError(t("wizard.domain.invalid"));
+       return;
+     }
+     setLoading(true);
+@@ -47,11 +49,11 @@ export function Step1Domain({ state, onChange, onNext }: Props) {
+         });
+       }
+     } catch {
+-      setError("Errore di rete — riprova.");
++      setError(t("wizard.common.netError"));
+     } finally {
+       setLoading(false);
+     }
+-  }, [state.step1, onChange]);
++  }, [state.step1, onChange, t]);
+ 
+   const pf = state.step1.preflightResult;
+   const cfPresent = pf?.cf_zone?.present;
+@@ -68,15 +70,15 @@ export function Step1Domain({ state, onChange, onNext }: Props) {
+ 
+   return (
+     <div>
+-      <h1 className="text-2xl font-semibold">Nuovo Sito</h1>
++      <h1 className="text-2xl font-semibold">{t("wizard.domain.title")}</h1>
+       <p className="text-zinc-500 mt-1 mb-6 text-sm">
+-        Costruiamo insieme il tuo sito. Iniziamo dal dominio.
++        {t("wizard.domain.subtitle")}
+       </p>
+ 
+       <div className="space-y-4 max-w-md">
+         <div>
+           <label className="block text-sm font-medium mb-1">
+-            Dominio <span className="text-red-500">*</span>
++            {t("wizard.domain.label")} <span className="text-red-500">*</span>
+           </label>
+           <div className="flex gap-2">
+             <input
+@@ -91,7 +93,7 @@ export function Step1Domain({ state, onChange, onNext }: Props) {
+                   preflight(domainInput);
+                 }
+               }}
+-              placeholder="ristoranteangels.it"
++              placeholder={t("wizard.domain.placeholder")}
+               className="flex-1 text-sm px-3 py-2 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+               onKeyDown={(e) => {
+                 if (e.key === "Enter") preflight(domainInput);
+@@ -102,18 +104,18 @@ export function Step1Domain({ state, onChange, onNext }: Props) {
+               disabled={loading || !domainInput}
+               className="px-4 py-2 text-sm rounded bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+             >
+-              {loading ? "Verifica…" : "Verifica"}
++              {loading ? t("wizard.domain.verifying") : t("wizard.domain.verify")}
+             </button>
+           </div>
+           {error && <p className="text-xs text-red-500 mt-1">⚠ {error}</p>}
+           <p className="text-xs text-zinc-400 mt-1">
+-            Solo il dominio, senza http:// o www (es. miosito.it)
++            {t("wizard.domain.helper")}
+           </p>
+         </div>
+ 
+         {pf && (
+           <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-4 space-y-3 bg-zinc-50 dark:bg-zinc-900/50">
+-            <h3 className="text-sm font-medium">Risultati verifica</h3>
++            <h3 className="text-sm font-medium">{t("wizard.domain.results")}</h3>
+ 
+             {/* WHOIS */}
+             <div className="space-y-1">
+@@ -123,10 +125,10 @@ export function Step1Domain({ state, onChange, onNext }: Props) {
+               </div>
+               {pf.whois && (
+                 <div className="ml-4 text-xs text-zinc-600 dark:text-zinc-400 space-y-0.5">
+-                  {pf.whois.registrar && <div>Registrar: {pf.whois.registrar}</div>}
++                  {pf.whois.registrar && <div>{t("wizard.domain.registrar")}: {pf.whois.registrar}</div>}
+                   {pf.whois.registered_until && (
+                     <div>
+-                      Scade il: {new Date(pf.whois.registered_until).toLocaleDateString("it-IT")}
++                      {t("wizard.domain.expires")}: {new Date(pf.whois.registered_until).toLocaleDateString("it-IT")}
+                     </div>
+                   )}
+                 </div>
+@@ -138,7 +140,7 @@ export function Step1Domain({ state, onChange, onNext }: Props) {
+               <div className="space-y-1">
+                 <div className="flex items-center gap-2">
+                   <span className="w-2 h-2 rounded-full bg-blue-500" />
+-                  <span className="text-xs font-medium">Nameserver</span>
++                  <span className="text-xs font-medium">{t("wizard.domain.nameserver")}</span>
+                 </div>
+                 <div className="ml-4 text-xs text-zinc-600 dark:text-zinc-400 space-y-0.5">
+                   {pf.ns.map((ns) => (
+@@ -155,12 +157,12 @@ export function Step1Domain({ state, onChange, onNext }: Props) {
+             <div className="space-y-1">
+               <div className="flex items-center gap-2">
+                 <span className={`w-2 h-2 rounded-full ${cfPresent ? "bg-emerald-500" : "bg-amber-500"}`} />
+-                <span className="text-xs font-medium">Zona Cloudflare</span>
++                <span className="text-xs font-medium">{t("wizard.domain.cfZone")}</span>
+               </div>
+               <div className="ml-4 text-xs text-zinc-600 dark:text-zinc-400">
+                 {cfPresent
+-                  ? `Presente su account ${pf.cf_zone?.account ?? "?"} (status: ${pf.cf_zone?.status ?? "—"})`
+-                  : "Non trovata sull'account Cloudflare attinente al TLD"}
++                  ? `${t("wizard.domain.cfPresentPrefix")} ${pf.cf_zone?.account ?? "?"} (${t("wizard.domain.statusWord")}: ${pf.cf_zone?.status ?? "—"})`
++                  : t("wizard.domain.cfMissing")}
+               </div>
+             </div>
+           </div>
+@@ -169,12 +171,10 @@ export function Step1Domain({ state, onChange, onNext }: Props) {
+         {ambiguous && (
+           <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-4 space-y-2">
+             <h3 className="text-sm font-medium text-amber-900 dark:text-amber-200">
+-              TLD ambiguo — scegli l'account Cloudflare
++              {t("wizard.domain.ambiguousTitle")}
+             </h3>
+             <p className="text-xs text-amber-800 dark:text-amber-300">
+-              Il dominio finisce in <code className="font-mono">.{state.step1.domain.split(".").slice(-1)[0]}</code>:
+-              non è chiaro se va sull'account italiano (Brianzadigitale, per siti in italiano)
+-              o inglese (fluxgateseo, per siti in inglese). Scegli sotto.
++              {t("wizard.domain.ambiguousDescPre")} <code className="font-mono">.{state.step1.domain.split(".").slice(-1)[0]}</code>{t("wizard.domain.ambiguousDescPost")}
+             </p>
+             <div className="flex gap-2 pt-1">
+               {(["IT", "EN"] as const).map((acc) => (
+@@ -189,7 +189,7 @@ export function Step1Domain({ state, onChange, onNext }: Props) {
+                       : "border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800")
+                   }
+                 >
+-                  {acc} — {acc === "IT" ? "italiano (Brianzadigitale)" : "inglese (fluxgateseo)"}
++                  {acc} — {acc === "IT" ? t("wizard.domain.accountIt") : t("wizard.domain.accountEn")}
+                 </button>
+               ))}
+             </div>
+@@ -197,7 +197,7 @@ export function Step1Domain({ state, onChange, onNext }: Props) {
+         )}
+ 
+         <p className="text-xs text-zinc-400">
+-          Sicuro che sia tuo? Ti guideremo se serve trasferire DNS a Cloudflare.
++          {t("wizard.domain.ownHint")}
+         </p>
+       </div>
+ 
+diff --git a/src/components/wizard/Step2DnsTransfer.tsx b/src/components/wizard/Step2DnsTransfer.tsx
+index f0841ce..2a57560 100644
+--- a/src/components/wizard/Step2DnsTransfer.tsx
++++ b/src/components/wizard/Step2DnsTransfer.tsx
+@@ -3,6 +3,7 @@
+ import { useState } from "react";
+ import { WizardState, PreflightResult } from "@/lib/wizard-types";
+ import { StepNav } from "./StepNav";
++import { useT } from "./wizard-i18n";
+ 
+ interface Props {
+   state: WizardState;
+@@ -32,6 +33,7 @@ function CollapsibleCard({ title, children }: { title: string; children: React.R
+ }
+ 
+ export function Step2DnsTransfer({ state, onChange, onNext, onBack }: Props) {
++  const t = useT();
+   const [reverifying, setReverifying] = useState(false);
+   const registrar = state.step1.preflightResult?.whois?.registrar;
+   const cfPresent = state.step1.preflightResult?.cf_zone?.present;
+@@ -63,32 +65,31 @@ export function Step2DnsTransfer({ state, onChange, onNext, onBack }: Props) {
+ 
+   return (
+     <div>
+-      <h1 className="text-2xl font-semibold">Trasferiamo il DNS a Cloudflare</h1>
++      <h1 className="text-2xl font-semibold">{t("wizard.dns.title")}</h1>
+       <p className="text-zinc-500 mt-1 mb-6 text-sm">
+-        Il dominio <strong>{state.step1.domain}</strong> non è ancora nella tua zona Cloudflare.
+-        Segui uno dei percorsi qui sotto.
++        {t("wizard.dns.subtitlePre")} <strong>{state.step1.domain}</strong> {t("wizard.dns.subtitlePost")}
+       </p>
+ 
+       <div className="max-w-lg space-y-4">
+-        <CollapsibleCard title="Hai già il dominio su Cloudflare?">
+-          <p>Vai su <a href="https://dash.cloudflare.com" target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">dashboard.cloudflare.com</a> → <strong>Add a site</strong>.</p>
++        <CollapsibleCard title={t("wizard.dns.card1Title")}>
++          <p>{t("wizard.dns.card1Lead")} <a href="https://dash.cloudflare.com" target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">dashboard.cloudflare.com</a> → <strong>{t("wizard.dns.addSite")}</strong>.</p>
+           <ol className="list-decimal ml-4 space-y-1">
+-            <li>Inserisci <strong>{state.step1.domain}</strong></li>
+-            <li>Scegli il piano Free</li>
+-            <li>Cloudflare ti mostrerà i nameserver da impostare</li>
+-            <li>Imposta quei nameserver nel pannello del tuo registrar</li>
++            <li>{t("wizard.dns.card1Step1")} <strong>{state.step1.domain}</strong></li>
++            <li>{t("wizard.dns.card1Step2")}</li>
++            <li>{t("wizard.dns.card1Step3")}</li>
++            <li>{t("wizard.dns.card1Step4")}</li>
+           </ol>
+         </CollapsibleCard>
+ 
+-        <CollapsibleCard title={`Devi cambiare nameservers${registrar && registrar !== "N/A" && registrar !== "Timeout o error" ? ` su ${registrar}` : ""}?`}>
+-          <p>Dopo aver aggiunto il dominio a Cloudflare, vai sul pannello del tuo registrar e cerca la sezione <strong>Nameserver / DNS</strong>.</p>
++        <CollapsibleCard title={`${t("wizard.dns.card2Title")}${registrar && registrar !== "N/A" && registrar !== "Timeout o error" ? ` ${t("wizard.dns.onRegistrar")} ${registrar}` : ""}?`}>
++          <p>{t("wizard.dns.card2LeadPre")} <strong>{t("wizard.dns.nsDnsSection")}</strong>.</p>
+           <ol className="list-decimal ml-4 space-y-1">
+-            <li>Accedi al pannello del registrar ({registrar ?? "es. Netsons, Register.it"})</li>
+-            <li>Vai su Gestione Dominio → Nameserver</li>
+-            <li>Sostituisci i nameserver attuali con quelli forniti da Cloudflare</li>
+-            <li>Salva le modifiche (la propagazione può richiedere fino a 48h)</li>
++            <li>{t("wizard.dns.card2Step1")} ({registrar ?? t("wizard.dns.registrarEg")})</li>
++            <li>{t("wizard.dns.card2Step2")}</li>
++            <li>{t("wizard.dns.card2Step3")}</li>
++            <li>{t("wizard.dns.card2Step4")}</li>
+           </ol>
+-          <p className="text-xs text-zinc-400">Nota: su Netsons trovi i nameserver in <em>Dominia → Gestisci → DNS/Nameserver</em>.</p>
++          <p className="text-xs text-zinc-400">{t("wizard.dns.card2NotePre")} <em>{t("wizard.dns.card2NotePath")}</em>.</p>
+         </CollapsibleCard>
+ 
+         <div className="space-y-3 pt-2">
+@@ -99,7 +100,7 @@ export function Step2DnsTransfer({ state, onChange, onNext, onBack }: Props) {
+               onChange={(e) => onChange({ step2: { ...state.step2, cfAdded: e.target.checked } })}
+               className="w-4 h-4 rounded border-zinc-300 accent-blue-600"
+             />
+-            <span className="text-sm">Ho aggiunto il dominio a Cloudflare</span>
++            <span className="text-sm">{t("wizard.dns.cfAdded")}</span>
+           </label>
+           <label className="flex items-center gap-3 cursor-pointer">
+             <input
+@@ -108,7 +109,7 @@ export function Step2DnsTransfer({ state, onChange, onNext, onBack }: Props) {
+               onChange={(e) => onChange({ step2: { ...state.step2, nsChanged: e.target.checked } })}
+               className="w-4 h-4 rounded border-zinc-300 accent-blue-600"
+             />
+-            <span className="text-sm">Ho cambiato i nameserver</span>
++            <span className="text-sm">{t("wizard.dns.nsChanged")}</span>
+           </label>
+         </div>
+ 
+@@ -118,11 +119,11 @@ export function Step2DnsTransfer({ state, onChange, onNext, onBack }: Props) {
+             disabled={reverifying}
+             className="px-4 py-2 text-sm rounded border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 disabled:opacity-40 transition-colors"
+           >
+-            {reverifying ? "Verifica in corso…" : "🔄 Re-verifica DNS"}
++            {reverifying ? t("wizard.dns.reverifying") : t("wizard.dns.reverify")}
+           </button>
+           {cfPresent && (
+             <span className="flex items-center gap-1 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
+-              ✓ Zona trovata!
++              {t("wizard.dns.zoneFound")}
+             </span>
+           )}
+         </div>
+@@ -135,7 +136,7 @@ export function Step2DnsTransfer({ state, onChange, onNext, onBack }: Props) {
+             }}
+             className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 underline"
+           >
+-            Skip per ora (attenzione: il deploy fallirà senza zona su CF)
++            {t("wizard.dns.skip")}
+           </button>
+         </div>
+       </div>
+diff --git a/src/components/wizard/Step3Scenario.tsx b/src/components/wizard/Step3Scenario.tsx
+index 7e05a65..36ced28 100644
+--- a/src/components/wizard/Step3Scenario.tsx
++++ b/src/components/wizard/Step3Scenario.tsx
+@@ -3,6 +3,7 @@
+ import { useState } from "react";
+ import { WizardState, Scenario } from "@/lib/wizard-types";
+ import { StepNav } from "./StepNav";
++import { useT } from "./wizard-i18n";
+ 
+ interface Props {
+   state: WizardState;
+@@ -11,32 +12,14 @@ interface Props {
+   onBack: () => void;
+ }
+ 
+-const SCENARIOS: { id: Scenario; icon: string; title: string; description: string; hasRef?: boolean }[] = [
+-  {
+-    id: "plan-a",
+-    icon: "🔄",
+-    title: "A. Dominio scaduto da rivivere",
+-    description:
+-      "Ho comprato un dominio expired e voglio sfruttarne i backlink storici per costruire un sito nuovo.",
+-  },
+-  {
+-    id: "plan-b",
+-    icon: "✨",
+-    title: "B. Rebuild di sito esistente",
+-    description:
+-      "Ho un sito attivo (mio o di un cliente) che voglio ricostruire da zero con design moderno.",
+-  },
+-  {
+-    id: "plan-c",
+-    icon: "🎨",
+-    title: "C. Clone competitivo / inspirazione",
+-    description:
+-      "Ho un sito di riferimento che mi piace, voglio adattarlo al mio brand.",
+-    hasRef: true,
+-  },
++const SCENARIOS: { id: Scenario; icon: string; titleKey: string; descKey: string; hasRef?: boolean }[] = [
++  { id: "plan-a", icon: "🔄", titleKey: "wizard.scenario.planA.title", descKey: "wizard.scenario.planA.desc" },
++  { id: "plan-b", icon: "✨", titleKey: "wizard.scenario.planB.title", descKey: "wizard.scenario.planB.desc" },
++  { id: "plan-c", icon: "🎨", titleKey: "wizard.scenario.planC.title", descKey: "wizard.scenario.planC.desc", hasRef: true },
+ ];
+ 
+ export function Step3Scenario({ state, onChange, onNext, onBack }: Props) {
++  const t = useT();
+   const [refUrl, setRefUrl] = useState(state.step3.referenceUrl ?? "");
+ 
+   function select(id: Scenario) {
+@@ -53,9 +36,9 @@ export function Step3Scenario({ state, onChange, onNext, onBack }: Props) {
+ 
+   return (
+     <div>
+-      <h1 className="text-2xl font-semibold">Che tipo di progetto è?</h1>
++      <h1 className="text-2xl font-semibold">{t("wizard.scenario.title")}</h1>
+       <p className="text-zinc-500 mt-1 mb-6 text-sm">
+-        Seleziona lo scenario che descrive meglio il tuo caso.
++        {t("wizard.scenario.subtitle")}
+       </p>
+ 
+       <div className="space-y-3 max-w-lg">
+@@ -75,9 +58,9 @@ export function Step3Scenario({ state, onChange, onNext, onBack }: Props) {
+                   <span className="text-2xl flex-shrink-0">{s.icon}</span>
+                   <div>
+                     <div className={`text-sm font-semibold ${selected ? "text-blue-700 dark:text-blue-300" : ""}`}>
+-                      {s.title}
++                      {t(s.titleKey)}
+                     </div>
+-                    <div className="text-xs text-zinc-500 mt-0.5">{s.description}</div>
++                    <div className="text-xs text-zinc-500 mt-0.5">{t(s.descKey)}</div>
+                   </div>
+                 </div>
+               </button>
+@@ -85,7 +68,7 @@ export function Step3Scenario({ state, onChange, onNext, onBack }: Props) {
+               {s.hasRef && selected && (
+                 <div className="ml-2 mt-2 pl-4 border-l-2 border-blue-300 dark:border-blue-800">
+                   <label className="block text-xs text-zinc-500 mb-1">
+-                    URL del sito di riferimento (opzionale)
++                    {t("wizard.scenario.refLabel")}
+                   </label>
+                   <input
+                     type="url"
+@@ -96,7 +79,7 @@ export function Step3Scenario({ state, onChange, onNext, onBack }: Props) {
+                         step3: { ...state.step3, scenario: s.id, referenceUrl: e.target.value },
+                       });
+                     }}
+-                    placeholder="https://esempio.com"
++                    placeholder={t("wizard.scenario.refPlaceholder")}
+                     className="text-sm px-3 py-1.5 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   />
+                 </div>
+diff --git a/src/components/wizard/Step4Brief.tsx b/src/components/wizard/Step4Brief.tsx
+index 2d0d9e2..160f0b6 100644
+--- a/src/components/wizard/Step4Brief.tsx
++++ b/src/components/wizard/Step4Brief.tsx
+@@ -2,6 +2,7 @@
+ 
+ import { WizardState, Industry } from "@/lib/wizard-types";
+ import { StepNav } from "./StepNav";
++import { useT } from "./wizard-i18n";
+ 
+ interface Props {
+   state: WizardState;
+@@ -48,6 +49,7 @@ const inputCls =
+   "w-full text-sm px-3 py-2 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500";
+ 
+ export function Step4Brief({ state, onChange, onNext, onBack }: Props) {
++  const t = useT();
+   const s = state.step4;
+ 
+   function patch(fields: Partial<typeof s>) {
+@@ -58,9 +60,9 @@ export function Step4Brief({ state, onChange, onNext, onBack }: Props) {
+ 
+   return (
+     <div>
+-      <h1 className="text-2xl font-semibold">Parlaci del business</h1>
++      <h1 className="text-2xl font-semibold">{t("wizard.brief.title")}</h1>
+       <p className="text-zinc-500 mt-1 mb-4 text-sm">
+-        Inserisci le informazioni principali del sito. Potrai modificarle dopo.
++        {t("wizard.brief.subtitle")}
+       </p>
+ 
+       {/* Expired/rebuild domains: let the operator peek at the old site on the
+@@ -70,71 +72,71 @@ export function Step4Brief({ state, onChange, onNext, onBack }: Props) {
+           href={`https://web.archive.org/web/*/${state.step1.domain.trim()}`}
+           target="_blank"
+           rel="noopener noreferrer"
+-          title={`Vedi com'era ${state.step1.domain.trim()} su Wayback Machine`}
++          title={`${t("wizard.brief.waybackTitlePre")} ${state.step1.domain.trim()} ${t("wizard.brief.waybackTitlePost")}`}
+           className="inline-flex items-center gap-1.5 mb-6 text-xs px-2.5 py-1.5 rounded border border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+         >
+-          🕰️ Com&apos;era su Wayback Machine ↗
++          🕰️ {t("wizard.brief.waybackLabel")} ↗
+         </a>
+       )}
+ 
+       <div className="max-w-lg space-y-5">
+-        <Field label="Nome del business" required>
++        <Field label={t("wizard.brief.businessName")} required>
+           <input
+             type="text"
+             className={inputCls}
+             value={s.businessName}
+             onChange={(e) => patch({ businessName: e.target.value })}
+-            placeholder="Ristorante Angels"
++            placeholder={t("wizard.brief.businessNamePh")}
+           />
+         </Field>
+ 
+         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+-          <Field label="Industria" required>
++          <Field label={t("wizard.brief.industryLabel")} required>
+             <select
+               className={inputCls}
+               value={s.industry}
+               onChange={(e) => patch({ industry: e.target.value as Industry })}
+             >
+-              <option value="">— Seleziona —</option>
++              <option value="">{t("wizard.common.select")}</option>
+               {INDUSTRIES.map((i) => (
+-                <option key={i} value={i}>{i}</option>
++                <option key={i} value={i}>{t("wizard.industry." + i)}</option>
+               ))}
+             </select>
+           </Field>
+ 
+-          <Field label="Sotto-categoria" helper="es. Fine dining, Spa & massaggi">
++          <Field label={t("wizard.brief.subCategory")} helper={t("wizard.brief.subCategoryHelper")}>
+             <input
+               type="text"
+               className={inputCls}
+               value={s.subCategory}
+               onChange={(e) => patch({ subCategory: e.target.value })}
+-              placeholder="Opzionale"
++              placeholder={t("wizard.common.optional")}
+             />
+           </Field>
+         </div>
+ 
+-        <Field label="Città / Zona di attività" required>
++        <Field label={t("wizard.brief.city")} required>
+           <input
+             type="text"
+             className={inputCls}
+             value={s.city}
+             onChange={(e) => patch({ city: e.target.value })}
+-            placeholder="Milano, zona Navigli"
++            placeholder={t("wizard.brief.cityPh")}
+           />
+         </Field>
+ 
+-        <Field label="Indirizzo">
++        <Field label={t("wizard.brief.address")}>
+           <input
+             type="text"
+             className={inputCls}
+             value={s.address}
+             onChange={(e) => patch({ address: e.target.value })}
+-            placeholder="Via Garibaldi 42, 20123 Milano"
++            placeholder={t("wizard.brief.addressPh")}
+           />
+         </Field>
+ 
+         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+-          <Field label="Telefono">
++          <Field label={t("wizard.brief.phone")}>
+             <input
+               type="tel"
+               className={inputCls}
+@@ -145,22 +147,22 @@ export function Step4Brief({ state, onChange, onNext, onBack }: Props) {
+           </Field>
+ 
+           <Field
+-            label="Email"
+-            helper={`Lascia vuoto per usare info@${state.step1.domain || "dominio.it"}`}
++            label={t("wizard.brief.email")}
++            helper={`${t("wizard.brief.emailHelper")} info@${state.step1.domain || "dominio.it"}`}
+           >
+             <input
+               type="email"
+               className={inputCls}
+               value={s.email}
+               onChange={(e) => patch({ email: e.target.value })}
+-              placeholder="Opzionale"
++              placeholder={t("wizard.common.optional")}
+             />
+           </Field>
+         </div>
+ 
+         <Field
+-          label="Descrizione breve del business"
+-          helper={`${s.description.length}/500 caratteri`}
++          label={t("wizard.brief.description")}
++          helper={`${s.description.length}/500 ${t("wizard.common.chars")}`}
+         >
+           <textarea
+             className={inputCls}
+@@ -168,13 +170,13 @@ export function Step4Brief({ state, onChange, onNext, onBack }: Props) {
+             maxLength={500}
+             value={s.description}
+             onChange={(e) => patch({ description: e.target.value })}
+-            placeholder="Breve descrizione di cosa fa il business, per chi è, cosa offre…"
++            placeholder={t("wizard.brief.descriptionPh")}
+           />
+         </Field>
+ 
+         <Field
+-          label="USP / Cosa vi distingue"
+-          helper={`${s.usp.length}/300 caratteri`}
++          label={t("wizard.brief.usp")}
++          helper={`${s.usp.length}/300 ${t("wizard.common.chars")}`}
+         >
+           <textarea
+             className={inputCls}
+@@ -182,7 +184,7 @@ export function Step4Brief({ state, onChange, onNext, onBack }: Props) {
+             maxLength={300}
+             value={s.usp}
+             onChange={(e) => patch({ usp: e.target.value })}
+-            placeholder="es. 'Unici a Milano con forno a legna del 1800', 'Consegna in 30 min garantita'…"
++            placeholder={t("wizard.brief.uspPh")}
+           />
+         </Field>
+       </div>
+diff --git a/src/components/wizard/Step5ApiSetup.tsx b/src/components/wizard/Step5ApiSetup.tsx
+index 5442330..0f9f666 100644
+--- a/src/components/wizard/Step5ApiSetup.tsx
++++ b/src/components/wizard/Step5ApiSetup.tsx
+@@ -4,6 +4,7 @@ import { WizardState } from "@/lib/wizard-types";
+ import { SECRETS, SecretSpec } from "@/lib/secrets-config";
+ import { SecretEditor } from "@/components/SecretEditor";
+ import { StepNav } from "./StepNav";
++import { useT } from "./wizard-i18n";
+ 
+ interface Props {
+   state: WizardState;
+@@ -19,12 +20,7 @@ const STATUS_COLOR: Record<string, string> = {
+   missing: "bg-red-500",
+ };
+ 
+-const STATUS_LABEL: Record<string, string> = {
+-  set: "configurato",
+-  placeholder: "placeholder",
+-  missing: "mancante",
+-};
+-
++// status → i18n key suffix (wizard.api.status.*)
+ function getRelevantSecrets(scenario: string | null): SecretSpec[] {
+   // Always include plan-a secrets
+   const phases: string[] = ["plan-a"];
+@@ -34,6 +30,7 @@ function getRelevantSecrets(scenario: string | null): SecretSpec[] {
+ }
+ 
+ export function Step5ApiSetup({ state, secretStatuses, onChange, onNext, onBack }: Props) {
++  const t = useT();
+   const relevant = getRelevantSecrets(state.step3.scenario);
+   const setCount = relevant.filter((s) => (secretStatuses[s.name] ?? "missing") === "set").length;
+   const criticalMissing = (secretStatuses["CLOUDFLARE_API_TOKEN"] ?? "missing") !== "set";
+@@ -44,20 +41,19 @@ export function Step5ApiSetup({ state, secretStatuses, onChange, onNext, onBack
+ 
+   return (
+     <div>
+-      <h1 className="text-2xl font-semibold">Configurazione API</h1>
++      <h1 className="text-2xl font-semibold">{t("wizard.api.title")}</h1>
+       <p className="text-zinc-500 mt-1 mb-2 text-sm">
+-        Per procedere serve <strong>solo</strong> il <code className="font-mono">CLOUDFLARE_API_TOKEN</code>.
+-        Gli altri sono opzionali ora ma servono prima di andare in produzione.
++        {t("wizard.api.subtitlePre")} <strong>{t("wizard.api.only")}</strong> {t("wizard.api.subtitleMid")} <code className="font-mono">CLOUDFLARE_API_TOKEN</code>. {t("wizard.api.subtitlePost")}
+       </p>
+ 
+       <details className="mb-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 px-4 py-3">
+         <summary className="cursor-pointer text-sm font-medium select-none">
+-          Come creare il token Cloudflare (1 minuto)
++          {t("wizard.api.howToSummary")}
+         </summary>
+         <div className="mt-3 space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
+           <ol className="list-decimal list-inside space-y-1.5">
+             <li>
+-              Apri{" "}
++              {t("wizard.api.step1Open")}{" "}
+               <a
+                 href="https://dash.cloudflare.com/profile/api-tokens"
+                 target="_blank"
+@@ -69,10 +65,10 @@ export function Step5ApiSetup({ state, secretStatuses, onChange, onNext, onBack
+               → <em>Create Token</em> → <em>Create Custom Token</em>.
+             </li>
+             <li>
+-              <strong>Token name</strong>: <code className="font-mono">Elite Pipeline Dashboard</code> (un solo token, vale per tutti i siti).
++              <strong>Token name</strong>: <code className="font-mono">Elite Pipeline Dashboard</code> {t("wizard.api.step2Note")}
+             </li>
+             <li>
+-              <strong>Permissions</strong> — aggiungi le righe qui sotto. Le prime 2 sono obbligatorie, le altre 4 servono in seguito (mettile ora per non rifare il token):
++              <strong>Permissions</strong> {t("wizard.api.step3")}
+             </li>
+           </ol>
+           <div className="border border-zinc-200 dark:border-zinc-800 rounded overflow-hidden">
+@@ -82,17 +78,17 @@ export function Step5ApiSetup({ state, secretStatuses, onChange, onNext, onBack
+                   <th className="px-2 py-1.5 text-left">Type</th>
+                   <th className="px-2 py-1.5 text-left">Resource</th>
+                   <th className="px-2 py-1.5 text-left">Level</th>
+-                  <th className="px-2 py-1.5 text-left">Quando</th>
++                  <th className="px-2 py-1.5 text-left">{t("wizard.api.thWhen")}</th>
+                 </tr>
+               </thead>
+               <tbody className="font-mono">
+                 <tr className="border-t border-zinc-200 dark:border-zinc-800">
+                   <td className="px-2 py-1.5">Account</td><td className="px-2 py-1.5">Workers Scripts</td><td className="px-2 py-1.5">Edit</td>
+-                  <td className="px-2 py-1.5 font-sans text-emerald-600 dark:text-emerald-400">obbligatorio</td>
++                  <td className="px-2 py-1.5 font-sans text-emerald-600 dark:text-emerald-400">{t("wizard.api.required")}</td>
+                 </tr>
+                 <tr className="border-t border-zinc-200 dark:border-zinc-800">
+                   <td className="px-2 py-1.5">Zone</td><td className="px-2 py-1.5">Zone</td><td className="px-2 py-1.5">Read</td>
+-                  <td className="px-2 py-1.5 font-sans text-emerald-600 dark:text-emerald-400">obbligatorio</td>
++                  <td className="px-2 py-1.5 font-sans text-emerald-600 dark:text-emerald-400">{t("wizard.api.required")}</td>
+                 </tr>
+                 <tr className="border-t border-zinc-200 dark:border-zinc-800">
+                   <td className="px-2 py-1.5">Account</td><td className="px-2 py-1.5">Cloudflare Pages</td><td className="px-2 py-1.5">Edit</td>
+@@ -114,12 +110,12 @@ export function Step5ApiSetup({ state, secretStatuses, onChange, onNext, onBack
+             </table>
+           </div>
+           <ol className="list-decimal list-inside space-y-1.5" start={4}>
+-            <li><strong>Account Resources</strong>: Include → il tuo account.</li>
+-            <li><strong>Zone Resources</strong>: Include → All zones from an account → il tuo account.</li>
+-            <li>Salta TTL e IP filtering. <em>Continue to summary → Create Token</em>. Copia il token e incollalo qui sotto.</li>
++            <li><strong>Account Resources</strong>: {t("wizard.api.step4")}</li>
++            <li><strong>Zone Resources</strong>: {t("wizard.api.step5")}</li>
++            <li>{t("wizard.api.step6Pre")} <em>Continue to summary → Create Token</em>. {t("wizard.api.step6Post")}</li>
+           </ol>
+           <p className="text-xs text-zinc-500 italic">
+-            Non automatizzabile: Cloudflare non espone OAuth pubblico per generare token via API.
++            {t("wizard.api.noteAuto")}
+           </p>
+         </div>
+       </details>
+@@ -132,7 +128,7 @@ export function Step5ApiSetup({ state, secretStatuses, onChange, onNext, onBack
+           />
+         </div>
+         <span className="text-xs text-zinc-500 whitespace-nowrap">
+-          {setCount}/{relevant.length} secret configurati
++          {setCount}/{relevant.length} {t("wizard.api.secretsConfigured")}
+         </span>
+       </div>
+ 
+@@ -142,8 +138,8 @@ export function Step5ApiSetup({ state, secretStatuses, onChange, onNext, onBack
+             <tr>
+               <th className="px-3 py-2 text-left">Status</th>
+               <th className="px-3 py-2 text-left">Secret</th>
+-              <th className="px-3 py-2 text-left hidden sm:table-cell">Descrizione</th>
+-              <th className="px-3 py-2 text-left">Azione</th>
++              <th className="px-3 py-2 text-left hidden sm:table-cell">{t("wizard.api.thDescription")}</th>
++              <th className="px-3 py-2 text-left">{t("wizard.api.thAction")}</th>
+             </tr>
+           </thead>
+           <tbody>
+@@ -154,7 +150,7 @@ export function Step5ApiSetup({ state, secretStatuses, onChange, onNext, onBack
+                   <td className="px-3 py-2">
+                     <div className="flex items-center gap-1.5">
+                       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${STATUS_COLOR[status]}`} />
+-                      <span className="text-xs text-zinc-500 hidden sm:inline">{STATUS_LABEL[status]}</span>
++                      <span className="text-xs text-zinc-500 hidden sm:inline">{t("wizard.api.status." + status)}</span>
+                     </div>
+                   </td>
+                   <td className="px-3 py-2">
+@@ -166,7 +162,7 @@ export function Step5ApiSetup({ state, secretStatuses, onChange, onNext, onBack
+                         rel="noreferrer"
+                         className="text-xs text-blue-500 hover:underline"
+                       >
+-                        Genera ↗
++                        {t("wizard.api.generate")} ↗
+                       </a>
+                     )}
+                   </td>
+@@ -189,8 +185,8 @@ export function Step5ApiSetup({ state, secretStatuses, onChange, onNext, onBack
+ 
+       {seoWillBeDisabled && (
+         <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 px-4 py-3 text-xs text-amber-700 dark:text-amber-400 mb-4">
+-          ⚠ Continuando ora, le funzionalità SEO automatiche saranno disabilitate finché{" "}
+-          <code className="font-mono">ANTHROPIC_API_KEY</code> non sarà configurato.
++          ⚠ {t("wizard.api.seoDisabledPre")}{" "}
++          <code className="font-mono">ANTHROPIC_API_KEY</code> {t("wizard.api.seoDisabledPost")}
+         </div>
+       )}
+ 
+@@ -198,7 +194,7 @@ export function Step5ApiSetup({ state, secretStatuses, onChange, onNext, onBack
+         onBack={onBack}
+         onNext={onNext}
+         nextDisabled={criticalMissing}
+-        nextLabel={criticalMissing ? "Configura almeno CLOUDFLARE_API_TOKEN" : "Avanti →"}
++        nextLabel={criticalMissing ? t("wizard.api.nextConfigure") : undefined}
+       />
+     </div>
+   );
+diff --git a/src/components/wizard/Step6SeoSource.tsx b/src/components/wizard/Step6SeoSource.tsx
+index 1e1efb0..4ddd1bd 100644
+--- a/src/components/wizard/Step6SeoSource.tsx
++++ b/src/components/wizard/Step6SeoSource.tsx
+@@ -3,6 +3,7 @@
+ import { useState } from "react";
+ import { WizardState, SeoSource } from "@/lib/wizard-types";
+ import { StepNav } from "./StepNav";
++import { useT } from "./wizard-i18n";
+ 
+ interface Props {
+   state: WizardState;
+@@ -14,34 +15,18 @@ interface Props {
+ 
+ const OPTIONS: {
+   id: SeoSource;
+-  title: string;
+-  description: string;
+-  note?: string;
++  titleKey: string;
++  descKey: string;
++  noteKey?: string;
+   exclusive?: boolean;
+ }[] = [
+-  {
+-    id: "dataforseo",
+-    title: "DataForSEO automatico",
+-    description:
+-      "Useremo l'API di DataForSEO per estrarre backlinks, anchor text e keywords storiche del dominio.",
+-    note: "GRATIS se hai già la chiave API.",
+-  },
+-  {
+-    id: "csv",
+-    title: "Upload CSV da Ahrefs",
+-    description:
+-      "Esporta manualmente da Ahrefs UI (Site Explorer → Backlinks → Export → CSV) e carica qui.",
+-  },
+-  {
+-    id: "skip",
+-    title: "Skip SEO per ora",
+-    description:
+-      "Costruiamo solo basandoci sul brief. Nessuna analisi storica.",
+-    exclusive: true,
+-  },
++  { id: "dataforseo", titleKey: "wizard.seo.dataforseo.title", descKey: "wizard.seo.dataforseo.desc", noteKey: "wizard.seo.dataforseo.note" },
++  { id: "csv", titleKey: "wizard.seo.csv.title", descKey: "wizard.seo.csv.desc" },
++  { id: "skip", titleKey: "wizard.seo.skip.title", descKey: "wizard.seo.skip.desc", exclusive: true },
+ ];
+ 
+ export function Step6SeoSource({ state, secretStatuses, onChange, onNext, onBack }: Props) {
++  const t = useT();
+   const [fileName, setFileName] = useState(state.step6.csvFileName ?? "");
+   const hasDataForSeo = (secretStatuses["DATAFORSEO_LOGIN"] ?? "missing") === "set";
+   const sources = state.step6.sources;
+@@ -76,15 +61,12 @@ export function Step6SeoSource({ state, secretStatuses, onChange, onNext, onBack
+ 
+   return (
+     <div>
+-      <h1 className="text-2xl font-semibold">Da dove prendiamo i dati SEO?</h1>
++      <h1 className="text-2xl font-semibold">{t("wizard.seo.title")}</h1>
+       <p className="text-zinc-500 mt-1 mb-3 text-sm">
+-        Seleziona uno o più metodi (combinabili). &quot;Skip&quot; è esclusivo.
++        {t("wizard.seo.subtitle")}
+       </p>
+       <div className="max-w-lg mb-6 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+-        <strong>Consigliato: combina DataForSEO + Ahrefs CSV.</strong> Ahrefs ha la
+-        coda lunga di referring domains che DataForSEO spesso non trova; il merge
+-        produce un link map ~2× migliore per la strategia di Stage 2. Esporta da
+-        Ahrefs UI: Site Explorer → Referring domains → Export → CSV.
++        <strong>{t("wizard.seo.recommendedStrong")}</strong> {t("wizard.seo.recommendedBody")}
+       </div>
+ 
+       <div className="max-w-lg space-y-3">
+@@ -122,21 +104,21 @@ export function Step6SeoSource({ state, secretStatuses, onChange, onNext, onBack
+                     )}
+                   </div>
+                   <div className="flex-1">
+-                    <div className="text-sm font-semibold">{opt.title}</div>
+-                    <div className="text-xs text-zinc-500 mt-0.5">{opt.description}</div>
+-                    {opt.note && (
++                    <div className="text-sm font-semibold">{t(opt.titleKey)}</div>
++                    <div className="text-xs text-zinc-500 mt-0.5">{t(opt.descKey)}</div>
++                    {opt.noteKey && (
+                       <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5 font-medium">
+-                        {opt.note}
++                        {t(opt.noteKey)}
+                       </div>
+                     )}
+                     {disabledByDataforseo && (
+                       <div className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+-                        Richiede DATAFORSEO_LOGIN configurato in Settings
++                        {t("wizard.seo.requiresDataforseo")}
+                       </div>
+                     )}
+                     {disabledBySkip && (
+                       <div className="text-xs text-zinc-500 mt-0.5">
+-                        Disabilitato perché &quot;Skip&quot; è selezionato
++                        {t("wizard.seo.disabledBySkip")}
+                       </div>
+                     )}
+                   </div>
+@@ -146,7 +128,7 @@ export function Step6SeoSource({ state, secretStatuses, onChange, onNext, onBack
+               {opt.id === "csv" && csvSelected && (
+                 <div className="ml-2 mt-2 pl-4 border-l-2 border-blue-300 dark:border-blue-800">
+                   <label className="block text-xs text-zinc-500 mb-2">
+-                    File CSV da Ahrefs (max 10MB)
++                    {t("wizard.seo.csvLabel")}
+                   </label>
+                   <div className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-lg p-4 text-center">
+                     <input
+@@ -158,7 +140,7 @@ export function Step6SeoSource({ state, secretStatuses, onChange, onNext, onBack
+                         const file = e.target.files?.[0];
+                         if (file) {
+                           if (file.size > 10 * 1024 * 1024) {
+-                            alert("File troppo grande (max 10MB)");
++                            alert(t("wizard.seo.csvTooBig"));
+                             return;
+                           }
+                           setFileName(file.name);
+@@ -172,9 +154,9 @@ export function Step6SeoSource({ state, secretStatuses, onChange, onNext, onBack
+                       htmlFor="csv-upload"
+                       className="cursor-pointer text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                     >
+-                      {fileName ? `✓ ${fileName}` : "Clicca per selezionare il CSV"}
++                      {fileName ? `✓ ${fileName}` : t("wizard.seo.csvSelect")}
+                     </label>
+-                    <p className="text-xs text-zinc-400 mt-1">o trascina qui il file</p>
++                    <p className="text-xs text-zinc-400 mt-1">{t("wizard.seo.csvDrag")}</p>
+                   </div>
+                 </div>
+               )}
+@@ -184,7 +166,7 @@ export function Step6SeoSource({ state, secretStatuses, onChange, onNext, onBack
+ 
+         {dataforseoSelected && csvSelected && (
+           <p className="text-xs text-blue-600 dark:text-blue-400 italic">
+-            Combinati: Stage 1 fa l&apos;estrazione DataForSEO + merge col CSV Ahrefs (priorità ai backlink unici).
++            {t("wizard.seo.combined")}
+           </p>
+         )}
+       </div>
+diff --git a/src/components/wizard/Step7Aesthetic.tsx b/src/components/wizard/Step7Aesthetic.tsx
+index 84555e8..154a238 100644
+--- a/src/components/wizard/Step7Aesthetic.tsx
++++ b/src/components/wizard/Step7Aesthetic.tsx
+@@ -2,32 +2,35 @@
+ 
+ import { WizardState, DesignStyle, PalettePreset, FontPairing, HeroVariant, SectionId, CategoryLayout } from "@/lib/wizard-types";
+ import { StepNav } from "./StepNav";
++import { useT } from "./wizard-i18n";
+ 
+-const HERO_VARIANTS: { id: HeroVariant; label: string; description: string }[] = [
+-  { id: "hero-fullbleed", label: "Full-bleed", description: "Foto a tutto schermo con overlay scuro e CTA centrali. Premium, cinematico." },
+-  { id: "hero-mosaic", label: "Mosaic", description: "Titolo + griglia di 4 foto verticali. Editorial, food, beauty." },
+-  { id: "hero-split", label: "Split", description: "Testo a sinistra + foto a destra. Pulito, professionale, conversion-friendly." },
+-  { id: "hero-carousel", label: "Carousel", description: "Slideshow background con 3-5 foto. (Coming soon — fallback su Fullbleed)" },
++// Display strings resolved via i18n at render; `id`/`label` (font + layout
++// names) stay literal because they're persisted enum values or proper nouns.
++const HERO_VARIANTS: { id: HeroVariant; label: string; descKey: string }[] = [
++  { id: "hero-fullbleed", label: "Full-bleed", descKey: "wizard.aes.hero.hero-fullbleed.desc" },
++  { id: "hero-mosaic", label: "Mosaic", descKey: "wizard.aes.hero.hero-mosaic.desc" },
++  { id: "hero-split", label: "Split", descKey: "wizard.aes.hero.hero-split.desc" },
++  { id: "hero-carousel", label: "Carousel", descKey: "wizard.aes.hero.hero-carousel.desc" },
+ ];
+ 
+-const SECTIONS: { id: SectionId; label: string; description: string; ready: boolean }[] = [
+-  { id: "section-featured-dishes", label: "Piatti / Servizi in evidenza", description: "Griglia 3-6 card con foto + descrizione + link", ready: true },
+-  { id: "section-photo-mosaic", label: "Photo mosaic", description: "Mosaico 6-9 foto stile Instagram", ready: true },
+-  { id: "section-story", label: "Storia / Chi siamo", description: "Foto grande + testo (chef, fondatore, storia)", ready: true },
+-  { id: "section-map-hours", label: "Mappa + indirizzo", description: "Google Maps embed + NAP + click-to-call", ready: true },
+-  { id: "section-blog-feed", label: "Articoli recenti dal blog", description: "3 articoli più recenti con hero image", ready: true },
+-  { id: "section-cta-banner", label: "Banner CTA finale", description: "Banda piena con CTA primaria (Prenota / Contatti)", ready: true },
+-  { id: "section-stats", label: "Statistiche / Numeri", description: "Banda scura con 4 numeri (anni, recensioni, premi)", ready: true },
+-  { id: "section-testimonials", label: "Testimonianze", description: "3 quote clienti in colonna con citazioni in evidenza", ready: true },
+-  { id: "section-press", label: "Stampa / Press strip", description: "Logo strip stampa + recensioni", ready: false },
+-  { id: "section-newsletter", label: "Newsletter signup", description: "Form iscrizione email", ready: false },
++const SECTIONS: { id: SectionId; labelKey: string; descKey: string; ready: boolean }[] = [
++  { id: "section-featured-dishes", labelKey: "wizard.aes.section.section-featured-dishes.label", descKey: "wizard.aes.section.section-featured-dishes.desc", ready: true },
++  { id: "section-photo-mosaic", labelKey: "wizard.aes.section.section-photo-mosaic.label", descKey: "wizard.aes.section.section-photo-mosaic.desc", ready: true },
++  { id: "section-story", labelKey: "wizard.aes.section.section-story.label", descKey: "wizard.aes.section.section-story.desc", ready: true },
++  { id: "section-map-hours", labelKey: "wizard.aes.section.section-map-hours.label", descKey: "wizard.aes.section.section-map-hours.desc", ready: true },
++  { id: "section-blog-feed", labelKey: "wizard.aes.section.section-blog-feed.label", descKey: "wizard.aes.section.section-blog-feed.desc", ready: true },
++  { id: "section-cta-banner", labelKey: "wizard.aes.section.section-cta-banner.label", descKey: "wizard.aes.section.section-cta-banner.desc", ready: true },
++  { id: "section-stats", labelKey: "wizard.aes.section.section-stats.label", descKey: "wizard.aes.section.section-stats.desc", ready: true },
++  { id: "section-testimonials", labelKey: "wizard.aes.section.section-testimonials.label", descKey: "wizard.aes.section.section-testimonials.desc", ready: true },
++  { id: "section-press", labelKey: "wizard.aes.section.section-press.label", descKey: "wizard.aes.section.section-press.desc", ready: false },
++  { id: "section-newsletter", labelKey: "wizard.aes.section.section-newsletter.label", descKey: "wizard.aes.section.section-newsletter.desc", ready: false },
+ ];
+ 
+-const CATEGORY_LAYOUTS: { id: CategoryLayout; label: string; description: string; ready: boolean }[] = [
+-  { id: "cat-grid-cards", label: "Grid Cards", description: "Griglia 2-3 colonne con hero image. Default.", ready: true },
+-  { id: "cat-magazine", label: "Magazine", description: "1 articolo grande + 4 piccoli + lista. Editorial.", ready: true },
+-  { id: "cat-list-thumb", label: "List + thumb", description: "Lista verticale densa con miniatura sx, ottima per blog editorial.", ready: true },
+-  { id: "cat-filtered", label: "Filtered grid", description: "Grid con filtri per tag/prezzo. (Coming soon)", ready: false },
++const CATEGORY_LAYOUTS: { id: CategoryLayout; label: string; descKey: string; ready: boolean }[] = [
++  { id: "cat-grid-cards", label: "Grid Cards", descKey: "wizard.aes.cat.cat-grid-cards.desc", ready: true },
++  { id: "cat-magazine", label: "Magazine", descKey: "wizard.aes.cat.cat-magazine.desc", ready: true },
++  { id: "cat-list-thumb", label: "List + thumb", descKey: "wizard.aes.cat.cat-list-thumb.desc", ready: true },
++  { id: "cat-filtered", label: "Filtered grid", descKey: "wizard.aes.cat.cat-filtered.desc", ready: false },
+ ];
+ 
+ interface Props {
+@@ -37,40 +40,20 @@ interface Props {
+   onBack: () => void;
+ }
+ 
+-const DESIGN_STYLES: { id: DesignStyle; title: string; description: string; suitable: string }[] = [
+-  {
+-    id: "Elegant",
+-    title: "Elegant",
+-    description: "Fonts serif eleganti, colori sobri (palette neutra), tanto white space, layout editorial.",
+-    suitable: "Ristoranti raffinati, fine dining, beauty premium, studi legali",
+-  },
+-  {
+-    id: "Modern",
+-    title: "Modern",
+-    description: "Sans-serif geometrici, palette fredda con accenti vivi, layout asimmetrico, micro-animazioni.",
+-    suitable: "Tech, SaaS, startup",
+-  },
+-  {
+-    id: "Editorial",
+-    title: "Editorial",
+-    description: "Magazine-style, tipografia mista (serif + sans), grid magazine, immagini grandi.",
+-    suitable: "Blog, food magazines, lifestyle",
+-  },
+-  {
+-    id: "Bold",
+-    title: "Bold",
+-    description: "Colori contrasto saturi, font heavy display, hero che riempie schermo, testo grande.",
+-    suitable: "Agencies, brand giovani, e-commerce",
+-  },
++const DESIGN_STYLES: { id: DesignStyle; title: string; descKey: string; suitableKey: string }[] = [
++  { id: "Elegant", title: "Elegant", descKey: "wizard.aes.style.Elegant.desc", suitableKey: "wizard.aes.style.Elegant.suitable" },
++  { id: "Modern", title: "Modern", descKey: "wizard.aes.style.Modern.desc", suitableKey: "wizard.aes.style.Modern.suitable" },
++  { id: "Editorial", title: "Editorial", descKey: "wizard.aes.style.Editorial.desc", suitableKey: "wizard.aes.style.Editorial.suitable" },
++  { id: "Bold", title: "Bold", descKey: "wizard.aes.style.Bold.desc", suitableKey: "wizard.aes.style.Bold.suitable" },
+ ];
+ 
+-const PALETTES: { id: PalettePreset; swatches: string[]; label: string }[] = [
+-  { id: "Neutri caldi", label: "Neutri caldi", swatches: ["#F5F0EB", "#E8DACA", "#C4A882", "#8B6B47", "#4A3728"] },
+-  { id: "Neutri freddi", label: "Neutri freddi", swatches: ["#F4F6F8", "#E1E8ED", "#B0BEC5", "#607D8B", "#263238"] },
+-  { id: "Pastello", label: "Pastello", swatches: ["#FFF0F5", "#FFD6E7", "#C9B6E4", "#89CFF0", "#B5EAD7"] },
+-  { id: "Saturo brillante", label: "Saturo brillante", swatches: ["#FF6B6B", "#FFE66D", "#4ECDC4", "#45B7D1", "#96CEB4"] },
+-  { id: "Mono dark", label: "Mono dark", swatches: ["#1A1A1A", "#2D2D2D", "#404040", "#737373", "#E5E5E5"] },
+-  { id: "Custom", label: "Custom", swatches: [] },
++const PALETTES: { id: PalettePreset; swatches: string[]; labelKey: string }[] = [
++  { id: "Neutri caldi", labelKey: "wizard.aes.palette.warmNeutral", swatches: ["#F5F0EB", "#E8DACA", "#C4A882", "#8B6B47", "#4A3728"] },
++  { id: "Neutri freddi", labelKey: "wizard.aes.palette.coolNeutral", swatches: ["#F4F6F8", "#E1E8ED", "#B0BEC5", "#607D8B", "#263238"] },
++  { id: "Pastello", labelKey: "wizard.aes.palette.pastel", swatches: ["#FFF0F5", "#FFD6E7", "#C9B6E4", "#89CFF0", "#B5EAD7"] },
++  { id: "Saturo brillante", labelKey: "wizard.aes.palette.brightSaturated", swatches: ["#FF6B6B", "#FFE66D", "#4ECDC4", "#45B7D1", "#96CEB4"] },
++  { id: "Mono dark", labelKey: "wizard.aes.palette.monoDark", swatches: ["#1A1A1A", "#2D2D2D", "#404040", "#737373", "#E5E5E5"] },
++  { id: "Custom", labelKey: "wizard.aes.palette.custom", swatches: [] },
+ ];
+ 
+ const FONTS: { id: FontPairing; preview: { heading: string; body: string }; label: string }[] = [
+@@ -80,6 +63,7 @@ const FONTS: { id: FontPairing; preview: { heading: string; body: string }; labe
+ ];
+ 
+ export function Step7Aesthetic({ state, onChange, onNext, onBack }: Props) {
++  const t = useT();
+   const s = state.step7;
+ 
+   function patch(fields: Partial<typeof s>) {
+@@ -90,14 +74,14 @@ export function Step7Aesthetic({ state, onChange, onNext, onBack }: Props) {
+ 
+   return (
+     <div>
+-      <h1 className="text-2xl font-semibold">Come deve apparire il sito?</h1>
++      <h1 className="text-2xl font-semibold">{t("wizard.aes.title")}</h1>
+       <p className="text-zinc-500 mt-1 mb-6 text-sm">
+-        Scegli lo stile, poi affineremo i dettagli.
++        {t("wizard.aes.subtitle")}
+       </p>
+ 
+       {/* Design Style */}
+       <div className="mb-8">
+-        <h2 className="text-sm font-semibold mb-3">Stile di design</h2>
++        <h2 className="text-sm font-semibold mb-3">{t("wizard.aes.styleHeading")}</h2>
+         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
+           {DESIGN_STYLES.map((ds) => {
+             const selected = s.designStyle === ds.id;
+@@ -114,8 +98,8 @@ export function Step7Aesthetic({ state, onChange, onNext, onBack }: Props) {
+                 <div className={`text-sm font-semibold mb-1 ${selected ? "text-blue-700 dark:text-blue-300" : ""}`}>
+                   {ds.title}
+                 </div>
+-                <div className="text-xs text-zinc-500 mb-1">{ds.description}</div>
+-                <div className="text-xs text-zinc-400">Buono per: {ds.suitable}</div>
++                <div className="text-xs text-zinc-500 mb-1">{t(ds.descKey)}</div>
++                <div className="text-xs text-zinc-400">{t("wizard.aes.suitablePrefix")} {t(ds.suitableKey)}</div>
+               </button>
+             );
+           })}
+@@ -124,7 +108,7 @@ export function Step7Aesthetic({ state, onChange, onNext, onBack }: Props) {
+ 
+       {/* Palette */}
+       <div className="mb-8">
+-        <h2 className="text-sm font-semibold mb-3">Palette colori</h2>
++        <h2 className="text-sm font-semibold mb-3">{t("wizard.aes.paletteHeading")}</h2>
+         <div className="flex flex-wrap gap-3">
+           {PALETTES.map((p) => {
+             const selected = s.palette === p.id;
+@@ -151,7 +135,7 @@ export function Step7Aesthetic({ state, onChange, onNext, onBack }: Props) {
+                         <div className="w-24 h-5 rounded-full bg-gradient-to-r from-red-400 via-blue-400 to-green-400 opacity-70" />
+                       )}
+                 </div>
+-                <div className="text-xs font-medium">{p.label}</div>
++                <div className="text-xs font-medium">{t(p.labelKey)}</div>
+               </button>
+             );
+           })}
+@@ -161,7 +145,7 @@ export function Step7Aesthetic({ state, onChange, onNext, onBack }: Props) {
+           <div className="mt-4 flex flex-wrap gap-4 pl-2 border-l-2 border-blue-300 dark:border-blue-800">
+             {(["primary", "accent", "background"] as const).map((key) => (
+               <div key={key}>
+-                <label className="block text-xs text-zinc-500 mb-1 capitalize">{key}</label>
++                <label className="block text-xs text-zinc-500 mb-1 capitalize">{t("wizard.aes.color." + key)}</label>
+                 <div className="flex items-center gap-2">
+                   <input
+                     type="color"
+@@ -181,7 +165,7 @@ export function Step7Aesthetic({ state, onChange, onNext, onBack }: Props) {
+ 
+       {/* Font Pairing */}
+       <div className="mb-8">
+-        <h2 className="text-sm font-semibold mb-3">Tipografia</h2>
++        <h2 className="text-sm font-semibold mb-3">{t("wizard.aes.typoHeading")}</h2>
+         <div className="flex flex-wrap gap-3">
+           {FONTS.map((f) => {
+             const selected = s.fontPairing === f.id;
+@@ -196,10 +180,10 @@ export function Step7Aesthetic({ state, onChange, onNext, onBack }: Props) {
+                 }`}
+               >
+                 <div style={{ fontFamily: f.preview.heading }} className="text-lg font-bold mb-1">
+-                  Titolo
++                  {t("wizard.aes.fontHeadingPreview")}
+                 </div>
+                 <div style={{ fontFamily: f.preview.body }} className="text-xs text-zinc-500 mb-2">
+-                  Testo del corpo
++                  {t("wizard.aes.fontBodyPreview")}
+                 </div>
+                 <div className="text-xs font-medium">{f.label}</div>
+               </button>
+@@ -210,21 +194,21 @@ export function Step7Aesthetic({ state, onChange, onNext, onBack }: Props) {
+ 
+       {/* References */}
+       <div className="mb-6 max-w-lg">
+-        <h2 className="text-sm font-semibold mb-1">Riferimenti (opzionale)</h2>
+-        <p className="text-xs text-zinc-400 mb-2">Hai siti che ti ispirano? Incolla URL (uno per riga).</p>
++        <h2 className="text-sm font-semibold mb-1">{t("wizard.aes.refsHeading")}</h2>
++        <p className="text-xs text-zinc-400 mb-2">{t("wizard.aes.refsHelper")}</p>
+         <textarea
+           className="w-full text-sm px-3 py-2 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+           rows={3}
+           value={s.references}
+           onChange={(e) => patch({ references: e.target.value })}
+-          placeholder="https://esempio.com&#10;https://altroesempio.it"
++          placeholder={t("wizard.aes.refsPlaceholder")}
+         />
+       </div>
+ 
+       {/* Layout — Hero variant */}
+       <div className="mb-8 border-t border-zinc-200 dark:border-zinc-800 pt-8">
+-        <h2 className="text-sm font-semibold mb-1">Layout homepage — Hero</h2>
+-        <p className="text-xs text-zinc-400 mb-3">Come si presenta la prima sezione del sito.</p>
++        <h2 className="text-sm font-semibold mb-1">{t("wizard.aes.heroHeading")}</h2>
++        <p className="text-xs text-zinc-400 mb-3">{t("wizard.aes.heroHelper")}</p>
+         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
+           {HERO_VARIANTS.map((h) => {
+             const selected = s.layout.hero === h.id;
+@@ -241,7 +225,7 @@ export function Step7Aesthetic({ state, onChange, onNext, onBack }: Props) {
+                 <div className={`text-sm font-semibold mb-1 ${selected ? "text-blue-700 dark:text-blue-300" : ""}`}>
+                   {h.label}
+                 </div>
+-                <div className="text-xs text-zinc-500">{h.description}</div>
++                <div className="text-xs text-zinc-500">{t(h.descKey)}</div>
+               </button>
+             );
+           })}
+@@ -250,9 +234,9 @@ export function Step7Aesthetic({ state, onChange, onNext, onBack }: Props) {
+ 
+       {/* Layout — Sections (multi-select) */}
+       <div className="mb-8">
+-        <h2 className="text-sm font-semibold mb-1">Sezioni homepage</h2>
++        <h2 className="text-sm font-semibold mb-1">{t("wizard.aes.sectionsHeading")}</h2>
+         <p className="text-xs text-zinc-400 mb-3">
+-          Le sezioni si renderizzano nell&apos;ordine indicato. Spunta quelle che vuoi includere ({s.layout.sections.length} selezionate).
++          {t("wizard.aes.sectionsHelperPre")} ({s.layout.sections.length} {t("wizard.aes.sectionsHelperPost")}).
+         </p>
+         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-2xl">
+           {SECTIONS.map((sec) => {
+@@ -286,10 +270,10 @@ export function Step7Aesthetic({ state, onChange, onNext, onBack }: Props) {
+                   />
+                   <div className="flex-1">
+                     <div className={`text-sm font-medium ${selected ? "text-blue-700 dark:text-blue-300" : ""}`}>
+-                      {sec.label}
++                      {t(sec.labelKey)}
+                       {!sec.ready && <span className="ml-2 text-xs text-zinc-400">(soon)</span>}
+                     </div>
+-                    <div className="text-xs text-zinc-500">{sec.description}</div>
++                    <div className="text-xs text-zinc-500">{t(sec.descKey)}</div>
+                   </div>
+                 </div>
+               </button>
+@@ -300,8 +284,8 @@ export function Step7Aesthetic({ state, onChange, onNext, onBack }: Props) {
+ 
+       {/* Layout — Category page */}
+       <div className="mb-6">
+-        <h2 className="text-sm font-semibold mb-1">Layout pagine categoria (es. /blog/)</h2>
+-        <p className="text-xs text-zinc-400 mb-3">Come si presentano gli archivi articoli.</p>
++        <h2 className="text-sm font-semibold mb-1">{t("wizard.aes.catHeading")}</h2>
++        <p className="text-xs text-zinc-400 mb-3">{t("wizard.aes.catHelper")}</p>
+         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
+           {CATEGORY_LAYOUTS.map((c) => {
+             const selected = s.layout.categoryLayout === c.id;
+@@ -323,7 +307,7 @@ export function Step7Aesthetic({ state, onChange, onNext, onBack }: Props) {
+                   {c.label}
+                   {!c.ready && <span className="ml-2 text-xs text-zinc-400">(soon)</span>}
+                 </div>
+-                <div className="text-xs text-zinc-500">{c.description}</div>
++                <div className="text-xs text-zinc-500">{t(c.descKey)}</div>
+               </button>
+             );
+           })}
+diff --git a/src/components/wizard/Step8Voice.tsx b/src/components/wizard/Step8Voice.tsx
+index 2015a17..ea4d4c6 100644
+--- a/src/components/wizard/Step8Voice.tsx
++++ b/src/components/wizard/Step8Voice.tsx
+@@ -2,6 +2,7 @@
+ 
+ import { WizardState } from "@/lib/wizard-types";
+ import { StepNav } from "./StepNav";
++import { useT } from "./wizard-i18n";
+ 
+ interface Props {
+   state: WizardState;
+@@ -10,14 +11,18 @@ interface Props {
+   onBack: () => void;
+ }
+ 
+-const TONE_LABELS = ["Molto formale", "Formale", "Neutro", "Casual", "Molto casual"];
++// i18n key per slider position (1-5); see wizard.voice.tone.*
++const TONE_LABELS = ["wizard.voice.tone.1", "wizard.voice.tone.2", "wizard.voice.tone.3", "wizard.voice.tone.4", "wizard.voice.tone.5"];
+ 
++// Canonical (Italian) trait values — persisted into the brief and fed to the
++// pipeline, so they stay stable; only the chip label is translated for display.
+ const VOICE_TRAITS = [
+   "Caldo", "Autorevole", "Giocoso", "Diretto", "Empatico",
+   "Tecnico", "Ironico", "Premium", "Accessibile",
+ ];
+ 
+ export function Step8Voice({ state, onChange, onNext, onBack }: Props) {
++  const t = useT();
+   const s = state.step8;
+ 
+   function patch(fields: Partial<typeof s>) {
+@@ -26,7 +31,7 @@ export function Step8Voice({ state, onChange, onNext, onBack }: Props) {
+ 
+   function toggleTrait(trait: string) {
+     const traits = s.voiceTraits.includes(trait)
+-      ? s.voiceTraits.filter((t) => t !== trait)
++      ? s.voiceTraits.filter((x) => x !== trait)
+       : [...s.voiceTraits, trait];
+     patch({ voiceTraits: traits });
+   }
+@@ -36,19 +41,19 @@ export function Step8Voice({ state, onChange, onNext, onBack }: Props) {
+ 
+   return (
+     <div>
+-      <h1 className="text-2xl font-semibold">Come parla il tuo brand?</h1>
++      <h1 className="text-2xl font-semibold">{t("wizard.voice.title")}</h1>
+       <p className="text-zinc-500 mt-1 mb-6 text-sm">
+-        Definiamo il tono e lo stile della voce del brand per i contenuti.
++        {t("wizard.voice.subtitle")}
+       </p>
+ 
+       <div className="max-w-lg space-y-8">
+         {/* Tone slider */}
+         <div>
+           <h2 className="text-sm font-semibold mb-3">
+-            Tono di voce — {TONE_LABELS[(s.toneFormal ?? 3) - 1]}
++            {t("wizard.voice.toneHeading")} — {t(TONE_LABELS[(s.toneFormal ?? 3) - 1])}
+           </h2>
+           <div className="flex items-center gap-3">
+-            <span className="text-xs text-zinc-500 whitespace-nowrap">Formale</span>
++            <span className="text-xs text-zinc-500 whitespace-nowrap">{t("wizard.voice.formal")}</span>
+             <input
+               type="range"
+               min={1}
+@@ -57,7 +62,7 @@ export function Step8Voice({ state, onChange, onNext, onBack }: Props) {
+               onChange={(e) => patch({ toneFormal: Number(e.target.value) })}
+               className="flex-1 accent-blue-600"
+             />
+-            <span className="text-xs text-zinc-500 whitespace-nowrap">Casual</span>
++            <span className="text-xs text-zinc-500 whitespace-nowrap">{t("wizard.voice.casual")}</span>
+           </div>
+           <div className="flex justify-between mt-1">
+             {TONE_LABELS.map((l, i) => (
+@@ -75,7 +80,7 @@ export function Step8Voice({ state, onChange, onNext, onBack }: Props) {
+ 
+         {/* Voice traits */}
+         <div>
+-          <h2 className="text-sm font-semibold mb-3">Tratti della voce</h2>
++          <h2 className="text-sm font-semibold mb-3">{t("wizard.voice.traitsHeading")}</h2>
+           <div className="flex flex-wrap gap-2">
+             {VOICE_TRAITS.map((trait) => {
+               const active = s.voiceTraits.includes(trait);
+@@ -89,7 +94,7 @@ export function Step8Voice({ state, onChange, onNext, onBack }: Props) {
+                       : "border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-zinc-500"
+                   }`}
+                 >
+-                  {trait}
++                  {t("wizard.voice.trait." + trait)}
+                 </button>
+               );
+             })}
+@@ -98,31 +103,31 @@ export function Step8Voice({ state, onChange, onNext, onBack }: Props) {
+ 
+         {/* Avoid words */}
+         <div>
+-          <label className="block text-sm font-semibold mb-1">Parole da evitare</label>
++          <label className="block text-sm font-semibold mb-1">{t("wizard.voice.avoidLabel")}</label>
+           <p className="text-xs text-zinc-400 mb-2">
+-            es. &quot;rivoluzionario&quot;, &quot;esclusivo&quot; — parole che non vuoi mai vedere nei contenuti
++            {t("wizard.voice.avoidHelper")}
+           </p>
+           <textarea
+             className={inputCls}
+             rows={2}
+             value={s.avoidWords}
+             onChange={(e) => patch({ avoidWords: e.target.value })}
+-            placeholder="rivoluzionario, esclusivo, unico nel suo genere…"
++            placeholder={t("wizard.voice.avoidPlaceholder")}
+           />
+         </div>
+ 
+         {/* Brand keywords */}
+         <div>
+-          <label className="block text-sm font-semibold mb-1">Parole chiave del brand</label>
++          <label className="block text-sm font-semibold mb-1">{t("wizard.voice.keywordsLabel")}</label>
+           <p className="text-xs text-zinc-400 mb-2">
+-            es. &quot;artigianale&quot;, &quot;tradizione&quot;, &quot;rooftop&quot; — termini che ricorrono spesso nei contenuti
++            {t("wizard.voice.keywordsHelper")}
+           </p>
+           <textarea
+             className={inputCls}
+             rows={2}
+             value={s.brandKeywords}
+             onChange={(e) => patch({ brandKeywords: e.target.value })}
+-            placeholder="artigianale, tradizione, autentico…"
++            placeholder={t("wizard.voice.keywordsPlaceholder")}
+           />
+         </div>
+       </div>
+diff --git a/src/components/wizard/Step9Pages.tsx b/src/components/wizard/Step9Pages.tsx
+index 17afb58..0ba8541 100644
+--- a/src/components/wizard/Step9Pages.tsx
++++ b/src/components/wizard/Step9Pages.tsx
+@@ -2,6 +2,7 @@
+ 
+ import { WizardState, LeadCapture } from "@/lib/wizard-types";
+ import { StepNav } from "./StepNav";
++import { useT } from "./wizard-i18n";
+ 
+ interface Props {
+   state: WizardState;
+@@ -10,15 +11,16 @@ interface Props {
+   onBack: () => void;
+ }
+ 
+-const LEAD_OPTIONS: { id: LeadCapture; label: string }[] = [
+-  { id: "form", label: "Solo form contatti" },
+-  { id: "phone", label: "Solo telefono + WhatsApp button" },
+-  { id: "both", label: "Entrambi (consigliato)" },
++const LEAD_OPTIONS: { id: LeadCapture; labelKey: string }[] = [
++  { id: "form", labelKey: "wizard.pages.lead.form" },
++  { id: "phone", labelKey: "wizard.pages.lead.phone" },
++  { id: "both", labelKey: "wizard.pages.lead.both" },
+ ];
+ 
+ const BLOG_ARTICLES: (0 | 5 | 10 | 20)[] = [0, 5, 10, 20];
+ 
+ export function Step9Pages({ state, onChange, onNext, onBack }: Props) {
++  const t = useT();
+   const s = state.step9;
+   const isRistorazione = state.step4.industry === "Ristorazione";
+ 
+@@ -32,28 +34,28 @@ export function Step9Pages({ state, onChange, onNext, onBack }: Props) {
+ 
+   const checkboxCls = "w-4 h-4 rounded border-zinc-300 accent-blue-600";
+ 
+-  const PAGE_LIST: { key: keyof typeof s.pages; label: string; always?: boolean }[] = [
+-    { key: "home", label: "Home", always: true },
+-    { key: "chiSiamo", label: "Chi Siamo", always: true },
+-    { key: "serviziMenu", label: isRistorazione ? "Menu" : "Servizi" },
+-    { key: "galleria", label: "Galleria" },
+-    { key: "eventi", label: "Eventi" },
+-    { key: "blog", label: "Blog" },
+-    { key: "faq", label: "FAQ" },
+-    { key: "contatti", label: "Contatti", always: true },
++  const PAGE_LIST: { key: keyof typeof s.pages; labelKey: string; always?: boolean }[] = [
++    { key: "home", labelKey: "wizard.pages.home", always: true },
++    { key: "chiSiamo", labelKey: "wizard.pages.about", always: true },
++    { key: "serviziMenu", labelKey: isRistorazione ? "wizard.pages.menu" : "wizard.pages.services" },
++    { key: "galleria", labelKey: "wizard.pages.gallery" },
++    { key: "eventi", labelKey: "wizard.pages.events" },
++    { key: "blog", labelKey: "wizard.pages.blog" },
++    { key: "faq", labelKey: "wizard.pages.faq" },
++    { key: "contatti", labelKey: "wizard.pages.contact", always: true },
+   ];
+ 
+   return (
+     <div>
+-      <h1 className="text-2xl font-semibold">Quali pagine servono?</h1>
++      <h1 className="text-2xl font-semibold">{t("wizard.pages.title")}</h1>
+       <p className="text-zinc-500 mt-1 mb-6 text-sm">
+-        Seleziona le pagine da includere nel sito.
++        {t("wizard.pages.subtitle")}
+       </p>
+ 
+       <div className="max-w-lg space-y-6">
+         {/* Pages */}
+         <div className="space-y-2">
+-          {PAGE_LIST.map(({ key, label, always }) => {
++          {PAGE_LIST.map(({ key, labelKey, always }) => {
+             if (key === "blogArticoli") return null;
+             const checked = !!s.pages[key as keyof typeof s.pages];
+             return (
+@@ -67,15 +69,15 @@ export function Step9Pages({ state, onChange, onNext, onBack }: Props) {
+                     className={checkboxCls}
+                   />
+                   <span className={`text-sm ${always ? "text-zinc-500" : ""}`}>
+-                    {label}
+-                    {always && <span className="ml-1 text-xs text-zinc-400">(sempre incluso)</span>}
++                    {t(labelKey)}
++                    {always && <span className="ml-1 text-xs text-zinc-400">{t("wizard.pages.alwaysIncluded")}</span>}
+                   </span>
+                 </label>
+ 
+                 {/* Blog article count */}
+                 {key === "blog" && checked && (
+                   <div className="ml-7 flex items-center gap-2 pb-1">
+-                    <span className="text-xs text-zinc-500">Articoli iniziali:</span>
++                    <span className="text-xs text-zinc-500">{t("wizard.pages.initialArticles")}</span>
+                     {BLOG_ARTICLES.map((n) => (
+                       <button
+                         key={n}
+@@ -86,7 +88,7 @@ export function Step9Pages({ state, onChange, onNext, onBack }: Props) {
+                             : "border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-zinc-500"
+                         }`}
+                       >
+-                        {n === 0 ? "Nessuno" : n}
++                        {n === 0 ? t("wizard.pages.none") : n}
+                       </button>
+                     ))}
+                   </div>
+@@ -98,7 +100,7 @@ export function Step9Pages({ state, onChange, onNext, onBack }: Props) {
+ 
+         {/* Lead capture */}
+         <div>
+-          <h2 className="text-sm font-semibold mb-3">Acquisizione lead</h2>
++          <h2 className="text-sm font-semibold mb-3">{t("wizard.pages.leadHeading")}</h2>
+           <div className="space-y-2">
+             {LEAD_OPTIONS.map((opt) => (
+               <label key={opt.id} className="flex items-center gap-3 cursor-pointer">
+@@ -110,7 +112,7 @@ export function Step9Pages({ state, onChange, onNext, onBack }: Props) {
+                   onChange={() => patch({ leadCapture: opt.id })}
+                   className="w-4 h-4 accent-blue-600"
+                 />
+-                <span className="text-sm">{opt.label}</span>
++                <span className="text-sm">{t(opt.labelKey)}</span>
+               </label>
+             ))}
+           </div>
+@@ -118,7 +120,7 @@ export function Step9Pages({ state, onChange, onNext, onBack }: Props) {
+ 
+         {/* Language */}
+         <div>
+-          <label className="block text-sm font-semibold mb-1">Lingua del sito</label>
++          <label className="block text-sm font-semibold mb-1">{t("wizard.pages.langLabel")}</label>
+           <select
+             className="text-sm px-3 py-2 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+             value={s.lingua}
+@@ -126,7 +128,7 @@ export function Step9Pages({ state, onChange, onNext, onBack }: Props) {
+           >
+             <option value="Italiano">Italiano</option>
+             <option value="Italiano + English" disabled>
+-              Italiano + English (prossimamente)
++              Italiano + English {t("wizard.pages.langSoon")}
+             </option>
+           </select>
+         </div>
+diff --git a/src/components/wizard/StepNav.tsx b/src/components/wizard/StepNav.tsx
+index c2560e1..462a2fa 100644
+--- a/src/components/wizard/StepNav.tsx
++++ b/src/components/wizard/StepNav.tsx
+@@ -1,5 +1,7 @@
+ "use client";
+ 
++import { useT } from "./wizard-i18n";
++
+ interface StepNavProps {
+   onBack?: () => void;
+   onNext: () => void;
+@@ -12,11 +14,12 @@ interface StepNavProps {
+ export function StepNav({
+   onBack,
+   onNext,
+-  nextLabel = "Avanti →",
++  nextLabel,
+   nextDisabled = false,
+   backDisabled = false,
+   showBack = true,
+ }: StepNavProps) {
++  const t = useT();
+   return (
+     <div className="flex items-center justify-between mt-8 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+       <div>
+@@ -26,7 +29,7 @@ export function StepNav({
+             disabled={backDisabled}
+             className="px-4 py-2 text-sm rounded border border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+           >
+-            ← Indietro
++            ← {t("wizard.nav.back")}
+           </button>
+         )}
+       </div>
+@@ -35,7 +38,7 @@ export function StepNav({
+         disabled={nextDisabled}
+         className="px-5 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium"
+       >
+-        {nextLabel}
++        {nextLabel ?? `${t("wizard.nav.next")} →`}
+       </button>
+     </div>
+   );
+diff --git a/src/components/wizard/WizardContainer.tsx b/src/components/wizard/WizardContainer.tsx
+index e941dc9..e3bd5a0 100644
+--- a/src/components/wizard/WizardContainer.tsx
++++ b/src/components/wizard/WizardContainer.tsx
+@@ -5,6 +5,8 @@ import Link from "next/link";
+ import { WizardState, defaultWizardState } from "@/lib/wizard-types";
+ import { loadWizardState, saveWizardState, saveWizardStateImmediate } from "@/lib/wizard-state";
+ import { SECRETS } from "@/lib/secrets-config";
++import { makeT, type Lang } from "@/lib/i18n";
++import { WizardI18nProvider } from "./wizard-i18n";
+ 
+ import { Step1Domain } from "./Step1Domain";
+ import { Step2DnsTransfer } from "./Step2DnsTransfer";
+@@ -21,23 +23,26 @@ import { Step11Review } from "./Step11Review";
+ interface WizardContainerProps {
+   secretStatuses: Record<string, "set" | "missing" | "placeholder">;
+   initialDomain?: string | null;
++  lang: Lang;
+ }
+ 
++// i18n keys (resolved at render via the translator); see i18n.ts wizard.step.*
+ const STEP_LABELS = [
+-  "Dominio",
+-  "DNS",
+-  "Scenario",
+-  "Brief",
+-  "API",
+-  "SEO",
+-  "Estetica",
+-  "Voce",
+-  "Pagine",
+-  "Deploy",
+-  "Riepilogo",
++  "wizard.step.domain",
++  "wizard.step.dns",
++  "wizard.step.scenario",
++  "wizard.step.brief",
++  "wizard.step.api",
++  "wizard.step.seo",
++  "wizard.step.aesthetic",
++  "wizard.step.voice",
++  "wizard.step.pages",
++  "wizard.step.deploy",
++  "wizard.step.review",
+ ];
+ 
+-export function WizardContainer({ secretStatuses, initialDomain }: WizardContainerProps) {
++export function WizardContainer({ secretStatuses, initialDomain, lang }: WizardContainerProps) {
++  const t = makeT(lang);
+   const [state, setState] = useState<WizardState>(defaultWizardState);
+   const [hydrated, setHydrated] = useState(false);
+ 
+@@ -126,13 +131,13 @@ export function WizardContainer({ secretStatuses, initialDomain }: WizardContain
+   function saveDraft() {
+     saveWizardStateImmediate(state);
+     // Brief flash feedback — could be a toast, but keep it simple
+-    alert("Bozza salvata!");
++    alert(t("wizard.draftSaved"));
+   }
+ 
+   if (!hydrated) {
+     return (
+       <div className="flex items-center justify-center h-64">
+-        <div className="text-zinc-400 text-sm">Caricamento…</div>
++        <div className="text-zinc-400 text-sm">{t("wizard.loading")}</div>
+       </div>
+     );
+   }
+@@ -145,19 +150,20 @@ export function WizardContainer({ secretStatuses, initialDomain }: WizardContain
+   });
+ 
+   return (
++    <WizardI18nProvider lang={lang}>
+     <div className="flex flex-col min-h-full">
+       {/* Top bar */}
+       <div className="flex items-center justify-between mb-6">
+         <div className="flex items-center gap-2 text-sm text-zinc-500">
+-          <Link href="/sites" className="hover:text-zinc-800 dark:hover:text-zinc-200">Siti</Link>
++          <Link href="/sites" className="hover:text-zinc-800 dark:hover:text-zinc-200">{t("nav.sites")}</Link>
+           <span>/</span>
+-          <span className="text-zinc-800 dark:text-zinc-200 font-medium">Nuovo Sito</span>
++          <span className="text-zinc-800 dark:text-zinc-200 font-medium">{t("wizard.breadcrumb")}</span>
+         </div>
+         <button
+           onClick={saveDraft}
+           className="text-xs px-3 py-1.5 rounded border border-zinc-300 dark:border-zinc-700 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:border-zinc-500 transition-colors"
+         >
+-          Salva bozza
++          {t("wizard.saveDraft")}
+         </button>
+       </div>
+ 
+@@ -178,13 +184,13 @@ export function WizardContainer({ secretStatuses, initialDomain }: WizardContain
+                     ? "bg-blue-400"
+                     : "bg-zinc-200 dark:bg-zinc-800"
+                 }`}
+-                title={label}
++                title={t(label)}
+               />
+             );
+           })}
+         </div>
+         <div className="text-xs text-zinc-400">
+-          Step {currentDisplayIdx} di {totalSteps} — {STEP_LABELS[currentStep - 1]}
++          {t("wizard.stepWord")} {currentDisplayIdx} {t("wizard.ofWord")} {totalSteps} — {t(STEP_LABELS[currentStep - 1])}
+         </div>
+       </div>
+ 
+@@ -211,7 +217,7 @@ export function WizardContainer({ secretStatuses, initialDomain }: WizardContain
+                 <span className="mr-1.5">
+                   {isDone ? "✓" : isCurrent ? "→" : String(idx + 1).padStart(2, "0")}
+                 </span>
+-                {label}
++                {t(label)}
+               </button>
+             );
+           })}
+@@ -267,5 +273,6 @@ export function WizardContainer({ secretStatuses, initialDomain }: WizardContain
+         </div>
+       </div>
+     </div>
++    </WizardI18nProvider>
+   );
+ }
+diff --git a/src/components/wizard/wizard-i18n.tsx b/src/components/wizard/wizard-i18n.tsx
+new file mode 100644
+index 0000000..63dafcf
+--- /dev/null
++++ b/src/components/wizard/wizard-i18n.tsx
+@@ -0,0 +1,20 @@
++"use client";
++
++import { createContext, useContext, useMemo, type ReactNode } from "react";
++import { makeT, DEFAULT_LANG, type Lang } from "@/lib/i18n";
++
++// The wizard is a deep client tree (container → 11 steps → StepNav). Rather
++// than drill a `lang` prop through every step's Props interface, we expose the
++// translator built from the active language via context. Steps call useT().
++const WizardTContext = createContext<(key: string) => string>(makeT(DEFAULT_LANG));
++
++export function WizardI18nProvider({ lang, children }: { lang: Lang; children: ReactNode }) {
++  // Stable identity per language so consumers' useCallback/useMemo deps that
++  // include `t` don't re-fire on every render.
++  const t = useMemo(() => makeT(lang), [lang]);
++  return <WizardTContext.Provider value={t}>{children}</WizardTContext.Provider>;
++}
++
++export function useT() {
++  return useContext(WizardTContext);
++}
+diff --git a/src/lib/i18n.ts b/src/lib/i18n.ts
+index fbd147e..8046ebc 100644
+--- a/src/lib/i18n.ts
++++ b/src/lib/i18n.ts
+@@ -239,7 +239,706 @@ const en: Dict = {
+   "builds.empty": "No builds in progress. Wizard drafts will appear here.",
+ };
+ 
+-const dictionaries: Record<Lang, Dict> = { it, en };
++// ── Wizard (Nuovo Sito) ──────────────────────────────────────────────────
++// Kept in dedicated dicts and merged below to keep the wizard strings together.
++const wizardIt: Dict = {
++  "wizard.breadcrumb": "Nuovo Sito",
++  "wizard.saveDraft": "Salva bozza",
++  "wizard.draftSaved": "Bozza salvata!",
++  "wizard.loading": "Caricamento…",
++  "wizard.stepWord": "Step",
++  "wizard.ofWord": "di",
++  "wizard.nav.back": "Indietro",
++  "wizard.nav.next": "Avanti",
++  "wizard.step.domain": "Dominio",
++  "wizard.step.dns": "DNS",
++  "wizard.step.scenario": "Scenario",
++  "wizard.step.brief": "Brief",
++  "wizard.step.api": "API",
++  "wizard.step.seo": "SEO",
++  "wizard.step.aesthetic": "Estetica",
++  "wizard.step.voice": "Voce",
++  "wizard.step.pages": "Pagine",
++  "wizard.step.deploy": "Deploy",
++  "wizard.step.review": "Riepilogo",
++  "wizard.common.netError": "Errore di rete — riprova.",
++  "wizard.common.unknownError": "Errore sconosciuto",
++  "wizard.common.optional": "Opzionale",
++  "wizard.common.select": "— Seleziona —",
++  "wizard.common.chars": "caratteri",
++  "wizard.domain.title": "Nuovo Sito",
++  "wizard.domain.subtitle": "Costruiamo insieme il tuo sito. Iniziamo dal dominio.",
++  "wizard.domain.label": "Dominio",
++  "wizard.domain.placeholder": "ristoranteangels.it",
++  "wizard.domain.verify": "Verifica",
++  "wizard.domain.verifying": "Verifica…",
++  "wizard.domain.helper": "Solo il dominio, senza http:// o www (es. miosito.it)",
++  "wizard.domain.invalid": "Inserisci un dominio valido (es. ristoranteangels.it)",
++  "wizard.domain.results": "Risultati verifica",
++  "wizard.domain.registrar": "Registrar",
++  "wizard.domain.expires": "Scade il",
++  "wizard.domain.nameserver": "Nameserver",
++  "wizard.domain.cfZone": "Zona Cloudflare",
++  "wizard.domain.cfPresentPrefix": "Presente su account",
++  "wizard.domain.statusWord": "status",
++  "wizard.domain.cfMissing": "Non trovata sull'account Cloudflare attinente al TLD",
++  "wizard.domain.ambiguousTitle": "TLD ambiguo — scegli l'account Cloudflare",
++  "wizard.domain.ambiguousDescPre": "Il dominio finisce in",
++  "wizard.domain.ambiguousDescPost": ": non è chiaro se va sull'account italiano (Brianzadigitale, per siti in italiano) o inglese (fluxgateseo, per siti in inglese). Scegli sotto.",
++  "wizard.domain.accountIt": "italiano (Brianzadigitale)",
++  "wizard.domain.accountEn": "inglese (fluxgateseo)",
++  "wizard.domain.ownHint": "Sicuro che sia tuo? Ti guideremo se serve trasferire DNS a Cloudflare.",
++  "wizard.dns.title": "Trasferiamo il DNS a Cloudflare",
++  "wizard.dns.subtitlePre": "Il dominio",
++  "wizard.dns.subtitlePost": "non è ancora nella tua zona Cloudflare. Segui uno dei percorsi qui sotto.",
++  "wizard.dns.card1Title": "Hai già il dominio su Cloudflare?",
++  "wizard.dns.card1Lead": "Vai su",
++  "wizard.dns.addSite": "Add a site",
++  "wizard.dns.card1Step1": "Inserisci",
++  "wizard.dns.card1Step2": "Scegli il piano Free",
++  "wizard.dns.card1Step3": "Cloudflare ti mostrerà i nameserver da impostare",
++  "wizard.dns.card1Step4": "Imposta quei nameserver nel pannello del tuo registrar",
++  "wizard.dns.card2Title": "Devi cambiare nameservers",
++  "wizard.dns.onRegistrar": "su",
++  "wizard.dns.card2LeadPre": "Dopo aver aggiunto il dominio a Cloudflare, vai sul pannello del tuo registrar e cerca la sezione",
++  "wizard.dns.nsDnsSection": "Nameserver / DNS",
++  "wizard.dns.card2Step1": "Accedi al pannello del registrar",
++  "wizard.dns.registrarEg": "es. Netsons, Register.it",
++  "wizard.dns.card2Step2": "Vai su Gestione Dominio → Nameserver",
++  "wizard.dns.card2Step3": "Sostituisci i nameserver attuali con quelli forniti da Cloudflare",
++  "wizard.dns.card2Step4": "Salva le modifiche (la propagazione può richiedere fino a 48h)",
++  "wizard.dns.card2NotePre": "Nota: su Netsons trovi i nameserver in",
++  "wizard.dns.card2NotePath": "Dominia → Gestisci → DNS/Nameserver",
++  "wizard.dns.cfAdded": "Ho aggiunto il dominio a Cloudflare",
++  "wizard.dns.nsChanged": "Ho cambiato i nameserver",
++  "wizard.dns.reverify": "🔄 Re-verifica DNS",
++  "wizard.dns.reverifying": "Verifica in corso…",
++  "wizard.dns.zoneFound": "✓ Zona trovata!",
++  "wizard.dns.skip": "Skip per ora (attenzione: il deploy fallirà senza zona su CF)",
++  "wizard.scenario.title": "Che tipo di progetto è?",
++  "wizard.scenario.subtitle": "Seleziona lo scenario che descrive meglio il tuo caso.",
++  "wizard.scenario.planA.title": "A. Dominio scaduto da rivivere",
++  "wizard.scenario.planA.desc": "Ho comprato un dominio expired e voglio sfruttarne i backlink storici per costruire un sito nuovo.",
++  "wizard.scenario.planB.title": "B. Rebuild di sito esistente",
++  "wizard.scenario.planB.desc": "Ho un sito attivo (mio o di un cliente) che voglio ricostruire da zero con design moderno.",
++  "wizard.scenario.planC.title": "C. Clone competitivo / inspirazione",
++  "wizard.scenario.planC.desc": "Ho un sito di riferimento che mi piace, voglio adattarlo al mio brand.",
++  "wizard.scenario.refLabel": "URL del sito di riferimento (opzionale)",
++  "wizard.scenario.refPlaceholder": "https://esempio.com",
++  "wizard.brief.title": "Parlaci del business",
++  "wizard.brief.subtitle": "Inserisci le informazioni principali del sito. Potrai modificarle dopo.",
++  "wizard.brief.waybackTitlePre": "Vedi com'era",
++  "wizard.brief.waybackTitlePost": "su Wayback Machine",
++  "wizard.brief.waybackLabel": "Com'era su Wayback Machine",
++  "wizard.brief.businessName": "Nome del business",
++  "wizard.brief.businessNamePh": "Ristorante Angels",
++  "wizard.brief.industryLabel": "Industria",
++  "wizard.brief.subCategory": "Sotto-categoria",
++  "wizard.brief.subCategoryHelper": "es. Fine dining, Spa & massaggi",
++  "wizard.brief.city": "Città / Zona di attività",
++  "wizard.brief.cityPh": "Milano, zona Navigli",
++  "wizard.brief.address": "Indirizzo",
++  "wizard.brief.addressPh": "Via Garibaldi 42, 20123 Milano",
++  "wizard.brief.phone": "Telefono",
++  "wizard.brief.email": "Email",
++  "wizard.brief.emailHelper": "Lascia vuoto per usare",
++  "wizard.brief.description": "Descrizione breve del business",
++  "wizard.brief.descriptionPh": "Breve descrizione di cosa fa il business, per chi è, cosa offre…",
++  "wizard.brief.usp": "USP / Cosa vi distingue",
++  "wizard.brief.uspPh": "es. 'Unici a Milano con forno a legna del 1800', 'Consegna in 30 min garantita'…",
++  "wizard.industry.Ristorazione": "Ristorazione",
++  "wizard.industry.Beauty/Wellness": "Beauty/Wellness",
++  "wizard.industry.Tech/SaaS": "Tech/SaaS",
++  "wizard.industry.Servizi professionali": "Servizi professionali",
++  "wizard.industry.E-commerce": "E-commerce",
++  "wizard.industry.Turismo": "Turismo",
++  "wizard.industry.Salute": "Salute",
++  "wizard.industry.Educazione": "Educazione",
++  "wizard.industry.Altro": "Altro",
++  "wizard.api.title": "Configurazione API",
++  "wizard.api.subtitlePre": "Per procedere serve",
++  "wizard.api.only": "solo",
++  "wizard.api.subtitleMid": "il",
++  "wizard.api.subtitlePost": "Gli altri sono opzionali ora ma servono prima di andare in produzione.",
++  "wizard.api.howToSummary": "Come creare il token Cloudflare (1 minuto)",
++  "wizard.api.step1Open": "Apri",
++  "wizard.api.step2Note": "(un solo token, vale per tutti i siti).",
++  "wizard.api.step3": "— aggiungi le righe qui sotto. Le prime 2 sono obbligatorie, le altre 4 servono in seguito (mettile ora per non rifare il token):",
++  "wizard.api.thWhen": "Quando",
++  "wizard.api.required": "obbligatorio",
++  "wizard.api.step4": "Include → il tuo account.",
++  "wizard.api.step5": "Include → All zones from an account → il tuo account.",
++  "wizard.api.step6Pre": "Salta TTL e IP filtering.",
++  "wizard.api.step6Post": "Copia il token e incollalo qui sotto.",
++  "wizard.api.noteAuto": "Non automatizzabile: Cloudflare non espone OAuth pubblico per generare token via API.",
++  "wizard.api.secretsConfigured": "secret configurati",
++  "wizard.api.thDescription": "Descrizione",
++  "wizard.api.thAction": "Azione",
++  "wizard.api.status.set": "configurato",
++  "wizard.api.status.placeholder": "placeholder",
++  "wizard.api.status.missing": "mancante",
++  "wizard.api.generate": "Genera",
++  "wizard.api.seoDisabledPre": "Continuando ora, le funzionalità SEO automatiche saranno disabilitate finché",
++  "wizard.api.seoDisabledPost": "non sarà configurato.",
++  "wizard.api.nextConfigure": "Configura almeno CLOUDFLARE_API_TOKEN",
++  "wizard.seo.title": "Da dove prendiamo i dati SEO?",
++  "wizard.seo.subtitle": "Seleziona uno o più metodi (combinabili). \"Skip\" è esclusivo.",
++  "wizard.seo.recommendedStrong": "Consigliato: combina DataForSEO + Ahrefs CSV.",
++  "wizard.seo.recommendedBody": "Ahrefs ha la coda lunga di referring domains che DataForSEO spesso non trova; il merge produce un link map ~2× migliore per la strategia di Stage 2. Esporta da Ahrefs UI: Site Explorer → Referring domains → Export → CSV.",
++  "wizard.seo.dataforseo.title": "DataForSEO automatico",
++  "wizard.seo.dataforseo.desc": "Useremo l'API di DataForSEO per estrarre backlinks, anchor text e keywords storiche del dominio.",
++  "wizard.seo.dataforseo.note": "GRATIS se hai già la chiave API.",
++  "wizard.seo.csv.title": "Upload CSV da Ahrefs",
++  "wizard.seo.csv.desc": "Esporta manualmente da Ahrefs UI (Site Explorer → Backlinks → Export → CSV) e carica qui.",
++  "wizard.seo.skip.title": "Skip SEO per ora",
++  "wizard.seo.skip.desc": "Costruiamo solo basandoci sul brief. Nessuna analisi storica.",
++  "wizard.seo.requiresDataforseo": "Richiede DATAFORSEO_LOGIN configurato in Settings",
++  "wizard.seo.disabledBySkip": "Disabilitato perché \"Skip\" è selezionato",
++  "wizard.seo.csvLabel": "File CSV da Ahrefs (max 10MB)",
++  "wizard.seo.csvTooBig": "File troppo grande (max 10MB)",
++  "wizard.seo.csvSelect": "Clicca per selezionare il CSV",
++  "wizard.seo.csvDrag": "o trascina qui il file",
++  "wizard.seo.combined": "Combinati: Stage 1 fa l'estrazione DataForSEO + merge col CSV Ahrefs (priorità ai backlink unici).",
++  "wizard.aes.title": "Come deve apparire il sito?",
++  "wizard.aes.subtitle": "Scegli lo stile, poi affineremo i dettagli.",
++  "wizard.aes.styleHeading": "Stile di design",
++  "wizard.aes.suitablePrefix": "Buono per:",
++  "wizard.aes.style.Elegant.desc": "Fonts serif eleganti, colori sobri (palette neutra), tanto white space, layout editorial.",
++  "wizard.aes.style.Elegant.suitable": "Ristoranti raffinati, fine dining, beauty premium, studi legali",
++  "wizard.aes.style.Modern.desc": "Sans-serif geometrici, palette fredda con accenti vivi, layout asimmetrico, micro-animazioni.",
++  "wizard.aes.style.Modern.suitable": "Tech, SaaS, startup",
++  "wizard.aes.style.Editorial.desc": "Magazine-style, tipografia mista (serif + sans), grid magazine, immagini grandi.",
++  "wizard.aes.style.Editorial.suitable": "Blog, food magazines, lifestyle",
++  "wizard.aes.style.Bold.desc": "Colori contrasto saturi, font heavy display, hero che riempie schermo, testo grande.",
++  "wizard.aes.style.Bold.suitable": "Agencies, brand giovani, e-commerce",
++  "wizard.aes.paletteHeading": "Palette colori",
++  "wizard.aes.palette.warmNeutral": "Neutri caldi",
++  "wizard.aes.palette.coolNeutral": "Neutri freddi",
++  "wizard.aes.palette.pastel": "Pastello",
++  "wizard.aes.palette.brightSaturated": "Saturo brillante",
++  "wizard.aes.palette.monoDark": "Mono dark",
++  "wizard.aes.palette.custom": "Custom",
++  "wizard.aes.color.primary": "primary",
++  "wizard.aes.color.accent": "accent",
++  "wizard.aes.color.background": "background",
++  "wizard.aes.typoHeading": "Tipografia",
++  "wizard.aes.fontHeadingPreview": "Titolo",
++  "wizard.aes.fontBodyPreview": "Testo del corpo",
++  "wizard.aes.refsHeading": "Riferimenti (opzionale)",
++  "wizard.aes.refsHelper": "Hai siti che ti ispirano? Incolla URL (uno per riga).",
++  "wizard.aes.refsPlaceholder": "https://esempio.com\nhttps://altroesempio.it",
++  "wizard.aes.heroHeading": "Layout homepage — Hero",
++  "wizard.aes.heroHelper": "Come si presenta la prima sezione del sito.",
++  "wizard.aes.hero.hero-fullbleed.desc": "Foto a tutto schermo con overlay scuro e CTA centrali. Premium, cinematico.",
++  "wizard.aes.hero.hero-mosaic.desc": "Titolo + griglia di 4 foto verticali. Editorial, food, beauty.",
++  "wizard.aes.hero.hero-split.desc": "Testo a sinistra + foto a destra. Pulito, professionale, conversion-friendly.",
++  "wizard.aes.hero.hero-carousel.desc": "Slideshow background con 3-5 foto. (Coming soon — fallback su Fullbleed)",
++  "wizard.aes.sectionsHeading": "Sezioni homepage",
++  "wizard.aes.sectionsHelperPre": "Le sezioni si renderizzano nell'ordine indicato. Spunta quelle che vuoi includere",
++  "wizard.aes.sectionsHelperPost": "selezionate",
++  "wizard.aes.section.section-featured-dishes.label": "Piatti / Servizi in evidenza",
++  "wizard.aes.section.section-featured-dishes.desc": "Griglia 3-6 card con foto + descrizione + link",
++  "wizard.aes.section.section-photo-mosaic.label": "Photo mosaic",
++  "wizard.aes.section.section-photo-mosaic.desc": "Mosaico 6-9 foto stile Instagram",
++  "wizard.aes.section.section-story.label": "Storia / Chi siamo",
++  "wizard.aes.section.section-story.desc": "Foto grande + testo (chef, fondatore, storia)",
++  "wizard.aes.section.section-map-hours.label": "Mappa + indirizzo",
++  "wizard.aes.section.section-map-hours.desc": "Google Maps embed + NAP + click-to-call",
++  "wizard.aes.section.section-blog-feed.label": "Articoli recenti dal blog",
++  "wizard.aes.section.section-blog-feed.desc": "3 articoli più recenti con hero image",
++  "wizard.aes.section.section-cta-banner.label": "Banner CTA finale",
++  "wizard.aes.section.section-cta-banner.desc": "Banda piena con CTA primaria (Prenota / Contatti)",
++  "wizard.aes.section.section-stats.label": "Statistiche / Numeri",
++  "wizard.aes.section.section-stats.desc": "Banda scura con 4 numeri (anni, recensioni, premi)",
++  "wizard.aes.section.section-testimonials.label": "Testimonianze",
++  "wizard.aes.section.section-testimonials.desc": "3 quote clienti in colonna con citazioni in evidenza",
++  "wizard.aes.section.section-press.label": "Stampa / Press strip",
++  "wizard.aes.section.section-press.desc": "Logo strip stampa + recensioni",
++  "wizard.aes.section.section-newsletter.label": "Newsletter signup",
++  "wizard.aes.section.section-newsletter.desc": "Form iscrizione email",
++  "wizard.aes.catHeading": "Layout pagine categoria (es. /blog/)",
++  "wizard.aes.catHelper": "Come si presentano gli archivi articoli.",
++  "wizard.aes.cat.cat-grid-cards.desc": "Griglia 2-3 colonne con hero image. Default.",
++  "wizard.aes.cat.cat-magazine.desc": "1 articolo grande + 4 piccoli + lista. Editorial.",
++  "wizard.aes.cat.cat-list-thumb.desc": "Lista verticale densa con miniatura sx, ottima per blog editorial.",
++  "wizard.aes.cat.cat-filtered.desc": "Grid con filtri per tag/prezzo. (Coming soon)",
++  "wizard.voice.title": "Come parla il tuo brand?",
++  "wizard.voice.subtitle": "Definiamo il tono e lo stile della voce del brand per i contenuti.",
++  "wizard.voice.toneHeading": "Tono di voce",
++  "wizard.voice.tone.1": "Molto formale",
++  "wizard.voice.tone.2": "Formale",
++  "wizard.voice.tone.3": "Neutro",
++  "wizard.voice.tone.4": "Casual",
++  "wizard.voice.tone.5": "Molto casual",
++  "wizard.voice.formal": "Formale",
++  "wizard.voice.casual": "Casual",
++  "wizard.voice.traitsHeading": "Tratti della voce",
++  "wizard.voice.trait.Caldo": "Caldo",
++  "wizard.voice.trait.Autorevole": "Autorevole",
++  "wizard.voice.trait.Giocoso": "Giocoso",
++  "wizard.voice.trait.Diretto": "Diretto",
++  "wizard.voice.trait.Empatico": "Empatico",
++  "wizard.voice.trait.Tecnico": "Tecnico",
++  "wizard.voice.trait.Ironico": "Ironico",
++  "wizard.voice.trait.Premium": "Premium",
++  "wizard.voice.trait.Accessibile": "Accessibile",
++  "wizard.voice.avoidLabel": "Parole da evitare",
++  "wizard.voice.avoidHelper": "es. \"rivoluzionario\", \"esclusivo\" — parole che non vuoi mai vedere nei contenuti",
++  "wizard.voice.avoidPlaceholder": "rivoluzionario, esclusivo, unico nel suo genere…",
++  "wizard.voice.keywordsLabel": "Parole chiave del brand",
++  "wizard.voice.keywordsHelper": "es. \"artigianale\", \"tradizione\", \"rooftop\" — termini che ricorrono spesso nei contenuti",
++  "wizard.voice.keywordsPlaceholder": "artigianale, tradizione, autentico…",
++  "wizard.pages.title": "Quali pagine servono?",
++  "wizard.pages.subtitle": "Seleziona le pagine da includere nel sito.",
++  "wizard.pages.home": "Home",
++  "wizard.pages.about": "Chi Siamo",
++  "wizard.pages.menu": "Menu",
++  "wizard.pages.services": "Servizi",
++  "wizard.pages.gallery": "Galleria",
++  "wizard.pages.events": "Eventi",
++  "wizard.pages.blog": "Blog",
++  "wizard.pages.faq": "FAQ",
++  "wizard.pages.contact": "Contatti",
++  "wizard.pages.alwaysIncluded": "(sempre incluso)",
++  "wizard.pages.initialArticles": "Articoli iniziali:",
++  "wizard.pages.none": "Nessuno",
++  "wizard.pages.leadHeading": "Acquisizione lead",
++  "wizard.pages.lead.form": "Solo form contatti",
++  "wizard.pages.lead.phone": "Solo telefono + WhatsApp button",
++  "wizard.pages.lead.both": "Entrambi (consigliato)",
++  "wizard.pages.langLabel": "Lingua del sito",
++  "wizard.pages.langSoon": "(prossimamente)",
++  "wizard.deploy.title": "Deploy e configurazioni finali",
++  "wizard.deploy.subtitle": "Configura come verrà deployato il sito.",
++  "wizard.deploy.hostnameLabel": "Hostname target",
++  "wizard.deploy.rootRecommended": "(root — consigliato)",
++  "wizard.deploy.emailHeading": "Email routing",
++  "wizard.deploy.emailConfigPre": "Configura",
++  "wizard.deploy.emailConfigMid": "→ forward ad",
++  "wizard.deploy.catchAll": "Catch-all: cattura anche typo (es. infpo@, info1@) → stesso forward",
++  "wizard.deploy.optionsHeading": "Opzioni",
++  "wizard.deploy.autoDeployLabel": "Auto-deploy su git push",
++  "wizard.deploy.autoDeployNote": "Cloudflare Pages deploya automaticamente ad ogni push",
++  "wizard.deploy.gdprLabel": "Cookie banner GDPR",
++  "wizard.deploy.gdprNote": "Aggiungiamo solo se attivi analytics",
++  "wizard.deploy.approvalHeading": "Modalità approvazione pipeline",
++  "wizard.deploy.approval.manual": "Manual — pausa su Strategy + Content per review",
++  "wizard.deploy.approval.auto": "Auto — full pipeline senza interruzioni",
++  "wizard.deploy.approval.autoNote": "Consigliato solo dopo aver validato pipeline su sito sandbox",
++  "wizard.deploy.nextReview": "Avanti → Riepilogo",
++  "wizard.review.title": "Riepilogo",
++  "wizard.review.subtitle": "Verifica tutti i dati prima di generare il sito.",
++  "wizard.review.savedTitle": "Brief salvato!",
++  "wizard.review.redirect": "Redirect a /sites tra 3 secondi…",
++  "wizard.review.articles": "articoli",
++  "wizard.review.present": "Presente",
++  "wizard.review.notFound": "Non trovata",
++  "wizard.review.active": "Attivo",
++  "wizard.review.no": "No",
++  "wizard.review.yes": "Sì",
++  "wizard.review.manual": "Manuale",
++  "wizard.review.automatic": "Automatica",
++  "wizard.review.costEstimate": "Stima costi: ~€0.05 (Claude) + €0.02 (DataForSEO) + €0.00 (Freepik free tier)",
++  "wizard.review.timeEstimate": "Stima tempo: ~5-8 min pipeline + tempo tue approvazioni",
++  "wizard.review.saving": "Salvataggio…",
++  "wizard.review.generate": "🚀 Genera Sito",
++  "wizard.review.lead.form": "Solo form",
++  "wizard.review.lead.phone": "Solo telefono + WA",
++  "wizard.review.lead.both": "Entrambi",
++  "wizard.review.sec.domain": "Step 1 — Dominio",
++  "wizard.review.sec.scenario": "Step 3 — Scenario",
++  "wizard.review.sec.brief": "Step 4 — Brief cliente",
++  "wizard.review.sec.seo": "Step 6 — Sorgente SEO",
++  "wizard.review.sec.aes": "Step 7 — Estetica",
++  "wizard.review.sec.voice": "Step 8 — Voce brand",
++  "wizard.review.sec.pages": "Step 9 — Pagine",
++  "wizard.review.sec.deploy": "Step 10 — Deploy",
++  "wizard.review.row.domain": "Dominio",
++  "wizard.review.row.registrar": "Registrar",
++  "wizard.review.row.expires": "Scade il",
++  "wizard.review.row.cfZone": "Zona CF",
++  "wizard.review.row.scenario": "Scenario",
++  "wizard.review.row.reference": "Riferimento",
++  "wizard.review.row.business": "Business",
++  "wizard.review.row.industry": "Industria",
++  "wizard.review.row.subCat": "Sotto-cat.",
++  "wizard.review.row.city": "Città",
++  "wizard.review.row.address": "Indirizzo",
++  "wizard.review.row.phone": "Telefono",
++  "wizard.review.row.email": "Email",
++  "wizard.review.row.description": "Descrizione",
++  "wizard.review.row.usp": "USP",
++  "wizard.review.row.dataSource": "Fonte dati",
++  "wizard.review.row.csvFile": "File CSV",
++  "wizard.review.row.style": "Stile",
++  "wizard.review.row.palette": "Palette",
++  "wizard.review.row.font": "Font",
++  "wizard.review.row.references": "Riferimenti",
++  "wizard.review.row.tone": "Tono",
++  "wizard.review.row.traits": "Tratti",
++  "wizard.review.row.avoid": "Evitare",
++  "wizard.review.row.keywords": "Keywords",
++  "wizard.review.row.pages": "Pagine",
++  "wizard.review.row.leadCapture": "Lead capture",
++  "wizard.review.row.language": "Lingua",
++  "wizard.review.row.hostname": "Hostname",
++  "wizard.review.row.emailRouting": "Email routing",
++  "wizard.review.row.catchAll": "Catch-all",
++  "wizard.review.row.gdprBanner": "GDPR banner",
++  "wizard.review.row.approval": "Approvazione",
++};
++
++const wizardEn: Dict = {
++  "wizard.breadcrumb": "New Site",
++  "wizard.saveDraft": "Save draft",
++  "wizard.draftSaved": "Draft saved!",
++  "wizard.loading": "Loading…",
++  "wizard.stepWord": "Step",
++  "wizard.ofWord": "of",
++  "wizard.nav.back": "Back",
++  "wizard.nav.next": "Next",
++  "wizard.step.domain": "Domain",
++  "wizard.step.dns": "DNS",
++  "wizard.step.scenario": "Scenario",
++  "wizard.step.brief": "Brief",
++  "wizard.step.api": "API",
++  "wizard.step.seo": "SEO",
++  "wizard.step.aesthetic": "Aesthetic",
++  "wizard.step.voice": "Voice",
++  "wizard.step.pages": "Pages",
++  "wizard.step.deploy": "Deploy",
++  "wizard.step.review": "Summary",
++  "wizard.common.netError": "Network error — please retry.",
++  "wizard.common.unknownError": "Unknown error",
++  "wizard.common.optional": "Optional",
++  "wizard.common.select": "— Select —",
++  "wizard.common.chars": "characters",
++  "wizard.domain.title": "New Site",
++  "wizard.domain.subtitle": "Let's build your site together. Let's start with the domain.",
++  "wizard.domain.label": "Domain",
++  "wizard.domain.placeholder": "ristoranteangels.it",
++  "wizard.domain.verify": "Verify",
++  "wizard.domain.verifying": "Verifying…",
++  "wizard.domain.helper": "Just the domain, without http:// or www (e.g. mysite.com)",
++  "wizard.domain.invalid": "Enter a valid domain (e.g. ristoranteangels.it)",
++  "wizard.domain.results": "Verification results",
++  "wizard.domain.registrar": "Registrar",
++  "wizard.domain.expires": "Expires on",
++  "wizard.domain.nameserver": "Nameserver",
++  "wizard.domain.cfZone": "Cloudflare zone",
++  "wizard.domain.cfPresentPrefix": "Present on account",
++  "wizard.domain.statusWord": "status",
++  "wizard.domain.cfMissing": "Not found on the Cloudflare account matching the TLD",
++  "wizard.domain.ambiguousTitle": "Ambiguous TLD — choose the Cloudflare account",
++  "wizard.domain.ambiguousDescPre": "The domain ends in",
++  "wizard.domain.ambiguousDescPost": ": it's unclear whether it belongs to the Italian account (Brianzadigitale, for Italian sites) or the English one (fluxgateseo, for English sites). Choose below.",
++  "wizard.domain.accountIt": "Italian (Brianzadigitale)",
++  "wizard.domain.accountEn": "English (fluxgateseo)",
++  "wizard.domain.ownHint": "Sure it's yours? We'll guide you if you need to move DNS to Cloudflare.",
++  "wizard.dns.title": "Let's move DNS to Cloudflare",
++  "wizard.dns.subtitlePre": "The domain",
++  "wizard.dns.subtitlePost": "isn't in your Cloudflare zone yet. Follow one of the paths below.",
++  "wizard.dns.card1Title": "Already have the domain on Cloudflare?",
++  "wizard.dns.card1Lead": "Go to",
++  "wizard.dns.addSite": "Add a site",
++  "wizard.dns.card1Step1": "Enter",
++  "wizard.dns.card1Step2": "Choose the Free plan",
++  "wizard.dns.card1Step3": "Cloudflare will show you the nameservers to set",
++  "wizard.dns.card1Step4": "Set those nameservers in your registrar's panel",
++  "wizard.dns.card2Title": "Need to change nameservers",
++  "wizard.dns.onRegistrar": "on",
++  "wizard.dns.card2LeadPre": "After adding the domain to Cloudflare, go to your registrar's panel and find the section",
++  "wizard.dns.nsDnsSection": "Nameserver / DNS",
++  "wizard.dns.card2Step1": "Log into your registrar's panel",
++  "wizard.dns.registrarEg": "e.g. Netsons, Register.it",
++  "wizard.dns.card2Step2": "Go to Domain Management → Nameservers",
++  "wizard.dns.card2Step3": "Replace the current nameservers with the ones provided by Cloudflare",
++  "wizard.dns.card2Step4": "Save your changes (propagation can take up to 48h)",
++  "wizard.dns.card2NotePre": "Note: on Netsons you'll find the nameservers under",
++  "wizard.dns.card2NotePath": "Domains → Manage → DNS/Nameservers",
++  "wizard.dns.cfAdded": "I've added the domain to Cloudflare",
++  "wizard.dns.nsChanged": "I've changed the nameservers",
++  "wizard.dns.reverify": "🔄 Re-check DNS",
++  "wizard.dns.reverifying": "Checking…",
++  "wizard.dns.zoneFound": "✓ Zone found!",
++  "wizard.dns.skip": "Skip for now (warning: deploy will fail without a CF zone)",
++  "wizard.scenario.title": "What kind of project is this?",
++  "wizard.scenario.subtitle": "Pick the scenario that best describes your case.",
++  "wizard.scenario.planA.title": "A. Expired domain to revive",
++  "wizard.scenario.planA.desc": "I bought an expired domain and want to leverage its historical backlinks to build a new site.",
++  "wizard.scenario.planB.title": "B. Rebuild of an existing site",
++  "wizard.scenario.planB.desc": "I have a live site (mine or a client's) that I want to rebuild from scratch with a modern design.",
++  "wizard.scenario.planC.title": "C. Competitive clone / inspiration",
++  "wizard.scenario.planC.desc": "I have a reference site I like and want to adapt it to my brand.",
++  "wizard.scenario.refLabel": "Reference site URL (optional)",
++  "wizard.scenario.refPlaceholder": "https://example.com",
++  "wizard.brief.title": "Tell us about the business",
++  "wizard.brief.subtitle": "Enter the site's main information. You can change it later.",
++  "wizard.brief.waybackTitlePre": "See how",
++  "wizard.brief.waybackTitlePost": "looked on the Wayback Machine",
++  "wizard.brief.waybackLabel": "How it looked on the Wayback Machine",
++  "wizard.brief.businessName": "Business name",
++  "wizard.brief.businessNamePh": "Angels Restaurant",
++  "wizard.brief.industryLabel": "Industry",
++  "wizard.brief.subCategory": "Sub-category",
++  "wizard.brief.subCategoryHelper": "e.g. Fine dining, Spa & massage",
++  "wizard.brief.city": "City / Service area",
++  "wizard.brief.cityPh": "Milan, Navigli area",
++  "wizard.brief.address": "Address",
++  "wizard.brief.addressPh": "Via Garibaldi 42, 20123 Milano",
++  "wizard.brief.phone": "Phone",
++  "wizard.brief.email": "Email",
++  "wizard.brief.emailHelper": "Leave empty to use",
++  "wizard.brief.description": "Short business description",
++  "wizard.brief.descriptionPh": "Brief description of what the business does, who it's for, what it offers…",
++  "wizard.brief.usp": "USP / What sets you apart",
++  "wizard.brief.uspPh": "e.g. 'Only one in Milan with an 1800s wood-fired oven', 'Guaranteed 30-min delivery'…",
++  "wizard.industry.Ristorazione": "Food & Beverage",
++  "wizard.industry.Beauty/Wellness": "Beauty/Wellness",
++  "wizard.industry.Tech/SaaS": "Tech/SaaS",
++  "wizard.industry.Servizi professionali": "Professional services",
++  "wizard.industry.E-commerce": "E-commerce",
++  "wizard.industry.Turismo": "Tourism",
++  "wizard.industry.Salute": "Health",
++  "wizard.industry.Educazione": "Education",
++  "wizard.industry.Altro": "Other",
++  "wizard.api.title": "API configuration",
++  "wizard.api.subtitlePre": "To proceed you need",
++  "wizard.api.only": "only",
++  "wizard.api.subtitleMid": "the",
++  "wizard.api.subtitlePost": "The others are optional now but required before going to production.",
++  "wizard.api.howToSummary": "How to create the Cloudflare token (1 minute)",
++  "wizard.api.step1Open": "Open",
++  "wizard.api.step2Note": "(a single token, valid for all sites).",
++  "wizard.api.step3": "— add the rows below. The first 2 are required, the other 4 are needed later (add them now to avoid redoing the token):",
++  "wizard.api.thWhen": "When",
++  "wizard.api.required": "required",
++  "wizard.api.step4": "Include → your account.",
++  "wizard.api.step5": "Include → All zones from an account → your account.",
++  "wizard.api.step6Pre": "Skip TTL and IP filtering.",
++  "wizard.api.step6Post": "Copy the token and paste it below.",
++  "wizard.api.noteAuto": "Not automatable: Cloudflare exposes no public OAuth to generate tokens via API.",
++  "wizard.api.secretsConfigured": "secrets configured",
++  "wizard.api.thDescription": "Description",
++  "wizard.api.thAction": "Action",
++  "wizard.api.status.set": "configured",
++  "wizard.api.status.placeholder": "placeholder",
++  "wizard.api.status.missing": "missing",
++  "wizard.api.generate": "Generate",
++  "wizard.api.seoDisabledPre": "If you continue now, automatic SEO features will be disabled until",
++  "wizard.api.seoDisabledPost": "is configured.",
++  "wizard.api.nextConfigure": "Configure at least CLOUDFLARE_API_TOKEN",
++  "wizard.seo.title": "Where do we get the SEO data?",
++  "wizard.seo.subtitle": "Select one or more methods (combinable). \"Skip\" is exclusive.",
++  "wizard.seo.recommendedStrong": "Recommended: combine DataForSEO + Ahrefs CSV.",
++  "wizard.seo.recommendedBody": "Ahrefs has the long tail of referring domains DataForSEO often misses; merging produces a link map ~2× better for the Stage 2 strategy. Export from the Ahrefs UI: Site Explorer → Referring domains → Export → CSV.",
++  "wizard.seo.dataforseo.title": "DataForSEO automatic",
++  "wizard.seo.dataforseo.desc": "We'll use the DataForSEO API to extract the domain's historical backlinks, anchor text and keywords.",
++  "wizard.seo.dataforseo.note": "FREE if you already have the API key.",
++  "wizard.seo.csv.title": "Upload CSV from Ahrefs",
++  "wizard.seo.csv.desc": "Export manually from the Ahrefs UI (Site Explorer → Backlinks → Export → CSV) and upload here.",
++  "wizard.seo.skip.title": "Skip SEO for now",
++  "wizard.seo.skip.desc": "We'll build from the brief only. No historical analysis.",
++  "wizard.seo.requiresDataforseo": "Requires DATAFORSEO_LOGIN configured in Settings",
++  "wizard.seo.disabledBySkip": "Disabled because \"Skip\" is selected",
++  "wizard.seo.csvLabel": "Ahrefs CSV file (max 10MB)",
++  "wizard.seo.csvTooBig": "File too large (max 10MB)",
++  "wizard.seo.csvSelect": "Click to select the CSV",
++  "wizard.seo.csvDrag": "or drag the file here",
++  "wizard.seo.combined": "Combined: Stage 1 runs DataForSEO extraction + merges the Ahrefs CSV (priority to unique backlinks).",
++  "wizard.aes.title": "How should the site look?",
++  "wizard.aes.subtitle": "Choose the style, then we'll refine the details.",
++  "wizard.aes.styleHeading": "Design style",
++  "wizard.aes.suitablePrefix": "Good for:",
++  "wizard.aes.style.Elegant.desc": "Elegant serif fonts, muted colors (neutral palette), lots of white space, editorial layout.",
++  "wizard.aes.style.Elegant.suitable": "Refined restaurants, fine dining, premium beauty, law firms",
++  "wizard.aes.style.Modern.desc": "Geometric sans-serifs, cool palette with vivid accents, asymmetric layout, micro-animations.",
++  "wizard.aes.style.Modern.suitable": "Tech, SaaS, startups",
++  "wizard.aes.style.Editorial.desc": "Magazine-style, mixed typography (serif + sans), magazine grid, large images.",
++  "wizard.aes.style.Editorial.suitable": "Blogs, food magazines, lifestyle",
++  "wizard.aes.style.Bold.desc": "Saturated contrasting colors, heavy display fonts, full-screen hero, large text.",
++  "wizard.aes.style.Bold.suitable": "Agencies, young brands, e-commerce",
++  "wizard.aes.paletteHeading": "Color palette",
++  "wizard.aes.palette.warmNeutral": "Warm neutrals",
++  "wizard.aes.palette.coolNeutral": "Cool neutrals",
++  "wizard.aes.palette.pastel": "Pastel",
++  "wizard.aes.palette.brightSaturated": "Bright saturated",
++  "wizard.aes.palette.monoDark": "Mono dark",
++  "wizard.aes.palette.custom": "Custom",
++  "wizard.aes.color.primary": "primary",
++  "wizard.aes.color.accent": "accent",
++  "wizard.aes.color.background": "background",
++  "wizard.aes.typoHeading": "Typography",
++  "wizard.aes.fontHeadingPreview": "Heading",
++  "wizard.aes.fontBodyPreview": "Body text",
++  "wizard.aes.refsHeading": "References (optional)",
++  "wizard.aes.refsHelper": "Got sites that inspire you? Paste URLs (one per line).",
++  "wizard.aes.refsPlaceholder": "https://example.com\nhttps://anotherexample.com",
++  "wizard.aes.heroHeading": "Homepage layout — Hero",
++  "wizard.aes.heroHelper": "How the first section of the site looks.",
++  "wizard.aes.hero.hero-fullbleed.desc": "Full-screen photo with dark overlay and centered CTAs. Premium, cinematic.",
++  "wizard.aes.hero.hero-mosaic.desc": "Title + grid of 4 vertical photos. Editorial, food, beauty.",
++  "wizard.aes.hero.hero-split.desc": "Text on the left + photo on the right. Clean, professional, conversion-friendly.",
++  "wizard.aes.hero.hero-carousel.desc": "Background slideshow with 3-5 photos. (Coming soon — falls back to Fullbleed)",
++  "wizard.aes.sectionsHeading": "Homepage sections",
++  "wizard.aes.sectionsHelperPre": "Sections render in the order shown. Tick the ones you want to include",
++  "wizard.aes.sectionsHelperPost": "selected",
++  "wizard.aes.section.section-featured-dishes.label": "Featured dishes / services",
++  "wizard.aes.section.section-featured-dishes.desc": "Grid of 3-6 cards with photo + description + link",
++  "wizard.aes.section.section-photo-mosaic.label": "Photo mosaic",
++  "wizard.aes.section.section-photo-mosaic.desc": "Instagram-style 6-9 photo mosaic",
++  "wizard.aes.section.section-story.label": "Story / About us",
++  "wizard.aes.section.section-story.desc": "Large photo + text (chef, founder, story)",
++  "wizard.aes.section.section-map-hours.label": "Map + address",
++  "wizard.aes.section.section-map-hours.desc": "Google Maps embed + NAP + click-to-call",
++  "wizard.aes.section.section-blog-feed.label": "Recent blog articles",
++  "wizard.aes.section.section-blog-feed.desc": "3 most recent articles with hero image",
++  "wizard.aes.section.section-cta-banner.label": "Final CTA banner",
++  "wizard.aes.section.section-cta-banner.desc": "Full-width band with primary CTA (Book / Contact)",
++  "wizard.aes.section.section-stats.label": "Stats / Numbers",
++  "wizard.aes.section.section-stats.desc": "Dark band with 4 numbers (years, reviews, awards)",
++  "wizard.aes.section.section-testimonials.label": "Testimonials",
++  "wizard.aes.section.section-testimonials.desc": "3 client quotes in a column with highlighted quotes",
++  "wizard.aes.section.section-press.label": "Press strip",
++  "wizard.aes.section.section-press.desc": "Press logo strip + reviews",
++  "wizard.aes.section.section-newsletter.label": "Newsletter signup",
++  "wizard.aes.section.section-newsletter.desc": "Email signup form",
++  "wizard.aes.catHeading": "Category page layout (e.g. /blog/)",
++  "wizard.aes.catHelper": "How article archives look.",
++  "wizard.aes.cat.cat-grid-cards.desc": "2-3 column grid with hero image. Default.",
++  "wizard.aes.cat.cat-magazine.desc": "1 large article + 4 small + list. Editorial.",
++  "wizard.aes.cat.cat-list-thumb.desc": "Dense vertical list with left thumbnail, great for editorial blogs.",
++  "wizard.aes.cat.cat-filtered.desc": "Grid with tag/price filters. (Coming soon)",
++  "wizard.voice.title": "How does your brand speak?",
++  "wizard.voice.subtitle": "Let's define the brand's tone and voice for content.",
++  "wizard.voice.toneHeading": "Tone of voice",
++  "wizard.voice.tone.1": "Very formal",
++  "wizard.voice.tone.2": "Formal",
++  "wizard.voice.tone.3": "Neutral",
++  "wizard.voice.tone.4": "Casual",
++  "wizard.voice.tone.5": "Very casual",
++  "wizard.voice.formal": "Formal",
++  "wizard.voice.casual": "Casual",
++  "wizard.voice.traitsHeading": "Voice traits",
++  "wizard.voice.trait.Caldo": "Warm",
++  "wizard.voice.trait.Autorevole": "Authoritative",
++  "wizard.voice.trait.Giocoso": "Playful",
++  "wizard.voice.trait.Diretto": "Direct",
++  "wizard.voice.trait.Empatico": "Empathetic",
++  "wizard.voice.trait.Tecnico": "Technical",
++  "wizard.voice.trait.Ironico": "Witty",
++  "wizard.voice.trait.Premium": "Premium",
++  "wizard.voice.trait.Accessibile": "Approachable",
++  "wizard.voice.avoidLabel": "Words to avoid",
++  "wizard.voice.avoidHelper": "e.g. \"revolutionary\", \"exclusive\" — words you never want to see in content",
++  "wizard.voice.avoidPlaceholder": "revolutionary, exclusive, one of a kind…",
++  "wizard.voice.keywordsLabel": "Brand keywords",
++  "wizard.voice.keywordsHelper": "e.g. \"artisanal\", \"tradition\", \"rooftop\" — terms that recur often in content",
++  "wizard.voice.keywordsPlaceholder": "artisanal, tradition, authentic…",
++  "wizard.pages.title": "Which pages do you need?",
++  "wizard.pages.subtitle": "Select the pages to include in the site.",
++  "wizard.pages.home": "Home",
++  "wizard.pages.about": "About",
++  "wizard.pages.menu": "Menu",
++  "wizard.pages.services": "Services",
++  "wizard.pages.gallery": "Gallery",
++  "wizard.pages.events": "Events",
++  "wizard.pages.blog": "Blog",
++  "wizard.pages.faq": "FAQ",
++  "wizard.pages.contact": "Contact",
++  "wizard.pages.alwaysIncluded": "(always included)",
++  "wizard.pages.initialArticles": "Initial articles:",
++  "wizard.pages.none": "None",
++  "wizard.pages.leadHeading": "Lead capture",
++  "wizard.pages.lead.form": "Contact form only",
++  "wizard.pages.lead.phone": "Phone + WhatsApp button only",
++  "wizard.pages.lead.both": "Both (recommended)",
++  "wizard.pages.langLabel": "Site language",
++  "wizard.pages.langSoon": "(coming soon)",
++  "wizard.deploy.title": "Deploy and final settings",
++  "wizard.deploy.subtitle": "Configure how the site will be deployed.",
++  "wizard.deploy.hostnameLabel": "Target hostname",
++  "wizard.deploy.rootRecommended": "(root — recommended)",
++  "wizard.deploy.emailHeading": "Email routing",
++  "wizard.deploy.emailConfigPre": "Configure",
++  "wizard.deploy.emailConfigMid": "→ forward to",
++  "wizard.deploy.catchAll": "Catch-all: also catches typos (e.g. infpo@, info1@) → same forward",
++  "wizard.deploy.optionsHeading": "Options",
++  "wizard.deploy.autoDeployLabel": "Auto-deploy on git push",
++  "wizard.deploy.autoDeployNote": "Cloudflare Pages deploys automatically on every push",
++  "wizard.deploy.gdprLabel": "GDPR cookie banner",
++  "wizard.deploy.gdprNote": "We add it only if you enable analytics",
++  "wizard.deploy.approvalHeading": "Pipeline approval mode",
++  "wizard.deploy.approval.manual": "Manual — pause at Strategy + Content for review",
++  "wizard.deploy.approval.auto": "Auto — full pipeline without interruptions",
++  "wizard.deploy.approval.autoNote": "Recommended only after validating the pipeline on a sandbox site",
++  "wizard.deploy.nextReview": "Next → Summary",
++  "wizard.review.title": "Summary",
++  "wizard.review.subtitle": "Check all the data before generating the site.",
++  "wizard.review.savedTitle": "Brief saved!",
++  "wizard.review.redirect": "Redirecting to /sites in 3 seconds…",
++  "wizard.review.articles": "articles",
++  "wizard.review.present": "Present",
++  "wizard.review.notFound": "Not found",
++  "wizard.review.active": "Active",
++  "wizard.review.no": "No",
++  "wizard.review.yes": "Yes",
++  "wizard.review.manual": "Manual",
++  "wizard.review.automatic": "Automatic",
++  "wizard.review.costEstimate": "Cost estimate: ~€0.05 (Claude) + €0.02 (DataForSEO) + €0.00 (Freepik free tier)",
++  "wizard.review.timeEstimate": "Time estimate: ~5-8 min pipeline + your approval time",
++  "wizard.review.saving": "Saving…",
++  "wizard.review.generate": "🚀 Generate Site",
++  "wizard.review.lead.form": "Form only",
++  "wizard.review.lead.phone": "Phone + WA only",
++  "wizard.review.lead.both": "Both",
++  "wizard.review.sec.domain": "Step 1 — Domain",
++  "wizard.review.sec.scenario": "Step 3 — Scenario",
++  "wizard.review.sec.brief": "Step 4 — Client brief",
++  "wizard.review.sec.seo": "Step 6 — SEO source",
++  "wizard.review.sec.aes": "Step 7 — Aesthetic",
++  "wizard.review.sec.voice": "Step 8 — Brand voice",
++  "wizard.review.sec.pages": "Step 9 — Pages",
++  "wizard.review.sec.deploy": "Step 10 — Deploy",
++  "wizard.review.row.domain": "Domain",
++  "wizard.review.row.registrar": "Registrar",
++  "wizard.review.row.expires": "Expires on",
++  "wizard.review.row.cfZone": "CF zone",
++  "wizard.review.row.scenario": "Scenario",
++  "wizard.review.row.reference": "Reference",
++  "wizard.review.row.business": "Business",
++  "wizard.review.row.industry": "Industry",
++  "wizard.review.row.subCat": "Sub-cat.",
++  "wizard.review.row.city": "City",
++  "wizard.review.row.address": "Address",
++  "wizard.review.row.phone": "Phone",
++  "wizard.review.row.email": "Email",
++  "wizard.review.row.description": "Description",
++  "wizard.review.row.usp": "USP",
++  "wizard.review.row.dataSource": "Data source",
++  "wizard.review.row.csvFile": "CSV file",
++  "wizard.review.row.style": "Style",
++  "wizard.review.row.palette": "Palette",
++  "wizard.review.row.font": "Font",
++  "wizard.review.row.references": "References",
++  "wizard.review.row.tone": "Tone",
++  "wizard.review.row.traits": "Traits",
++  "wizard.review.row.avoid": "Avoid",
++  "wizard.review.row.keywords": "Keywords",
++  "wizard.review.row.pages": "Pages",
++  "wizard.review.row.leadCapture": "Lead capture",
++  "wizard.review.row.language": "Language",
++  "wizard.review.row.hostname": "Hostname",
++  "wizard.review.row.emailRouting": "Email routing",
++  "wizard.review.row.catchAll": "Catch-all",
++  "wizard.review.row.gdprBanner": "GDPR banner",
++  "wizard.review.row.approval": "Approval",
++};
++
++const dictionaries: Record<Lang, Dict> = {
++  it: { ...it, ...wizardIt },
++  en: { ...en, ...wizardEn },
++};
+ 
+ export function t(lang: Lang, key: string): string {
+   return dictionaries[lang][key] ?? dictionaries[DEFAULT_LANG][key] ?? key;
+-- 
+2.43.0
+

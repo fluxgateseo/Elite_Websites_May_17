@@ -1,13 +1,9 @@
-From 1ddff8a2f818b52fe44c6d1fcc91cfc87d9d7bed Mon Sep 17 00:00:00 2001
+From 0096eb0bb123577c10090dacc605d472354f4df9 Mon Sep 17 00:00:00 2001
 From: c <c@c>
-Date: Fri, 29 May 2026 03:53:11 +0000
-Subject: [PATCH] wizard Brief: add Wayback Machine button for the entered
+Date: Fri, 29 May 2026 04:15:23 +0000
+Subject: [PATCH 2/3] wizard Brief: add Wayback Machine button for the entered
  domain
 
-Scenario A (expired domain) and rebuilds benefit from seeing the previous
-site while filling the brief. Adds a link on the Brief step that opens
-web.archive.org snapshots for state.step1.domain in a new tab. Shown only
-when a domain is set.
 ---
  src/components/wizard/Step4Brief.tsx | 16 +++++++++++++++-
  1 file changed, 15 insertions(+), 1 deletion(-)

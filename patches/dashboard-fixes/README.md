@@ -1,56 +1,71 @@
 # Dashboard fixes (`andreabbo/elite-saas`)
 
-Operational bug fixes for the dashboard, delivered as `git am`-able patches
+Operational fixes for the dashboard, delivered as `git am`-able patches
 (Plan-C: the dashboard source lives in `andreabbo/elite-saas`, not this
 meta-repo). Generated against the `elite-saas` source as of 2026-05-29.
 
 ## Apply
 
+The three patches are **stacked in order** off the same baseline and apply
+cleanly in sequence (verified with `git apply --check`):
+
 ```
 # in andreabbo/elite-saas, branch off main
-git am -3 path/to/<patch>.patch
-pnpm tsc --noEmit        # clean
+git am -3 saas-wizard-domain-precedence.patch \
+         saas-wizard-wayback-button.patch \
+         saas-wizard-i18n.patch
+pnpm tsc --noEmit        # clean (verified)
 pnpm wrangler deploy     # via @opennextjs/cloudflare
 ```
 
-## Patches
+Verification done here against the real source: `tsc --noEmit` → 0 errors,
+esbuild transform on every touched file → OK, i18n key cross-check (used ⊆
+defined) and it/en parity (344 keys each) → OK.
 
-### `saas-wizard-domain-precedence.patch` (2026-05-29)
+## Patches (apply in this order)
 
-**Bug.** Opening the wizard with an explicit `?domain=<x>` (from "Avvia
-build"'s brief-missing redirect, or a fresh "Nuovo sito" link) showed the
-domain from a *previous* saved draft instead of `<x>`. Observed:
-`/nuovo-sito?domain=bellezzanaturale.it` rendered the field as
-`elgusto.it` and ran the WHOIS/Cloudflare preflight against the wrong
-domain — i.e. you'd build the wrong site.
+### 1. `saas-wizard-domain-precedence.patch`
+
+**Bug.** Opening the wizard with an explicit `?domain=<x>` showed the domain
+from a *previous* saved draft instead of `<x>` — e.g.
+`/nuovo-sito?domain=bellezzanaturale.it` rendered the field as `elgusto.it`,
+ran the WHOIS/Cloudflare preflight against the wrong domain, and carried
+elgusto's brief ("Osteria Del Gusto") into the new site.
 
 **Cause.** `WizardContainer` only prefilled `initialDomain` when the saved
-draft had *no* domain (`!saved.step1.domain`), so any stale draft domain
-won and the query param was ignored.
+draft had *no* domain, so any stale draft domain won.
 
-**Fix.** An explicit `?domain=` now takes precedence (case/space
-normalized):
-- no draft domain → prefill the requested one (unchanged);
-- draft domain **differs** → start a clean `defaultWizardState()` for the
-  requested domain (so the old scenario/brief/preflight don't leak into the
-  new site);
-- draft domain **matches** → resume the saved draft untouched.
-
-Touches only `src/components/wizard/WizardContainer.tsx`. Syntax/JSX
-verified with esbuild transform.
+**Fix.** An explicit `?domain=` now takes precedence (case/space normalized):
+no draft domain → prefill; draft domain **differs** → start a clean
+`defaultWizardState()` for the requested domain (old scenario/brief/preflight
+don't leak in); draft domain **matches** → resume the saved draft untouched.
+Touches `src/components/wizard/WizardContainer.tsx`.
 
 **Operator workaround (until deployed):** clear the saved draft — in the
 browser console `localStorage.removeItem("elite-wizard-draft-v1")` then
-reload, or finish/clear the existing draft before starting a new domain.
+reload.
 
-### `saas-wizard-wayback-button.patch` (2026-05-29)
+### 2. `saas-wizard-wayback-button.patch`
 
-**Request.** On the wizard Brief step, add a button to see what the site
-used to look like on the Wayback Machine — useful for Scenario A (expired
-domain) and rebuilds, where the old site is a source for the brief.
+On the Brief step, adds a link **"🕰️ Com'era su Wayback Machine ↗"** that
+opens `https://web.archive.org/web/*/<domain>` (snapshots for the entered
+domain) in a new tab — for Scenario A (expired domain) and rebuilds. Shown
+only when a domain is set. Touches `src/components/wizard/Step4Brief.tsx`.
 
-**Change.** Adds a link under the Brief step heading that opens
-`https://web.archive.org/web/*/<domain>` (snapshot overview for
-`state.step1.domain`) in a new tab. Shown only when a domain is set.
-Touches only `src/components/wizard/Step4Brief.tsx`. Syntax/JSX verified
-with esbuild transform.
+### 3. `saas-wizard-i18n.patch`
+
+**Bug.** Selecting English (🇬🇧) still showed the Nuovo Sito wizard in
+Italian: the wizard was never internationalized — every step hardcoded
+Italian strings and `lang` was never threaded into it.
+
+**Fix.** Adds a small `WizardI18nProvider`/`useT` context (built from the
+server-resolved `lang` cookie, same mechanism the rest of the dashboard
+uses), routes `lang` from the `nuovo-sito` page into `WizardContainer`, and
+replaces every hardcoded string across the 11 steps + `StepNav` with i18n
+keys. Adds the `wizard.*` dictionaries (it + en, 344 keys each) in
+`src/lib/i18n.ts`.
+
+Persisted/enum values stay canonical (industry codes, voice traits,
+palette/font ids, the `lingua` select value) — only their **display** is
+translated — so the pipeline keeps receiving the same brief data regardless
+of UI language. New file: `src/components/wizard/wizard-i18n.tsx`.

@@ -39,6 +39,41 @@ Opus, commits to `main` via a multi-blob commit, and the same
 `deploy.yml` above auto-deploys the change. No per-site setup needed
 beyond the template patch + Stage 6c.
 
+## Sitemap / canonical base URL  *(contract — regression 2026-05-29)*
+
+**Symptom.** `https://<domain>/sitemap.xml` resolves but every `<loc>`
+points at `https://demo.example/sitemap-0.xml` instead of the real
+domain (observed on `modoristorante.it`).
+
+**Root cause.** `@astrojs/sitemap` derives every URL from Astro's `site`
+option. Stage 5b writes a per-site `astro.config.site.mjs` (`siteUrl`
+helper), and `astro.config.mjs` is supposed to consume it as
+`site: siteUrl`. The build instead fell back to the template placeholder
+`https://demo.example` — either `astro.config.mjs` never imported
+`siteUrl`, or Stage 5b emitted `astro.config.site.mjs` with the
+placeholder still in place. The same `site` value drives canonical
+`<link rel="canonical">` and the `robots.txt` sitemap reference, so the
+blast radius is every generated site, not just the sitemap.
+
+**Contract (enforced by the template + worker):**
+
+- `astro.config.mjs` MUST set `site` from `astro.config.site.mjs`'s
+  `siteUrl` — never a hardcoded literal. The template default, if any,
+  must be obviously invalid (e.g. throw at build if unset) rather than a
+  plausible-looking `demo.example` that ships silently.
+- Stage 5b's `renderSiteConfig`/overlay MUST write
+  `siteUrl = "https://<domain>"` (the brief's domain, TLS, no trailing
+  slash) into `astro.config.site.mjs`. `demo.example` must never reach a
+  committed `astro.config.site.mjs`.
+- Stage 7 fails the build if `/sitemap.xml` contains `demo.example` or
+  any `<loc>` not under `https://<domain>` (see `docs/pipeline-stages.md`).
+
+**Backfill for already-live sites (e.g. `site-modoristorante`).** Fix
+`astro.config.site.mjs` (and/or `astro.config.mjs`) in the site repo so
+`site` is `https://<domain>`, commit, push — the GHA deploy rebuilds and
+the corrected sitemap/canonicals go live. Re-submit the URL to Search
+Console afterwards.
+
 ## Verifying a new site at Stage 7
 
 `docs/pipeline-stages.md` Stage 7 already smoke-tests `/`, `/sitemap.xml`,

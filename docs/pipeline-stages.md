@@ -104,6 +104,14 @@ Upsert a proxied CNAME from `<domain>` to `<project>.pages.dev`.
 
 ## Stage 7 — Verify
 - Smoke-fetch `/`, `/sitemap.xml`, `/robots.txt`. All must return 2xx.
+- **Sitemap base-URL check (NEW 2026-05-29).** Parse `/sitemap.xml` and
+  assert every `<loc>` is under `https://<domain>` — and that the literal
+  `demo.example` (the template placeholder) appears nowhere in the body.
+  Catches the regression where Astro's `site` was never set to the real
+  domain, so `@astrojs/sitemap` emitted `https://demo.example/…` (which
+  also breaks canonical URLs and the `robots.txt` sitemap reference). On
+  mismatch the stage fails → status `error`, never `live`. See the
+  "Sitemap / canonical base URL" contract in `docs/site-template-deploy.md`.
 - Best-effort PageSpeed Insights call. If PSI is rate-limited the stage
   records a warning rather than failing.
 - If all checks pass: `elite_sites.status` → `live` and

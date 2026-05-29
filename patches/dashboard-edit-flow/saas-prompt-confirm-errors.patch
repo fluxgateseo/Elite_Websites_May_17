@@ -1,0 +1,259 @@
+From 6ee2e35bea7603e9e69f76d3069a958ef79b6a29 Mon Sep 17 00:00:00 2001
+From: c <c@c>
+Date: Fri, 29 May 2026 00:14:45 +0000
+Subject: [PATCH] PromptButton: confirm before editing a live site + clear
+ error messages
+
+Editing an existing site commits to main and auto-deploys, so gate the
+action behind an explicit confirmation step. Map every failure (network,
+401/404/409/422/500/502, no-op) to a clear, human-readable message
+instead of surfacing the raw worker error string.
+---
+ src/components/PromptButton.tsx | 156 ++++++++++++++++++++++++--------
+ 1 file changed, 120 insertions(+), 36 deletions(-)
+
+diff --git a/src/components/PromptButton.tsx b/src/components/PromptButton.tsx
+index 8a3cd20..eb2ec8b 100644
+--- a/src/components/PromptButton.tsx
++++ b/src/components/PromptButton.tsx
+@@ -4,9 +4,14 @@ import { useState } from "react";
+ 
+ type Scope = "content" | "config" | "all";
+ 
+-type PromptResult =
++type WorkerResult =
+   | { ok: true; commitSha: string; filesChanged: string[]; modelUsage?: unknown }
+-  | { ok: false; error: string };
++  | { ok: false; error?: string };
++
++type UiResult =
++  | { kind: "success"; commitSha: string; files: string[] }
++  | { kind: "noop" }
++  | { kind: "error"; message: string };
+ 
+ const CANNED: { label: string; scope: Scope; prompt: string }[] = [
+   { label: "Audit & fix 404", scope: "content", prompt: "Controlla che tutti i link interni negli articoli e nelle pagine risolvano a pagine esistenti del sito; correggi quelli rotti mantenendo l'ancora coerente." },
+@@ -14,17 +19,51 @@ const CANNED: { label: string; scope: Scope; prompt: string }[] = [
+   { label: "Tono più formale", scope: "content", prompt: "Alza la formalità del testo a un registro professionale (4-5 su 5) su tutte le pagine, senza cambiare i contenuti." },
+ ];
+ 
++// Maps a worker/proxy failure to a clear, human-readable message so the
++// operator always knows what went wrong and whether it's worth retrying.
++// Status 0 is used for "the request never reached the server" (fetch threw).
++function friendlyError(status: number, raw?: string): string {
++  switch (status) {
++    case 0:
++      return "Impossibile contattare il server. Controlla la connessione e riprova.";
++    case 401:
++      return "Sessione scaduta o non autorizzata. Effettua di nuovo l'accesso e riprova.";
++    case 404:
++      return "Sito non trovato: potrebbe essere stato rimosso o rinominato.";
++    case 409:
++      return "C'è già una modifica in corso per questo sito (oppure non è ancora online). Attendi che finisca e riprova.";
++    case 422:
++      return raw || "Richiesta incompleta: controlla l'istruzione e riprova.";
++    case 500:
++      return "Configurazione del server incompleta (worker o secret mancanti). Avvisa l'amministratore.";
++    case 502:
++      return "Il modello AI o GitHub non hanno risposto correttamente. Riprova tra poco; se il problema persiste controlla i log della pipeline.";
++    default:
++      return raw
++        ? `Modifica non riuscita (codice ${status}): ${raw}`
++        : `Modifica non riuscita (codice ${status}).`;
++  }
++}
++
+ export function PromptButton({ domain, status }: { domain: string; status: string }) {
+   const [open, setOpen] = useState(false);
+   const [prompt, setPrompt] = useState("");
+   const [scope, setScope] = useState<Scope>("all");
+   const [busy, setBusy] = useState(false);
+-  const [result, setResult] = useState<PromptResult | null>(null);
++  const [confirming, setConfirming] = useState(false);
++  const [result, setResult] = useState<UiResult | null>(null);
+ 
+   if (status !== "live") return null;
+ 
+-  async function submit() {
++  // Editing the prompt/scope invalidates any prior result or confirmation.
++  function clearState() {
++    setConfirming(false);
++    setResult(null);
++  }
++
++  async function apply() {
+     setBusy(true);
++    setConfirming(false);
+     setResult(null);
+     try {
+       const res = await fetch(`/api/sites/${encodeURIComponent(domain)}/prompt`, {
+@@ -32,15 +71,38 @@ export function PromptButton({ domain, status }: { domain: string; status: strin
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({ prompt: prompt.trim(), scope }),
+       });
+-      const json = (await res.json()) as PromptResult;
+-      setResult(json);
+-    } catch (err) {
+-      setResult({ ok: false, error: err instanceof Error ? err.message : "unknown" });
++      let json: WorkerResult | null = null;
++      try {
++        json = (await res.json()) as WorkerResult;
++      } catch {
++        json = null;
++      }
++      if (!res.ok || !json || json.ok !== true) {
++        const raw = json && json.ok === false ? json.error : undefined;
++        setResult({ kind: "error", message: friendlyError(res.status, raw) });
++        return;
++      }
++      if (!json.filesChanged || json.filesChanged.length === 0) {
++        setResult({ kind: "noop" });
++        return;
++      }
++      setResult({ kind: "success", commitSha: json.commitSha, files: json.filesChanged });
++    } catch {
++      // Network error — the request never reached the server.
++      setResult({ kind: "error", message: friendlyError(0) });
+     } finally {
+       setBusy(false);
+     }
+   }
+ 
++  function close() {
++    if (busy) return;
++    setOpen(false);
++    setConfirming(false);
++    setResult(null);
++    setPrompt("");
++  }
++
+   return (
+     <>
+       <button
+@@ -55,7 +117,7 @@ export function PromptButton({ domain, status }: { domain: string; status: strin
+       {open && (
+         <div
+           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+-          onClick={() => !busy && setOpen(false)}
++          onClick={close}
+         >
+           <div
+             className="w-full max-w-lg rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 shadow-xl p-5 space-y-4"
+@@ -63,7 +125,7 @@ export function PromptButton({ domain, status }: { domain: string; status: strin
+           >
+             <div className="flex items-baseline justify-between">
+               <h2 className="text-sm font-semibold">Modifica <span className="font-mono">{domain}</span></h2>
+-              <button type="button" onClick={() => !busy && setOpen(false)} className="text-zinc-400 hover:text-zinc-600 text-lg leading-none">×</button>
++              <button type="button" onClick={close} className="text-zinc-400 hover:text-zinc-600 text-lg leading-none">×</button>
+             </div>
+ 
+             <div className="flex flex-wrap gap-1.5">
+@@ -71,7 +133,7 @@ export function PromptButton({ domain, status }: { domain: string; status: strin
+                 <button
+                   key={c.label}
+                   type="button"
+-                  onClick={() => { setPrompt(c.prompt); setScope(c.scope); }}
++                  onClick={() => { setPrompt(c.prompt); setScope(c.scope); clearState(); }}
+                   className="text-[10px] px-2 py-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                 >
+                   {c.label}
+@@ -81,7 +143,7 @@ export function PromptButton({ domain, status }: { domain: string; status: strin
+ 
+             <textarea
+               value={prompt}
+-              onChange={(e) => setPrompt(e.target.value.slice(0, 2000))}
++              onChange={(e) => { setPrompt(e.target.value.slice(0, 2000)); clearState(); }}
+               rows={5}
+               placeholder="Es: aggiungi una sezione FAQ alla home con 4 domande sul servizio…"
+               className="w-full text-sm rounded border border-zinc-300 dark:border-zinc-700 bg-transparent p-2 resize-y"
+@@ -92,7 +154,7 @@ export function PromptButton({ domain, status }: { domain: string; status: strin
+                 Scope
+                 <select
+                   value={scope}
+-                  onChange={(e) => setScope(e.target.value as Scope)}
++                  onChange={(e) => { setScope(e.target.value as Scope); clearState(); }}
+                   className="text-xs rounded border border-zinc-300 dark:border-zinc-700 bg-transparent px-1.5 py-1"
+                 >
+                   <option value="content">content</option>
+@@ -103,33 +165,55 @@ export function PromptButton({ domain, status }: { domain: string; status: strin
+               <span className="text-[10px] text-zinc-400">{prompt.length}/2000</span>
+             </div>
+ 
+-            <div className="flex items-center justify-end gap-2">
+-              <button type="button" onClick={() => !busy && setOpen(false)} className="text-xs px-3 py-1.5 rounded text-zinc-500 hover:text-zinc-700">Annulla</button>
+-              <button
+-                type="button"
+-                onClick={submit}
+-                disabled={busy || prompt.trim().length === 0}
+-                className="text-xs px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+-              >
+-                {busy ? "Applico…" : "Applica modifica"}
+-              </button>
+-            </div>
++            {/* Confirmation gate: this edits a LIVE site (commit to main +
++                auto-deploy), so make the operator explicitly confirm before
++                we touch anything. */}
++            {confirming ? (
++              <div className="rounded border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-3 space-y-2">
++                <p className="text-xs text-amber-700 dark:text-amber-300">
++                  Stai per modificare <span className="font-mono">{domain}</span>, che è <strong>online</strong>.
++                  Le modifiche verranno committate su <span className="font-mono">main</span> e pubblicate
++                  automaticamente. Vuoi procedere?
++                </p>
++                <div className="flex items-center justify-end gap-2">
++                  <button type="button" onClick={() => setConfirming(false)} className="text-xs px-3 py-1.5 rounded text-zinc-500 hover:text-zinc-700">Annulla</button>
++                  <button
++                    type="button"
++                    onClick={apply}
++                    disabled={busy}
++                    className="text-xs px-3 py-1.5 rounded bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
++                  >
++                    {busy ? "Applico…" : "Sì, applica al sito online"}
++                  </button>
++                </div>
++              </div>
++            ) : (
++              <div className="flex items-center justify-end gap-2">
++                <button type="button" onClick={close} className="text-xs px-3 py-1.5 rounded text-zinc-500 hover:text-zinc-700">Annulla</button>
++                <button
++                  type="button"
++                  onClick={() => { setResult(null); setConfirming(true); }}
++                  disabled={busy || prompt.trim().length === 0}
++                  className="text-xs px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
++                >
++                  Applica modifica
++                </button>
++              </div>
++            )}
+ 
+             {result && (
+               <div className="text-xs rounded border p-3 border-zinc-200 dark:border-zinc-700">
+-                {result.ok ? (
+-                  result.filesChanged.length === 0 ? (
+-                    <p className="text-amber-600 dark:text-amber-400">Nessuna modifica applicata (l'istruzione non ha prodotto cambiamenti nello scope).</p>
+-                  ) : (
+-                    <div className="space-y-1">
+-                      <p className="text-emerald-600 dark:text-emerald-400">✓ Applicato — commit <span className="font-mono">{result.commitSha.slice(0, 7)}</span>. Il deploy parte in automatico.</p>
+-                      <ul className="list-disc list-inside text-zinc-500">
+-                        {result.filesChanged.map((f) => <li key={f} className="font-mono text-[10px]">{f}</li>)}
+-                      </ul>
+-                    </div>
+-                  )
++                {result.kind === "success" ? (
++                  <div className="space-y-1">
++                    <p className="text-emerald-600 dark:text-emerald-400">✓ Applicato — commit <span className="font-mono">{result.commitSha.slice(0, 7)}</span>. Il deploy parte in automatico.</p>
++                    <ul className="list-disc list-inside text-zinc-500">
++                      {result.files.map((f) => <li key={f} className="font-mono text-[10px]">{f}</li>)}
++                    </ul>
++                  </div>
++                ) : result.kind === "noop" ? (
++                  <p className="text-amber-600 dark:text-amber-400">Nessuna modifica applicata: l'istruzione non ha prodotto cambiamenti nello scope selezionato. Prova a essere più specifico o ad ampliare lo scope.</p>
+                 ) : (
+-                  <p className="text-red-600 dark:text-red-400">Errore: {result.error}</p>
++                  <p className="text-red-600 dark:text-red-400">⚠ {result.message}</p>
+                 )}
+               </div>
+             )}
+-- 
+2.43.0
+

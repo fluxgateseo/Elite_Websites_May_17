@@ -20,11 +20,15 @@ In `andreabbo/elite-saas`:
 
 ```
 git am -3 path/to/saas-prompt-route.patch
+git am -3 path/to/saas-prompt-button.patch          # UI surface on /sites
+git am -3 path/to/saas-prompt-confirm-errors.patch  # confirm step + clear errors
 pnpm tsc --noEmit       # clean
 pnpm wrangler deploy    # via @opennextjs/cloudflare
 ```
 
 Both verified with `tsc --noEmit` clean in this session's worktrees.
+`saas-prompt-confirm-errors.patch` applies on top of `saas-prompt-button.patch`
+(verified with `git am -3`; the `.tsx` transforms clean under esbuild).
 
 ## What ships
 
@@ -47,6 +51,22 @@ Both verified with `tsc --noEmit` clean in this session's worktrees.
   with `x-pipeline-secret` server-side (never exposed to browser);
   returns the worker's JSON verbatim with its status code.
 
+### Dashboard — confirm step + clear errors (`saas-prompt-confirm-errors.patch`)
+
+The first cut of `PromptButton` applied edits immediately and surfaced the
+raw worker error string. This patch makes the edit flow operator-safe:
+
+- **Confirmation gate.** "Applica modifica" no longer fires the request. It
+  reveals an amber confirm panel ("Stai per modificare `<domain>`, che è
+  **online** … Vuoi procedere?") with *Sì, applica al sito online* / *Annulla*.
+  Editing the prompt/scope (or picking a canned prompt) clears the pending
+  confirmation and any prior result.
+- **Clear problem messages.** Every failure maps to a human-readable Italian
+  message keyed off the HTTP status, instead of `Errore: <raw>`:
+  network (request never sent), 401, 404, 409 (edit in flight / not live),
+  422, 500 (worker/secret misconfig), 502 (Claude/GH failure) — plus a
+  distinct amber "nessuna modifica necessaria" for an empty `filesChanged`.
+
 ## Contract recap (mirrors docs/custom-prompt.md)
 
 | Scope | Allowed paths |
@@ -60,11 +80,11 @@ if Claude returns malformed frontmatter or invalid TS, the site GHA
 build fails and the previous version stays live. No diff preview in v1
 — revert with `git revert <commitSha>`.
 
-## Not yet wired (UI)
+## UI status
 
-The dashboard `prompt ↗` button described in docs/custom-prompt.md
-(`PromptButton` component on the `/sites` row) is **not** in this patch
-— the API route ships now, the UI surface should follow in a small
-follow-up (`src/components/PromptButton.tsx` with a Radix Dialog +
-textarea + scope select, posting to `/api/sites/[domain]/prompt`).
-Operators can use the route directly via `curl` in the meantime.
+The dashboard `prompt ↗` button described in docs/custom-prompt.md now
+ships: `saas-prompt-button.patch` adds `src/components/PromptButton.tsx`
+(modal + canned prompts + scope select on the `/sites` row, posting to
+`/api/sites/[domain]/prompt`), and `saas-prompt-confirm-errors.patch`
+layers the confirmation gate and clear failure messages on top (see the
+section above). Operators can still hit the route directly via `curl`.

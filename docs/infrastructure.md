@@ -6,12 +6,28 @@ worker `wrangler secret` storage remotely.
 
 ## Cloudflare accounts
 
-There are **two** Cloudflare accounts. Routing is by TLD.
+An account **label** (`IT` / `EN`) is a *logical* bucket, not a single
+Cloudflare account. `IT` = `.it`/`.eu`; `EN` = English sites
+(`.com`/`.com.au`/`.co.uk`/`.us`/`.uk`) + dashboard infra. The label is chosen
+by TLD (override in the wizard for `.ai`/`.io`).
 
-| Account | Email | Account ID | Used for |
-|---------|-------|-----------|----------|
-| **IT**  | Brianzadigitale@gmail.com  | `ece36bd94db00aa348390f1f2b1f545d` | `.it`, `.eu` sites |
-| **EN**  | fluxgateseo@gmail.com      | `06b37563e983e04bd56debd113fe3be5` | `.com`, `.com.au`, `.co.uk`, `.us`, `.uk` sites + dashboard infra |
+The `EN` label can span **multiple physical Cloudflare accounts** — a site is
+deployed to whichever EN account actually **holds its zone** (the pipeline
+queries `/zones?name=…&account.id=…` on each configured EN account and uses the
+match). This lets an English/`.com.au` site sit on a different account
+depending on where it's hosted, with no separate label. Slots, primary first:
+`EN` (`CLOUDFLARE_*_EN`), then `EN_2` (`CLOUDFLARE_*_EN_2`). When no account
+holds the zone yet (brand-new site) it falls back to the primary `EN` slot.
+
+| Slot | Email | Account ID | Used for |
+|------|-------|-----------|----------|
+| **IT**   | Brianzadigitale@gmail.com  | `ece36bd94db00aa348390f1f2b1f545d` | `.it`, `.eu` sites |
+| **EN**   | fluxgateseo@gmail.com      | `06b37563e983e04bd56debd113fe3be5` | English sites + dashboard infra (primary) |
+| **EN_2** | _(second English account)_ | _set `CLOUDFLARE_ACCOUNT_ID_EN_2`_ | English sites whose zone is hosted on a separate account (e.g. `greataussiefood.com.au`) |
+
+Resolution logic lives in `lib/cf-account.ts` (`cfAccountCandidates`,
+`resolveCfAccountForDomain`), duplicated identically in `elite-saas` and
+`elite-pipeline-workflow`.
 
 Local API tokens in `~/.elite/secrets.env` as `CF_TOKEN_IT` / `CF_TOKEN_EN`
 plus matching `CF_ACCOUNT_ID_*`. Token scopes (same on both): D1, Workers
@@ -79,6 +95,10 @@ All set; do not unset without rotating. Names only:
 - `ANTHROPIC_API_KEY`
 - `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_API_TOKEN_EN`, `CLOUDFLARE_API_TOKEN_IT`
 - `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ACCOUNT_ID_EN`, `CLOUDFLARE_ACCOUNT_ID_IT`
+- (Optional) `CLOUDFLARE_API_TOKEN_EN_2`, `CLOUDFLARE_ACCOUNT_ID_EN_2` — second
+  English Cloudflare account (same token scopes as `_EN`). Also set these on the
+  **dashboard** worker so wizard preflight can find the zone there. Sites whose
+  zone lives on this account auto-route to it; unset = primary EN only.
 - `DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD`
 - `GITHUB_TOKEN`
 - `PIPELINE_SHARED_SECRET`

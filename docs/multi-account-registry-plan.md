@@ -1,8 +1,22 @@
 # Multi-account Cloudflare registry — design & plan
 
-**Status:** Proposed (awaiting approval). Not yet implemented or deployed.
+**Status:** Proposed. Will be built and validated on **staging only**
+(`staging.innotofuture.com`). Production deploy is locked behind an explicit
+human "push to production" instruction — see `docs/staging-setup.md`.
 **Branch:** `claude/eloquent-volta-wRqZg`
-**Repos touched:** `elite-saas` (dashboard), `elite-pipeline-workflow` (worker), this meta-repo (docs).
+**Repos touched:** `elite-saas` (dashboard), `elite-pipeline-workflow` (worker),
+this meta-repo (docs).
+
+## Rollout (staging-first, prod-locked)
+
+1. Stand up staging per `docs/staging-setup.md` (one-time, ~30 min, operator-run).
+2. Implement Phase 1 on `claude/eloquent-volta-wRqZg` (additive — see "Phasing").
+3. Deploy to staging via GitHub Actions → **Deploy staging** (manual trigger).
+4. Validate on `staging.innotofuture.com` with a throwaway third Cloudflare
+   account + test domain.
+5. **Stop.** Promotion to prod (`app.innotofuture.com`) happens only when the
+   operator explicitly says "push to production." Never automatic, never
+   inferred. This document does not authorize a prod deploy.
 
 ## Context / problem
 
@@ -17,10 +31,10 @@ while the dashboard database stays on the EN account and all generated GitHub
 repos stay under `fluxgateseo`.
 
 Goal: make a Cloudflare account **data**, not code. Add one from Settings by
-pasting a token; builds then target whichever account actually holds the
-domain's zone.
+pasting a token; builds then target whichever account the operator picks in the
+wizard.
 
-## Recommended approach
+## Approach (confirmed with operator)
 
 1. **Registry table in D1** (`cloudflare_accounts`) — the list of accounts is
    data. The dashboard DB stays the single EN-account D1 it already is.
@@ -28,110 +42,115 @@ domain's zone.
    {script}/secrets`) to store each account's **API token as a Cloudflare Worker
    secret** (Cloudflare's hardened secret store). D1 stores only a **pointer**
    (`token_secret_name`), never the token itself. No bespoke encryption.
-3. **Resolve by zone presence** — to find an account for a domain, probe each
-   registered account's `/zones?name=…&account.id=…` and use the one that holds
-   it (extends the logic already added in `resolveCfAccountForDomain`). For a
-   brand-new domain with no zone yet, the operator picks the account in the
-   wizard.
-4. **Admin Settings UI** to add / list / remove accounts.
+3. **Manual account picking in the wizard** (not auto-detect):
+   - Wizard Step 1 gets an **Account** dropdown listing all registered accounts.
+   - Domain input + `Verify` queries that specific account's zones.
+   - A **"Browse domains in this account"** button lists `GET /zones?account.id=…`
+     for one-click selection.
+   - The chosen account is stored on the site row so every later stage (Pages
+     create, DNS, custom-prompt edits) targets the right account.
+4. **Admin Settings UI** to add / list accounts.
+5. **Sites tabs become data-driven** — the current `All / IT / EN` tab row is
+   driven by the union of `[seeded IT, seeded EN, …added accounts]` instead of
+   being hardcoded.
 
-### Open decisions (recommended defaults in **bold**)
-- Scope of first version: **Full self-serve** (add form validates token,
-  auto-fetches account id, lists the account's domains) · vs Core-only · vs
-  quick env-slot extend.
-- Account choice at build time: **Auto-detect by zone, operator picks for
-  new/zoneless domains** · vs always manual · vs keep TLD-based.
+## Backward compatibility (zero data migration)
+
+- The existing `IT` and `EN` entries appear as **virtual seeded rows** computed
+  at read time from the existing `CLOUDFLARE_API_TOKEN_IT/EN` +
+  `CLOUDFLARE_ACCOUNT_ID_IT/EN` env secrets. No DB writes for them, no schema
+  changes to existing tables, no movement of existing secrets.
+- `elite_sites.account` column is untouched in Phase 1; the 9 live sites keep
+  their `IT`/`EN` label and continue to resolve via the same env slots.
+- Phase 1 is **purely additive**: one new table (`cloudflare_accounts`), one
+  new admin API route, one new Settings section, a registry-aware lookup that
+  falls back to the env slots.
 
 ## Data model
 
-New table (migration `migrations/0004_cloudflare_accounts.sql`, applied the
-same way as `0001–0003`: `wrangler d1 execute elite-saas --remote --env en
---file …`):
+New migration `migrations/0004_cloudflare_accounts.sql`, applied the same way
+as `0001–0003`:
 
 ```sql
 CREATE TABLE cloudflare_accounts (
-  id                TEXT PRIMARY KEY,          -- internal id (nanoid)
+  id                TEXT PRIMARY KEY,          -- internal id (ulid)
   label             TEXT NOT NULL,             -- free-text UI label, e.g. "EN", "AU – client X"
   cf_account_id     TEXT NOT NULL UNIQUE,      -- Cloudflare account id
-  token_secret_name TEXT NOT NULL,             -- env/Worker-secret name holding the token, e.g. CF_ACCT_<id>
-  bucket            TEXT,                       -- optional grouping for UI filter (keeps IT/EN filter working)
+  token_secret_name TEXT NOT NULL,             -- Worker secret name holding the token, e.g. CF_ACCT_<id>
   created_at        INTEGER NOT NULL,
   created_by        TEXT REFERENCES elite_users(id)
 );
 ```
 
-- Mirror the table in **both** schemas: `elite-saas/src/lib/schema.ts` and the
-  worker's partial copy `elite-pipeline-workflow/src/lib/schema.ts` (the worker
-  reads it during the Pages stages). Note the **schema-duplication** convention
-  — the worker keeps its own copy.
-- Optionally add `cf_account_id` to `elite_sites` later so the resolved account
-  is persisted per-site (Phase 2). Phase 1 resolves on demand by zone.
+- Mirror the table in **both** `src/lib/schema.ts` files (the worker keeps its
+  own partial copy of the schema by convention).
+- Phase 2 may add `cf_account_id` to `elite_sites` for explicit per-site
+  account persistence; Phase 1 leaves the column alone.
 
-## Resolution changes (`src/lib/cf-account.ts`, both repos — keep identical)
+## Code changes (Phase 1)
 
-- Add `cfAccountsFromRegistry(rows, env)` → builds `CfAccount[]` from registry
-  rows, reading the token from `env[row.token_secret_name]`.
-- `resolveCfAccountForDomain` gains an optional `registry` candidate list; it
-  probes **registry accounts first, then the legacy env slots** (`IT/EN/EN_2`),
-  using whichever holds the zone. **Legacy env slots keep working** — fully
-  backward compatible.
-- Callers that have DB access load the rows and pass them in:
-  - Worker: `pipeline.ts` / `stages/pages.ts` (DB via `getDb(env.DB)`,
-    helpers in `src/lib/db.ts`).
-  - Dashboard: `api/wizard/preflight/route.ts` (already probes candidates).
+**`elite-saas`:**
+- Migration `migrations/0004_cloudflare_accounts.sql`
+- Drizzle schema entry in `src/lib/schema.ts`
+- `src/lib/cf-accounts-registry.ts` — `listAccounts(env, db)` returning
+  `[…seededFromEnv, …fromRegistryTable]`
+- `src/app/api/cf-accounts/route.ts` (admin-gated, same pattern as
+  `api/secrets/route.ts`):
+  - `GET` → list (no token values)
+  - `POST` → validate token (`GET /accounts`), derive account id, push token as
+    Worker secret `CF_ACCT_<id>` to both `elite-saas` and
+    `elite-pipeline-workflow` scripts via the existing secret-push, insert
+    registry row
+- Settings page: new "Cloudflare accounts" section below "Secrets Status" with
+  a list + add form (style mirrors `SecretEditor.tsx`)
+- `AccountFilter.tsx` / `SitesTable.tsx` read tab list from
+  `listAccounts(…)` instead of the hardcoded `["IT","EN"]`
+- Wizard Step 1 (`/wizard/domain`): account dropdown, "Browse domains in this
+  account" button, account stored on draft
 
-## New dashboard pieces (`elite-saas`)
+**`elite-pipeline-workflow`:**
+- Mirror migration + schema entry
+- `src/lib/cf-account.ts` gains a `registry`-aware variant that reads the
+  account row for the site (or, in Phase 1, the same env-fallback chain by
+  label)
+- No behavior change for sites whose `account` is `IT` or `EN`
 
-- **API** `src/app/api/cf-accounts/route.ts` (admin-gated with the existing
-  `getCurrentUser()` + `role !== "admin"` pattern from `api/secrets/route.ts`):
-  - `GET` → list accounts (no tokens).
-  - `POST` → validate the pasted token via `GET /accounts` (reuse
-    `deriveAccountId` pattern in `api/secrets/route.ts`), push it as a Worker
-    secret `CF_ACCT_<id>` to the `dashboard` + `workflow` scripts (reuse the
-    secret-push), then insert the registry row.
-  - `DELETE` → remove the row (leave the Worker secret; note it for manual
-    cleanup).
-- **Settings UI**: a "Cloudflare accounts" section on
-  `src/app/(dashboard)/settings/page.tsx` with a list + add form (mirror
-  `SecretEditor.tsx` styling).
-- **Generalize the UI label source** so `AccountFilter.tsx` / `SitesTable.tsx`
-  read labels from the registry instead of the hardcoded `IT/EN`. Phase 2 —
-  the current IT/EN filter keeps working until then.
-
-## Backward compatibility
-
-- `IT`, `EN`, `EN_2` env slots remain and are tried after registry accounts.
-- `elite_sites.account` column is untouched in Phase 1; existing sites keep
-  their `IT/EN` label. New registry accounts are used for **hosting resolution**
-  (by zone), independent of that label.
-- Nothing deploys automatically — apply the migration + deploy both workers is a
-  deliberate, boss-gated step.
-
-## Security notes
+## Security
 
 - Tokens live **only** in Cloudflare Worker secrets, never in D1 or git.
-- Least-privilege token scopes (same as `CLOUDFLARE_API_TOKEN_EN`): Workers
-  Scripts Edit, Zone Read, Pages Edit, DNS Edit, Account Settings Read.
+- Least-privilege token scopes (same as `CLOUDFLARE_API_TOKEN_EN`):
+  Workers Scripts Edit, Zone Read, Pages Edit, DNS Edit, Account Settings Read.
 - API routes admin-only. `GET` never returns token values.
+- New `CF_ACCT_<id>` secrets are pushed via the same code path the operator
+  already uses for `CLOUDFLARE_API_TOKEN_*` updates on the Settings page.
 
-## Phasing
+## Verification (on staging only)
 
-- **Phase 1 (this plan):** migration + schema (both repos) + db helpers +
-  registry-aware resolution (backward compatible) + admin `/api/cf-accounts` +
-  Settings add/list UI + tests. Delivers "add an account, builds use it by
-  zone."
-- **Phase 2:** wizard account-picker for zoneless domains, "browse this
-  account's domains" import, generalize `AccountFilter`/`SitesTable` off the
-  hardcoded IT/EN, optional `elite_sites.cf_account_id` persistence.
-
-## Verification
-
-- Unit: extend `tests/cf-account.test.ts` (both repos) — registry candidate
-  beats env slot when it holds the zone; legacy env path unchanged; new/zoneless
-  falls back to the chosen account.
-- Migration: add a case to `elite-saas/tests/schema.test.ts` that loads
-  `0001–0004` and asserts `cloudflare_accounts` exists.
+- Unit: extend `tests/cf-account.test.ts` in both repos.
+- Migration: add a case to `elite-saas/tests/schema.test.ts` loading
+  `0001–0004` and asserting `cloudflare_accounts` exists.
 - `pnpm tsc --noEmit` + `pnpm vitest run` green in both repos.
-- Manual (boss, post-deploy): Settings → add the second account → wizard
-  preflight on `greataussiefood.com.au` shows the zone found on it → dry-run
-  build resolves to that account.
+- Manual on staging (`staging.innotofuture.com`):
+  1. Settings → add a third Cloudflare account (throwaway test account)
+  2. Wizard Step 1 → pick that account → "Browse domains" lists its zones
+  3. Build a test site end-to-end → confirm GitHub repo created under
+     `fluxgateseo`, Pages project created **on the third account**
+  4. Confirm the prod dashboard (`app.innotofuture.com`) is unchanged and the
+     9 live sites still resolve correctly
+
+## Phase 2 (deferred)
+
+- Persist `cf_account_id` on `elite_sites` for explicit per-site account
+  binding (avoids re-deriving from `account` label)
+- "Import from Cloudflare" button on Sites page → pulls existing Pages projects
+  from a selected account into the dashboard
+- Per-account spending strip
+
+## What this plan does NOT do
+
+- Does not modify the existing `CLOUDFLARE_API_TOKEN_IT/EN` secrets or the
+  prod D1
+- Does not change any of the 9 live sites' configuration
+- Does not deploy to prod — only to staging, only via the manual
+  `Deploy staging` workflow
+- Does not alter the `deploy.yml` prod workflow in either repo
